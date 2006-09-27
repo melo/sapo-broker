@@ -1,0 +1,114 @@
+	<!-- Mensagens PUB/SUB -->
+	
+	<!-- Subscrever um tópico 
+	DestinationName -> Nome do tópico
+	AcknowledgeMode -> Indica como é feito o "acknowledge" das mensagens recebidas. Pode ser automático (AUTO) ou gerido pelo cliente (CLIENT),
+	se o modo for não automático o cliente deve chamar o método acknowledge() após consumo com sucesso da mensagem (default=AUTO).
+	-->
+	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+		<soap:Body>
+			<Notify>
+				<DestinationName>SampleTopic1</DestinationName> <!-- elemento obrigatório -->
+				<DestinationType>TOPIC</DestinationType> <!-- elemento obrigatório -->
+				<AcknowledgeMode>AUTO</AcknowledgeMode> <!-- elemento opcional -->
+			</Notify>
+		</soap:Body>
+	</soap:Envelope>
+	
+	<!-- Publicar uma mensagem num tópico
+	Parâmetros interessantes:
+	DeliveryMode -> PERSISTENT para mensagens não persistentes, TRANSIENT para mensagens persistentes.
+		Mensagens persistentes são guardadas em disco e em caso de falha são reenviadas, (default=TRANSIENT)
+	Priority -> 0 prioridade mínima até 9 prioridade máxima (default=4) 
+	MessageId -> identificador único da mensagem. Opcional, se não for indicado é atribuído um aleatório.
+	CorrelationId -> irrelevante para PUB/SUB
+	Timestamp -> data de criação da mensagem, Timezone UTC, formato ISO 8601 "yyyy-MM-dd'T'HH:mm:ss'Z'"
+	Expiration -> data de expiração da mensagem, Timezone UTC, formato ISO 8601 "yyyy-MM-dd'T'HH:mm:ss'Z'"
+	-->
+	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+		<soap:Body>
+			<Publish xmlns="http://services.sapo.pt/broker">
+				<BrokerMessage>
+					<DeliveryMode>TRANSIENT</DeliveryMode> <!-- elemento opcional -->
+					<Priority>1</Priority> <!-- elemento opcional -->
+					<MessageId>4e982250-239c-4e25-b177-11774e8090a7</MessageId> <!-- elemento opcional -->
+					<CorrelationId>618457ff-35e6-4230-abaf-dc5a83655103</CorrelationId> <!-- elemento opcional -->
+					<Timestamp>2006-02-21T13:04:49Z</Timestamp> <!-- elemento opcional -->
+					<Expiration>2006-02-21T14:44:49Z</Expiration> <!-- elemento opcional -->
+					<DestinationName>SampleTopic1</DestinationName> <!-- elemento obrigatório -->
+					<TextPayload>Nullam in erat. Cras tellus. Praesent egestas odioeuismod est.</TextPayload> <!-- elemento obrigatório -->
+				</BrokerMessage>
+			</Publish>
+		</soap:Body>
+	</soap:Envelope>
+	
+	<!-- Notificação de mensagem de um tópico-->
+	<soap:Envelope
+		xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+		xmlns:wsa="http://www.w3.org/2005/08/addressing"
+		xmlns:mq="http://services.sapo.pt/broker">
+		<soap:Header>
+			<wsa:From>
+				<wsa:Address>broker://agent/agent-name/SampleTopic1</wsa:Address>
+			</wsa:From>
+			<wsa:Action>http://services.sapo.pt/broker/notification/</wsa:Action>
+			<wsa:MessageID>http://services.sapo.pt/broker/message/ID:1276859168</wsa:MessageID>
+		</soap:Header>
+		<soap:Body>
+			<mq:Notification>
+				<mq:BrokerMessage>
+					<mq:DeliveryMode>PERSISTENT</mq:DeliveryMode>
+					<mq:Priority>4</mq:Priority>
+					<mq:MessageId>ID:1276859168</mq:MessageId>
+					<mq:Timestamp/>
+					<mq:Expiration>2007-08-19T09:55:23Z</mq:Expiration>
+					<mq:DestinationName>SampleTopic1</mq:DestinationName>
+					<mq:TextPayload>Lorem ipsum dolor sit amet, consectetuer adipiscing elit.</mq:TextPayload>
+				</mq:BrokerMessage>
+			</mq:Notification>
+		</soap:Body>
+	</soap:Envelope>
+	
+	<!--  Mensagens POINT TO POINT  -->
+	
+	<!-- 
+	Retirar mensagem de uma Queue
+	Parâmetros:
+	DestinationName -> Nome da Queue,
+	timeOut -> Timeout em ms. Tempo que o método está bloqueado á espera de uma mensagem, 0 <=> "for ever", (default=0)
+	-->
+	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+		<soap:Body>
+			<Denqueue xmlns="http://services.sapo.pt/broker">
+				<DestinationName>SampleQueue1</DestinationName> <!-- elemento obrigatório -->
+				<TimeOut>100</TimeOut> <!-- elemento opcional -->
+			</Denqueue>
+		</soap:Body>
+	</soap:Envelope>
+	
+	<!-- Colocar mensagem numa Queue 
+	Parâmetros interessantes:
+	DestinationName -> Nome da Queue
+	DeliveryMode -> As mensagens para uma Queue são sempre persistentes.
+	Priority -> 0 prioridade mínima até 9 prioridade máxima (default=4)
+	MessageId -> identificador único da mensagem. Opcional, se não for indicado é atribuído um aleatório.
+	CorrelationId -> identicador único que indica a que pedido corresponde a resposta. Útil num padrão de troca de mensagens Request/Reply.
+	Timestamp -> data de criação da mensagem, Timezone UTC, formato ISO 8601 "yyyy-MM-dd'T'HH:mm:ss'Z'"
+	Expiration -> data de expiração da mensagem, Timezone UTC, formato ISO 8601 "yyyy-MM-dd'T'HH:mm:ss'Z'"
+	-->
+	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+		<soap:Body>
+			<Enqueue xmlns="http://services.sapo.pt/broker">
+				<BrokerMessage>
+					<DeliveryMode>PERSISTENT</DeliveryMode> <!-- elemento opcional -->
+					<Priority>1</Priority> <!-- elemento opcional -->
+					<MessageId>4e982250-239c-4e25-b177-11774e8090a7</MessageId> <!-- elemento opcional -->
+					<CorrelationId>618457ff-35e6-4230-abaf-dc5a83655103</CorrelationId> <!-- elemento opcional -->
+					<Timestamp>2006-02-21T13:04:49Z</Timestamp> <!-- elemento opcional -->
+					<Expiration>2006-02-21T14:44:49Z</Expiration> <!-- elemento opcional -->
+					<DestinationName>SampleQueue1</DestinationName> <!-- elemento obrigatório -->
+					<TextPayload>Nullam in erat. Cras tellus. Praesent egestas odioeuismod est.</TextPayload> <!-- elemento obrigatório -->
+				</BrokerMessage>
+			</Enqueue>
+		</soap:Body>
+	</soap:Envelope>

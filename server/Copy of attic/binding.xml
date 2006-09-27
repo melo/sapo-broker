@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<binding>
+	<mapping name="EnqueueRequestMessage" class="pt.com.broker.Enqueue">
+		<namespace uri="http://services.sapo.pt/broker" default="elements" />
+		<structure name="brokerMessage" field="brokerMessage">
+			<value name="deliveryMode" field="deliveryMode" usage="optional" />
+			<value name="priority" field="priority" usage="optional" />
+			<value name="messageId" field="messageId" usage="optional" />
+			<value name="correlationId" field="correlationId" usage="optional" />
+			<value name="timestamp" field="timestamp" usage="optional" />
+			<value name="expiration" field="expiration" usage="optional" />
+			<value name="destinationName" field="destinationName" usage="optional" />
+			<value name="textPayload" field="textPayload" usage="optional" />
+		</structure>
+	</mapping>
+
+	<mapping name="DenqueueRequestMessage" class="pt.com.broker.Denqueue">
+		<namespace uri="http://services.sapo.pt/broker" default="elements" />
+		<value name="destinationName" field="destinationName" usage="optional" />
+		<value name="timeOut" field="timeOut" usage="optional" />
+		<value name="acknowledgeMode" field="acknowledgeMode" usage="optional" />
+	</mapping>
+
+	<mapping name="DenqueueResultMessage" class="pt.com.broker.DenqueueResponse">
+		<namespace uri="http://services.sapo.pt/broker" default="elements" />
+		<structure name="brokerMessage" field="brokerMessage">
+			<value name="deliveryMode" field="deliveryMode" usage="optional" />
+			<value name="priority" field="priority" usage="optional" />
+			<value name="messageId" field="messageId" usage="optional" />
+			<value name="correlationId" field="correlationId" usage="optional" />
+			<value name="timestamp" field="timestamp" usage="optional" />
+			<value name="expiration" field="expiration" usage="optional" />
+			<value name="destinationName" field="destinationName" usage="optional" />
+			<value name="textPayload" field="textPayload" usage="optional" />
+		</structure>
+	</mapping>
+
+	<mapping name="PublishRequestMessage" class="pt.com.broker.Publish">
+		<namespace uri="http://services.sapo.pt/broker" default="elements" />
+		<structure name="brokerMessage" field="brokerMessage">
+			<value name="deliveryMode" field="deliveryMode" />
+			<value name="priority" field="priority" />
+			<value name="messageId" field="messageId" />
+			<value name="correlationId" field="correlationId" />
+			<value name="timestamp" field="timestamp" />
+			<value name="expiration" field="expiration" />
+			<value name="destinationName" field="destinationName" />
+			<value name="textPayload" field="textPayload" />
+		</structure>
+	</mapping>
+
+	<mapping name="NotificationRequestMessage" class="pt.com.broker.Notify">
+		<namespace uri="http://services.sapo.pt/broker" default="elements" />
+		<value name="destinationName" field="destinationName" usage="optional" />
+		<value name="destinationType" field="destinationType" usage="optional" />
+		<value name="acknowledgeMode" field="acknowledgeMode" usage="optional" />
+	</mapping>
+
+	<mapping name="Notification" class="pt.com.broker.Notification">
+		<namespace uri="http://services.sapo.pt/broker" default="elements" />
+		<structure name="brokerMessage" field="brokerMessage">
+			<value name="deliveryMode" field="deliveryMode" usage="optional" />
+			<value name="priority" field="priority" usage="optional" />
+			<value name="messageId" field="messageId" usage="optional" />
+			<value name="correlationId" field="correlationId" usage="optional" />
+			<value name="timestamp" field="timestamp" usage="optional" />
+			<value name="expiration" field="expiration" usage="optional" />
+			<value name="destinationName" field="destinationName" usage="optional" />
+			<value name="textPayload" field="textPayload" />
+		</structure>
+	</mapping>
+
+</binding>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry output="bin" kind="src" path="src"/>
+	<classpathentry output="test/bin" kind="src" path="test/src"/>
+	<classpathentry kind="lib" path="lib/antlr.jar"/>
+	<classpathentry kind="lib" path="lib/jms.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/jibx-run.jar"/>
+	<classpathentry kind="lib" path="lib/xpp3-1.1.3_8.jar"/>
+	<classpathentry kind="lib" path="lib/bcel.jar"/>
+	<classpathentry kind="lib" path="lib/jibx-bind.jar"/>
+	<classpathentry kind="lib" path="lib/asyncweb.jar"/>
+	<classpathentry kind="lib" path="lib/nlog4j-1.2.25.jar"/>
+	<classpathentry kind="lib" path="lib/jcl104-over-slf4j.jar"/>
+	<classpathentry kind="lib" path="lib/mantaray-2.0.1.jar"/>
+	<classpathentry kind="lib" path="lib/mina-0.9.5.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

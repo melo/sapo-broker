@@ -1,0 +1,2 @@
+#!/bin/sh
+/home/lneves/jvm/bin/java -Xverify:none -Xms16M -Xmx16M -server -Djava.awt.headless=true -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv6Addresses=false -DmantaConfig=test-proxy_n2.config -cp "./lib/manta-bus.jar:./lib/manta-bus-test.jar" pt.com.test.NativeProducer lixo 40000

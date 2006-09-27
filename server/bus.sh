@@ -1,0 +1,2 @@
+#!/bin/sh
+/servers/mantaray/jvm/java -Dbus_port=2222 -Dhttp_port=8000  -DmantaConfig=manta-proxy.config -Xms256M -Xmx256M -Djava.awt.headless=true -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv6Addresses=false -Dfile.encoding=UTF-8 -Dbus_port=2222 -Dhttp_port=8000 -DmantaConfig=manta-proxy.config -cp "./lib/manta-bus.jar" pt.com.manta.Start

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions
+	name="SapoBroker"
+	targetNamespace="http://services.sapo.pt/broker"
+	xmlns="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:typens="http://services.sapo.pt/broker"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
+
+	<types>
+		<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://services.sapo.pt/broker">
+
+			<complexType name="BrokerMessage">
+				<sequence>
+					<element name="deliveryMode" type="int" />
+					<element name="priority" type="int" />
+					<element name="messageId" nillable="true" type="string" />
+					<element name="correlationId" nillable="true" type="string" />
+					<element name="timestamp" nillable="true" type="string" />
+					<element name="expiration" nillable="true" type="string" />
+					<element name="destinationName" nillable="true" type="string" />
+					<element name="textPayload" nillable="true" type="string" />
+				</sequence>
+			</complexType>
+
+			<complexType name="DenqueueRequest">
+				<sequence>
+					<element name="destinationName" type="string" />
+					<element name="timeOut" type="long" />
+				</sequence>
+			</complexType>
+
+			<complexType name="NotificationRequest">
+				<sequence>
+					<element name="destinationName" type="string" />
+					<element name="destinationType" type="string" />
+					<element name="acknowledgeMode" nillable="true" type="int" />
+				</sequence>
+			</complexType>
+
+			<complexType name="AcknowledgeRequest">
+				<sequence>
+					<element name="messageId" type="string" />
+				</sequence>
+			</complexType>
+
+			<element name="BrokerMessageElement" type="typens:BrokerMessage" />
+			<element name="DenqueueRequestElement" type="typens:DenqueueRequest" />
+			<element name="NotificationRequestElement" type="typens:NotificationRequest" />
+			<element name="AcknowledgeRequestElement" type="typens:AcknowledgeRequest" />
+
+		</schema>
+	</types>
+
+	<message name="brokerMessage">
+		<part element="typens:BrokerMessageElement" name="BrokerMessage" />
+	</message>
+
+	<message name="denqueueRequest">
+		<part element="typens:DenqueueRequestElement" name="DenqueueRequest" />
+	</message>
+
+	<message name="notificationRequest">
+		<part element="typens:NotificationRequestElement" name="NotificationRequest" />
+	</message>
+
+	<message name="acknowledgeRequest">
+		<part element="typens:AcknowledgeRequestElement" name="AcknowledgeRequest" />
+	</message>
+
+	<portType name="BrokerApi">
+
+		<operation name="enqueue">
+			<input message="typens:brokerMessage" name="brokerMessageForEnqueue" />
+		</operation>
+
+		<operation name="denqueue">
+			<input message="typens:denqueueRequest" name="denqueueRequestMessage" />
+			<output message="typens:brokerMessage" name="brokerMessageForDenqueue" />
+		</operation>
+
+		<operation name="publish">
+			<input message="typens:brokerMessage" name="brokerMessageForPublish" />
+		</operation>
+
+		<operation name="subscribe">
+			<input message="typens:notificationRequest" name="notificationRequestForSubscribe" />
+		</operation>
+
+		<operation name="listen">
+			<input message="typens:notificationRequest" name="notificationRequestForListen" />
+		</operation>
+
+		<operation name="acknowledge">
+			<input message="typens:acknowledgeRequest" name="acknowledgeRequestMessage" />
+		</operation>
+
+	</portType>
+
+	<binding name="BrokerSoapBinding" type="typens:BrokerApi">
+		<soap:binding style="document" transport="http://soap.sapo.pt/jms/tcp" />
+		<wsaw:UsingAddressing required="true" />
+
+		<operation name="enqueue">
+			<soap:operation soapAction="http://services.sapo.pt/broker/enqueue" />
+			<input name="brokerMessageForEnqueue">
+				<soap:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="denqueue">
+			<soap:operation soapAction="http://services.sapo.pt/broker/denqueue" />
+			<input name="denqueueRequestMessage">
+				<soap:body use="literal" />
+			</input>
+			<output name="brokerMessageForDenqueue">
+				<soap:body use="literal" />
+			</output>
+		</operation>
+
+		<operation name="publish">
+			<soap:operation soapAction="http://services.sapo.pt/broker/publish" />
+			<input name="brokerMessageForPublish">
+				<soap:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="subscribe">
+			<soap:operation soapAction="http://services.sapo.pt/broker/subscribe" />
+			<input name="notificationRequestForSubscribe">
+				<soap:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="listen">
+			<soap:operation soapAction="http://services.sapo.pt/broker/listen" />
+			<input name="notificationRequestForListen">
+				<soap:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="acknowledge">
+			<soap:operation soapAction="http://services.sapo.pt/broker/acknowledge" />
+			<input name="acknowledgeRequestMessage">
+				<soap:body use="literal" />
+			</input>
+		</operation>
+	</binding>
+
+	<service name="BrokerApiService">
+		<port binding="typens:BrokerSoapBinding" name="Broker">
+			<soap:address location="tcp://localhost:2222" />
+		</port>
+	</service>
+
+</definitions>
