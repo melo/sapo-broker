@@ -40,20 +40,6 @@ public class Management implements MessageListener
 	public void onMessage(Message message)
 	{
 		//TODO: implement mangement events to control the entire mech, for now this is only a stub		
-		
-		TextMessage msg = (TextMessage) message;
-		try
-		{
-			if (msg.getText().equals("RELOAD"))
-			{
-				//reloadWorld();
-				Start.shutdown();
-			}
-		}
-		catch (JMSException e)
-		{
-			throw new RuntimeException("onMessage error on management topic: " + e.getMessage(), e);
-		}
 	}
 
 	public static synchronized void reloadWorld()
