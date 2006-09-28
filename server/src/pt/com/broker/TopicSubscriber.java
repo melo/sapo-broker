@@ -57,6 +57,8 @@ public class TopicSubscriber extends BrokerListener
 			for (final SessionConsumer sessionsub : arr_sessionSubscribers)
 			{
 				IoSession iosession = sessionsub.getIoSession();
+				String appName = sessionsub.getConsumerName();
+
 				if (iosession.isConnected() && !iosession.isClosing())
 				{
 					if (iosession.getScheduledWriteRequests() < MQ.MAX_PENDING_MESSAGES)
@@ -64,7 +66,7 @@ public class TopicSubscriber extends BrokerListener
 						try
 						{
 							iosession.write(response);
-							Statistics.messageReceived("TODO://MESSAGE_SOURCE");
+							Statistics.messageReceived(appName);
 						}
 						catch (Throwable t)
 						{
@@ -80,7 +82,6 @@ public class TopicSubscriber extends BrokerListener
 					}
 					else
 					{
-						String appName = sessionsub.getConsumerName();
 						Statistics.messageDropped(appName);
 						if (log.isDebugEnabled())
 						{
@@ -100,7 +101,7 @@ public class TopicSubscriber extends BrokerListener
 		}
 	}
 
-	private void _closeConsumer(IoSession iosession)
+	private synchronized void _closeConsumer(IoSession iosession)
 	{
 		final List<SessionConsumer> tc_list = SessionTopicConsumerList.get(_destinationName);
 		synchronized (tc_list)
@@ -110,7 +111,7 @@ public class TopicSubscriber extends BrokerListener
 			{
 				if (sconsumer.getIoSession().equals(iosession))
 				{
-					index++;
+					index = tc_list.indexOf(sconsumer);
 					break;
 				}
 			}
