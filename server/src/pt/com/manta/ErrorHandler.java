@@ -93,11 +93,12 @@ public class ErrorHandler extends ExceptionMonitor
 
 		StringBuilder sb = new StringBuilder();
 		sb.append(SoapConstants.soap_prefix);
-		sb.append("\n<soap:Fault>");
-		sb.append("\n<soap:Code>\n<soap:Value>" + faultCode + "</soap:Value>\n</soap:Code>");
-		sb.append("\n<soap:Reason>\n<soap:Text xml:lang='en-US'>" + reason + "</soap:Text>\n</soap:Reason>");
-		sb.append("\n<soap:Detail>\n" + detail + "\n</soap:Detail>");
-		sb.append("\n</soap:Fault>");
+		sb.append("<Envelope xmlns='http://www.w3.org/2003/05/soap-envelope'>\n<Body>");
+		sb.append("\n<Fault xmlns:soap='http://www.w3.org/2003/05/soap-envelope'>");
+		sb.append("\n<Code>\n<Value>" + faultCode + "</Value>\n</Code>");
+		sb.append("\n<Reason>\n<Text xml:lang='en-US'>" + reason + "</Text>\n</Reason>");
+		sb.append("\n<Detail>\n" + detail + "\n</Detail>");
+		sb.append("\n</Fault>\n</Body>\n</Envelope>");
 		sb.append(SoapConstants.soap_suffix);
 
 		WTF wtf = new WTF();
