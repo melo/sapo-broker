@@ -1,0 +1,138 @@
+#!/usr/bin/perl -w
+#
+#  A publisher for SAPO Broker
+#
+#  Created by Pedro Melo on 2006-07-23.
+#  Copyright (c) 2006 PT.Com. All rights reserved.
+#
+
+use strict;
+use utf8;
+use POE;
+use POE::Session;
+use POE::Wheel::ReadWrite;
+use POE::Component::MantaTCP;
+use Getopt::Long;
+
+my $hostname = '127.0.0.1';
+my $port     = '2222';
+
+my $result = GetOptions(
+    "hostname=s" => \$hostname,
+    "port=i"     => \$port,
+);
+
+print usage() unless $result && @ARGV;
+
+my $proxy = POE::Component::MantaTCP->spawn(
+    Hostname => $hostname,
+    Port     => $port,
+    
+    OnConnect => \&connected,
+);
+
+# Reading from the console, with POE
+POE::Session->create(   
+    inline_states =>{
+        _start        => sub { $_[KERNEL]->alias_set('console'); },
+        console_start => \&_console_start,
+        console_input => \&_console_input,
+        _stop         => \&_console_stop,
+    },
+);
+
+$proxy->start;
+
+###############################
+# Callbacks for bussiness logic
+
+
+sub connected {
+  print "Ready to send. Messages will be sent to the following topics:\n";
+  print join(", ", @ARGV).".\n";
+  $poe_kernel->post( console => 'console_start' );
+}
+
+
+##############################
+# Deal with client input stuff
+
+my $buffer;
+
+sub console_input {
+  my ($input) = @_;
+
+  if ($input) {
+    $buffer .= "$input\n";
+  }
+  elsif ($buffer) {
+    foreach my $topic (@ARGV) {
+      $proxy->publish( topic => $topic, payload => $buffer );
+    }
+    $buffer = "";
+  }
+}
+
+
+sub console_prompt {
+  print "End each message with a single empty line.\n" unless $buffer;
+  return "> ";
+}
+
+sub console_ended {
+  print "ended\n";
+  # TODO: how to tell mantaTcp to stop
+}
+
+
+#############
+# Usage stuff
+
+sub usage {
+  print STDERR <<EOF;
+sapo-broker-publisher: sends messages to one or more topics.
+
+Usage: sapo-broker-publisher [--hostname=IP] [--port=PORT] topic [topic ...]
+  Default hostname is 127.0.0.1, port 2222. A MantaTCP must be running at that address.
+  At least one topic must be given.
+EOF
+  exit(1);
+}
+
+
+##############################################################
+# Small hacked up component to read input in a POE Envrionment
+
+sub _console_start {
+  my ($heap) = $_[HEAP];
+
+  my $rl = $heap->{wheel} = POE::Wheel::ReadWrite->new(
+      InputHandle => \*STDIN,
+      OutputHandle => \*STDOUT,
+      InputFilter => POE::Filter::Line->new,
+      InputEvent => 'console_input',
+  );
+  console_prompt();
+}
+
+
+sub _console_stop {
+  delete $_[HEAP]->{wheel};
+}
+
+
+sub _console_input {
+  my ($heap, $kernel, $input, $exception) = @_[ HEAP, KERNEL, ARG0 ];
+  
+  my $rl = $heap->{wheel};
+  
+  if (defined $input) {
+      console_input($input);
+  }
+  else {
+      delete $heap->{wheel};
+      console_ended();
+      return;
+  }
+}
+

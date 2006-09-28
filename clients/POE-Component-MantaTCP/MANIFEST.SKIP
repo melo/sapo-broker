@@ -1,0 +1,12 @@
+.cvsignore
+.DS_Store
+^POE-Component-MantaTCP-([\.\d]+).tar.gz
+^_build
+^Build$
+^blib
+~$
+\.bak$
+^MANIFEST\.SKIP$
+CVS
+^.svn/
+/.svn/

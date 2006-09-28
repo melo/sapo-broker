@@ -1,0 +1,74 @@
+#!/usr/bin/perl -w
+#
+#  A sniffer for SAPO Broker traffic
+#
+#  Created by Pedro Melo on 2006-07-22.
+#  Copyright (c) 2006 PT.Com. All rights reserved.
+#
+
+use strict;
+use utf8;
+use POE;
+use POE::Component::MantaTCP;
+use Getopt::Long;
+use Data::Dumper;
+
+my $hostname = '127.0.0.1';
+my $port     = '2222';
+my $raw      = 0;
+
+my $result = GetOptions(
+    "hostname=s" => \$hostname,
+    "port=i"     => \$port,
+    "raw"        => \$raw,
+);
+
+print usage() unless $result && @ARGV;
+
+my $proxy = POE::Component::MantaTCP->spawn(
+    Hostname => $hostname,
+    Port     => $port,
+    
+    OnConnect => \&connected,
+);
+
+$proxy->start;
+
+###############################
+# Callbacks for bussiness logic
+
+
+sub connected {
+  foreach my $topic (@ARGV) {
+    print "Subscribing to '$topic'...\n";
+    $proxy->subscribe( topic => $topic, callback => \&print_message );
+  }
+}
+
+
+sub print_message {
+  my ($message) = @_;
+  
+  if ($raw) {
+    print "------------------\n".Dumper($message)."-----------------\n\n";
+    return;
+  }
+
+  print "> Received at ".scalar(localtime).", Topic '$message->{topic}'\n";
+  print "> Source is '$message->{source}'\n";
+  print "> ID '$message->{message_id}', Priority '$message->{priority}', "
+        . ($message->{persistent}? "persistent" : "transient" ) . ".\n";
+  print "> Message payload follows:\n\n----------\n$message->{payload}\n----------\n\n";
+}
+
+
+sub usage {
+  print STDERR <<EOF;
+sapo-broker-sniffer: subscribes to one or more topics and dumps the payloads he gets.
+
+Usage: sapo-broker-sniffer [--hostname=IP] [--port=PORT] [--raw] topic [topic ...]
+  Default hostname is 127.0.0.1, port 2222. A MantaTCP must be running at that address.
+  At least one topic must be given.
+EOF
+  exit(1);
+}
