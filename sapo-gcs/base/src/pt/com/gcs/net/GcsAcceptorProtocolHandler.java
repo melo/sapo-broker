@@ -11,17 +11,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.Gcs;
-import pt.com.gcs.messaging.AckMode;
-import pt.com.gcs.messaging.LocalQueueConsumers;
-import pt.com.gcs.messaging.LocalTopicConsumers;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.messaging.MessageType;
+import pt.com.gcs.messaging.QueueProcessorList;
 import pt.com.gcs.messaging.ReceivedMessages;
+import pt.com.gcs.messaging.RemoteQueueConsumers;
+import pt.com.gcs.messaging.RemoteTopicConsumers;
 
 public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 {
 	private static Logger log = LoggerFactory.getLogger(GcsAcceptorProtocolHandler.class);
-
 
 	private static ReceivedMessages receivedMessages = new ReceivedMessages();
 
@@ -39,60 +38,69 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void messageReceived(IoSession iosession, Object message) throws Exception
 	{
-		// System.out.println("GcsAcceptorProtocolHandler.messageReceived.toString:
-		// " + message.toString());
+		Message msg = (Message) message;
 
 		if (log.isDebugEnabled())
 		{
 			log.debug("GcsAcceptorProtocolHandler.messageReceived() from: {}", getRemoteAddress(iosession));
 		}
 
-		Message msg = (Message) message;
-		if (msg.getType() == (MessageType.COM_TOPIC))
-		{
-			LocalTopicConsumers.notify(msg);
-		}
-		else if (msg.getType() == (MessageType.COM_QUEUE))
-		{
-			// System.out.println("GcsAcceptorProtocolHandler.messageReceived().MessageId:
-			// " + msg.getMessageId());
-// if (!receivedMessages.isDuplicate(msg.getMessageId()))
-// {
-// LocalQueueConsumers.notify(msg);
-// if (msg.getAcknowledgementMode() == AckMode.AUTO)
-// {
-// LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
-// }
-// }
-
-			LocalQueueConsumers.notify(msg);
-			// System.out.println("GcsAcceptorProtocolHandler.messageReceived().getReadMessages():
-			// " + iosession.getReadMessages());
-			if (msg.getAcknowledgementMode() == AckMode.AUTO)
-			{
-				LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
-			}
-		}
-		else if (msg.getType() == (MessageType.HELLO))
+		if (msg.getType() == (MessageType.HELLO))
 		{
 			validatePeer(iosession, msg.getContent());
-			boolean isValid = ((Boolean) iosession.getAttribute("GcsRemoteProtocolHandler.ISVALID")).booleanValue();
-			if (isValid)
+			boolean isValid = ((Boolean) iosession.getAttribute("GcsAcceptorProtocolHandler.ISVALID")).booleanValue();
+			if (!isValid)
 			{
 				String paddr = String.valueOf(iosession.getAttribute("GcsAcceptorProtocolHandler.PEER_ADDRESS"));
-				log.warn("A peer from \"{}\" tried to connect but it does not appear in the world map.", paddr);				
+				log.warn("A peer from \"{}\" tried to connect but it does not appear in the world map.", paddr);
 				iosession.close().awaitUninterruptibly();
 			}
 			else
 			{
-				System.out.println("Peer is valid!");
+				log.debug("Peer is valid!");
 				return;
 			}
 			return;
 		}
+		else if ((msg.getType() == MessageType.SYSTEM_TOPIC) || (msg.getType() == MessageType.SYSTEM_QUEUE))
+		{
+			String payload = msg.getContent();
+			System.out.println("GcsAcceptorProtocolHandler.messageReceived().payload: " + payload);
+			log.info(payload);
+			final String action = extract(payload, "<action>", "</action>");
+			final String src_name = extract(payload, "<source-name>", "</source-name>");
+			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
+			final String destinationName = extract(payload, "<destination>", "</destination>");
+
+			if (msg.getType() == MessageType.SYSTEM_TOPIC)
+			{
+				if (action.equals("CREATE"))
+				{
+					RemoteTopicConsumers.add(msg.getDestination(), iosession);
+				}
+				else if (action.equals("DELETE"))
+				{
+					RemoteTopicConsumers.remove(msg.getDestination(), iosession);
+				}
+			}
+			else if (msg.getType() == MessageType.SYSTEM_QUEUE)
+			{
+				if (action.equals("CREATE"))
+				{
+					RemoteQueueConsumers.add(msg.getDestination(), iosession);
+					QueueProcessorList.get(destinationName).wakeup();
+
+				}
+				else if (action.equals("DELETE"))
+				{
+					RemoteQueueConsumers.remove(msg.getDestination(), iosession);
+				}
+			}
+		}
+
 		else
 		{
-			log.error("GcsAcceptorProtocolHandler.messageReceived():  Don't know how to handle message");
+			log.warn("Unkwown message type. Don't know how to handle message");
 		}
 	}
 
@@ -121,7 +129,7 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionIdle(IoSession iosession, IdleStatus status) throws Exception
 	{
-		 log.debug("sessionIdle():{}", getRemoteAddress(iosession));
+		log.debug("sessionIdle():{}", getRemoteAddress(iosession));
 	}
 
 	@Override
@@ -132,7 +140,6 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 
 	}
 
-	
 	private void validatePeer(IoSession iosession, String helloMessage)
 	{
 		try
@@ -170,5 +177,17 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			remoteServer = "Can't determine server address";
 		}
 		return remoteServer;
+	}
+
+	private static String extract(String ins, String prefix, String sufix)
+	{
+		if (StringUtils.isBlank(ins))
+		{
+			return "";
+		}
+
+		int s = ins.indexOf(prefix) + prefix.length();
+		int e = ins.indexOf(sufix);
+		return ins.substring(s, e);
 	}
 }

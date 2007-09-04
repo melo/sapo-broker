@@ -107,7 +107,6 @@ public class LocalTopicConsumers
 
 	private void broadCastActionTopicConsumer(String destinationName, String action)
 	{
-		//System.out.println("LocalTopicConsumers.broadCastActionTopicConsumer()");
 		Set<IoSession> sessions = Gcs.getManagedAcceptorSessions();
 
 		for (IoSession ioSession : sessions)

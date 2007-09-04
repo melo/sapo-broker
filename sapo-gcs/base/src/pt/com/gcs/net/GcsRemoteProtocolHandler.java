@@ -7,12 +7,12 @@ import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
 import org.caudexorigo.lang.ErrorAnalyser;
-import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.Gcs;
 import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.messaging.AckMode;
 import pt.com.gcs.messaging.LocalQueueConsumers;
 import pt.com.gcs.messaging.LocalTopicConsumers;
 import pt.com.gcs.messaging.Message;
@@ -39,9 +39,10 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void messageReceived(final IoSession iosession, Object omessage) throws Exception
 	{
+
 		if (log.isDebugEnabled())
 		{
-			log.debug("GcsRemoteProtocolHandler.messageReceived() from: {}", getRemoteAddress(iosession));
+			log.debug("messageReceived() from: {}", getRemoteAddress(iosession));
 		}
 
 		final Message msg = (Message) omessage;
@@ -51,37 +52,29 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 			QueueProcessorList.get(msg.getDestination()).ack(msg);
 			return;
 		}
-
-		String payload = msg.getContent();
-		log.info(payload);
-		final String action = extract(payload, "<action>", "</action>");
-// final String src_name = extract(payload, "<source-name>", "</source-name>");
-// final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
-		final String destinationName = extract(payload, "<destination>", "</destination>");
-
-		if (msg.getType() == MessageType.SYSTEM_TOPIC)
+		else if (msg.getType() == (MessageType.COM_TOPIC))
 		{
-			if (action.equals("CREATE"))
-			{
-				System.out.println("GcsRemoteProtocolHandler.CREATE: " + msg.getDestination());
-				RemoteTopicConsumers.add(msg.getDestination(), iosession);
-			}
-			else if (action.equals("DELETE"))
-			{
-				RemoteTopicConsumers.remove(msg.getDestination(), iosession);
-			}
+			LocalTopicConsumers.notify(msg);
 		}
-		else if (msg.getType() == MessageType.SYSTEM_QUEUE)
+		else if (msg.getType() == (MessageType.COM_QUEUE))
 		{
-			if (action.equals("CREATE"))
-			{
-				RemoteQueueConsumers.add(msg.getDestination(), iosession);
-				QueueProcessorList.get(destinationName).wakeup();
+			// System.out.println("GcsAcceptorProtocolHandler.messageReceived().MessageId:
+			// " + msg.getMessageId());
+// if (!receivedMessages.isDuplicate(msg.getMessageId()))
+// {
+// LocalQueueConsumers.notify(msg);
+// if (msg.getAcknowledgementMode() == AckMode.AUTO)
+// {
+// LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
+// }
+// }
 
-			}
-			else if (action.equals("DELETE"))
+			LocalQueueConsumers.notify(msg);
+			// System.out.println("GcsAcceptorProtocolHandler.messageReceived().getReadMessages():
+			// " + iosession.getReadMessages());
+			if (msg.getAcknowledgementMode() == AckMode.AUTO)
 			{
-				RemoteQueueConsumers.remove(msg.getDestination(), iosession);
+				LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
 			}
 		}
 		else
@@ -143,19 +136,6 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		return remoteServer;
 	}
 
-
-	private static String extract(String ins, String prefix, String sufix)
-	{
-		if (StringUtils.isBlank(ins))
-		{
-			return "";
-		}
-
-		int s = ins.indexOf(prefix) + prefix.length();
-		int e = ins.indexOf(sufix);
-		return ins.substring(s, e);
-	}
-
 	public void sayHello(IoSession iosession)
 	{
 
@@ -165,9 +145,9 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		m.setDestination("HELLO");
 		m.setContent(agentId);
 
-		if (log.isDebugEnabled())
+		if (log.isInfoEnabled())
 		{
-			log.debug("Send agentId: " + agentId);
+			log.info("Send agentId: " + agentId);
 		}
 
 		iosession.write(m).awaitUninterruptibly();

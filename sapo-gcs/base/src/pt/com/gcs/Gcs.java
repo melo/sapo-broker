@@ -42,14 +42,14 @@ import pt.com.gcs.tasks.GcsExecutor;
 
 public class Gcs
 {
-	private static Logger log = LoggerFactory.getLogger(Gcs.class);	
+	private static Logger log = LoggerFactory.getLogger(Gcs.class);
 
 	private static final int NCPU = Runtime.getRuntime().availableProcessors();
 
 	private static final int IO_THREADS = NCPU + 1;
 
 	private static final String SERVICE_NAME = "SAPO GCS";
-	
+
 	private static final Gcs instance = new Gcs();
 
 	private SocketAcceptor acceptor;
@@ -58,25 +58,26 @@ public class Gcs
 
 	private WorldMap _wmap;
 
+
 	private Gcs()
 	{
+		log.info("{} STARTING", SERVICE_NAME);
 		try
 		{
 			startAcceptor(AgentInfo.getAgentPort());
 			startConnector();
 			populateWorldMap();
 		}
-		catch(Throwable t)
+		catch (Throwable t)
 		{
 			log.error(ErrorAnalyser.findRootCause(t).getMessage());
 			Shutdown.now();
 		}
+		Sleep.time(AgentInfo.getInitialDelay());
 	}
 
 	private void startAcceptor(int portNumber) throws IOException
 	{
-		log.info("{} STARTING", SERVICE_NAME);
-
 		acceptor = new SocketAcceptor(IO_THREADS, CustomExecutors.newULimitCachedThreadPool(16));
 
 		acceptor.setReuseAddress(true);
@@ -107,7 +108,7 @@ public class Gcs
 		String localAddr = acceptor.getLocalAddress().toString();
 		log.info("{} listening on:{}", SERVICE_NAME, localAddr);
 	}
-	
+
 	private void startConnector()
 	{
 		connector = new SocketConnector(IO_THREADS, CustomExecutors.newULimitCachedThreadPool(16));
@@ -135,9 +136,9 @@ public class Gcs
 			// GcsRemoteConnector.connect(peer.getHost(), peer.getPort());
 		}
 		// Statistics.init();
-		Sleep.time(AgentInfo.getInitialDelay());
+		
 	}
-	
+
 	public synchronized static void connect(String host, int port)
 	{
 		SocketAddress addr = new InetSocketAddress(host, port);
@@ -171,8 +172,6 @@ public class Gcs
 		QueueProcessorList.get(message.getDestination()).process(message);
 	}
 
-
-
 	public static void addTopicConsumer(String topicName, MessageListener listener)
 	{
 		LocalTopicConsumers.add(topicName, listener);
@@ -203,12 +202,12 @@ public class Gcs
 	{
 		return Collections.unmodifiableList(instance._wmap.getPeerList());
 	}
-	
+
 	public static Set<IoSession> getManagedConnectorSessions()
 	{
 		return Collections.unmodifiableSet(instance.connector.getManagedSessions());
 	}
-	
+
 	public static Set<IoSession> getManagedAcceptorSessions()
 	{
 		return Collections.unmodifiableSet(instance.acceptor.getManagedSessions());
