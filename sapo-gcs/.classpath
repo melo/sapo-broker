@@ -2,10 +2,12 @@
 <classpath>
 	<classpathentry excluding="**/.svn/*" kind="src" output="base/bin" path="base/src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/logback-0.9.7.jar"/>
 	<classpathentry kind="lib" path="lib/org.caudexorigo.jar"/>
 	<classpathentry kind="lib" path="lib/mina2-snapshot.jar"/>
 	<classpathentry kind="lib" path="conf"/>
 	<classpathentry kind="lib" path="lib/h2.jar"/>
+	<classpathentry kind="lib" path="lib/logback-classic-0.9.8.jar"/>
+	<classpathentry kind="lib" path="lib/logback-core-0.9.8.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.4.3.jar"/>
 	<classpathentry kind="output" path="base/bin"/>
 </classpath>
