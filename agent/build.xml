@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="sapo-broker">
+	<property name="sapo-broker.location" value="." />
+
+	<path id="project.classpath">
+		<pathelement location="${sapo-broker.location}/bin" />
+		<pathelement location="${sapo-broker.location}/clib/bcel.jar" />
+		<pathelement location="${sapo-broker.location}/lib/asyncweb.jar" />
+		<pathelement location="${sapo-broker.location}/clib/jibx-bind.jar" />
+		<pathelement location="${sapo-broker.location}/lib/jibx-run.jar" />
+		<pathelement location="${sapo-broker.location}/lib/jms.jar" />
+		<pathelement location="${sapo-broker.location}/lib/mantaray_sapo.jar" />
+		<pathelement location="${sapo-broker.location}/lib/mina-core-head-java5.jar" />
+		<pathelement location="${sapo-broker.location}/lib/nlog4j-1.2.25.jar" />
+		<pathelement location="${sapo-broker.location}/lib/sapo-gcs.jar" />
+	</path>
+
+
+	<!-- show list of targets -->
+	<target name="help">
+		<echo message="Targets are:" />
+		<echo />
+		<echo message="clean      delete all class files and generated code" />
+		<echo message="compile    compile class files as a separate step" />
+		<echo message="bind       compile JiBX bindings as a separate step" />
+		<echo message="build      compile classes and JiBX binding" />
+		<echo message="package    creates distribution" />
+	</target>
+
+	<target name="init">
+		<mkdir dir="bin" />
+	</target>
+
+	<target name="clean">
+		<delete dir="bin" />
+		<delete dir="dist" />
+		<delete file="sapo-broker.tar.gz" />
+	</target>
+
+
+	<!-- bind as a separate step -->
+	<target name="bind">
+		<echo message="Running JiBX binding compiler" />
+		<taskdef name="bind" classname="org.jibx.binding.ant.CompileTask">
+			<classpath refid="project.classpath" />
+		</taskdef>
+		<bind binding="${basedir}/binding.xml">
+			<classpath refid="project.classpath" />
+		</bind>
+	</target>
+
+
+	<target name="compile"  depends="init" >
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac destdir="bin" encoding="UTF-8">
+			<src path="src" />
+			<classpath refid="project.classpath" />
+		</javac>
+		<copy todir="bin">
+			<fileset dir="src" excludes="**/*.java"/>
+		</copy>
+	</target>
+
+	<target name="build" depends="compile,bind" />
+
+	<target name="one-jar" depends="build">
+		<mkdir dir="dist/classes" />
+		<mkdir dir="dist/lib" />
+		<unzip dest="dist/classes">
+			<fileset dir="lib" />
+		</unzip>
+		<copy todir="dist/classes">
+			<fileset dir="bin"/>
+		</copy>
+		<jar destfile="dist/lib/sapo-broker.jar">
+			<fileset dir="dist/classes"/>
+		</jar>
+		<delete dir="dist/classes" />
+	</target>
+
+	<target name="package" depends="one-jar">
+
+		<copy file="README.txt" todir="dist" />
+		<copy file="SampleMessages.txt" todir="dist" />
+		<copy file="manta-proxy.config" todir="dist" />
+		<copy file="bus.bat" todir="dist" />
+		<copy file="bus.sh" todir="dist" />
+		<copy file="start_bus_mac_os_x.sh" todir="dist" />
+		<copy file="broker.wsdl" todir="dist" />
+		<copy file="broker_http.wsdl" todir="dist" />
+		<copy file="VERSIONS.html" todir="dist" />
+		<tar tarfile="sapo-broker.tar" >
+			<tarfileset dir="dist" prefix="mantabus"></tarfileset>
+		</tar>
+		<gzip src="sapo-broker.tar" destfile="sapo-broker.tar.gz" />
+		<delete file="sapo-broker.tar" />
+		<delete dir="dist" />
+	</target>
+
+</project>

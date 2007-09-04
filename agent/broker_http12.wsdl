@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions
+	name="SapoBroker"
+	targetNamespace="http://services.sapo.pt/broker"
+	xmlns="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:tns="http://services.sapo.pt/broker"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns:wsoap12="http://schemas.xmlsoap.org/wsdl/soap12/"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
+	
+	<types>
+		<xsd:schema elementFormDefault="qualified" targetNamespace="http://services.sapo.pt/broker">
+
+			<xsd:complexType name="BrokerMessage">
+				<xsd:all>
+					<xsd:element name="DeliveryMode" type="tns:DeliveryMode" />
+					<xsd:element name="Priority" type="tns:Priority" />
+					<xsd:element name="MessageId" type="xsd:string" />
+					<xsd:element name="CorrelationId" type="xsd:string" />
+					<xsd:element name="Timestamp" type="xsd:string" />
+					<xsd:element name="Expiration" type="xsd:string" />
+					<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
+					<xsd:element minOccurs="1" maxOccurs="1" name="TextPayload" type="xsd:string" />
+				<xsd:all>
+			</xsd:complexType>
+
+			<xsd:element name="Publish">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Enqueue">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:simpleType name="DeliveryMode">
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="PERSISTENT" />
+					<xsd:enumeration value="TRANSIENT" />
+				</xsd:restriction>
+			</xsd:simpleType>
+
+			<xsd:simpleType name="Priority">
+				<xsd:restriction base="xsd:int">
+					<xsd:minInclusive value="0" />
+					<xsd:maxInclusive value="9" />
+				</xsd:restriction>
+			</xsd:simpleType>
+
+		</xsd:schema>
+	</types>
+
+	<message name="PublishSoapIn">
+		<part name="parameters" element="tns:Publish" />
+	</message>
+
+
+	<message name="EnqueueSoapIn">
+		<part name="parameters" element="tns:Enqueue" />
+	</message>
+
+
+	<portType name="BrokerSoap">
+
+		<operation name="Publish">
+			<input message="tns:PublishSoapIn" />
+		</operation>
+
+		<operation name="Enqueue">
+			<input message="tns:EnqueueSoapIn" />
+		</operation>
+
+	</portType>
+
+	<binding name="BrokerSoap" type="tns:BrokerSoap">
+		<wsoap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsaw:UsingAddressing required="false" />
+
+		<operation name="Publish">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/publish" style="document" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+			<output>
+				<wsoap12:body use="literal" />
+			</output>
+		</operation>
+
+		<operation name="Enqueue">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/enqueue" style="document" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+			<output>
+				<wsoap12:body use="literal" />
+			</output>
+		</operation>
+
+	</binding>
+
+	<service name="Broker">
+		<port name="BrokerSoap" binding="tns:BrokerSoap">
+			<wsoap12:address location="http://localhost:8000/broker/producer" />
+		</port>
+	</service>
+
+</definitions>

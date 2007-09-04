@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="SapoBroker" targetNamespace="http://services.sapo.pt/broker" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://services.sapo.pt/broker" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsoap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
+
+	<types>
+
+		<xsd:schema elementFormDefault="qualified" targetNamespace="http://services.sapo.pt/broker">
+
+			<xsd:complexType name="BrokerMessage">
+				<xsd:all>
+					<xsd:element name="DeliveryMode" type="tns:DeliveryMode" />
+					<xsd:element name="Priority" type="tns:Priority" />
+					<xsd:element name="MessageId" type="xsd:string" />
+					<xsd:element name="CorrelationId" type="xsd:string" />
+					<xsd:element name="Timestamp" type="xsd:string" />
+					<xsd:element name="Expiration" type="xsd:string" />
+					<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
+					<xsd:element minOccurs="1" maxOccurs="1" name="TextPayload" type="xsd:string" />
+				</xsd:all>
+			</xsd:complexType>
+
+			<xsd:element name="Publish">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Enqueue">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Denqueue">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="string" />
+						<xsd:element name="TimeOut" type="long" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="DenqueueResponse">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Notify">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="string" />
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationType" type="tns:DestinationType" />
+						<xsd:element name="AcknowledgeMode" type="tns:AcknowledgeMode" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Unsubscribe">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="string" />
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationType" type="tns:DestinationType" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Notification">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:element name="Acknowledge">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="MessageId" type="string" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+
+			<xsd:simpleType name="DestinationType">
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="TOPIC" />
+					<xsd:enumeration value="QUEUE" />
+					<xsd:enumeration value="TOPIC_AS_QUEUE" />
+				</xsd:restriction>
+			</xsd:simpleType>
+
+			<xsd:simpleType name="DeliveryMode">
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="PERSISTENT" />
+					<xsd:enumeration value="TRANSIENT" />
+				</xsd:restriction>
+			</xsd:simpleType>
+
+			<xsd:simpleType name="Priority">
+				<xsd:restriction base="xsd:int">
+					<xsd:minInclusive value="0" />
+					<xsd:maxInclusive value="9" />
+				</xsd:restriction>
+			</xsd:simpleType>
+
+			<xsd:simpleType name="AcknowledgeMode">
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="AUTO" />
+					<xsd:enumeration value="CLIENT" />
+				</xsd:restriction>
+			</xsd:simpleType>
+
+		</xsd:schema>
+
+	</types>
+
+	<message name="PublishSoapIn">
+		<part name="parameters" element="tns:Publish" />
+	</message>
+
+	<message name="EnqueueSoapIn">
+		<part name="parameters" element="tns:Enqueue" />
+	</message>
+
+	<message name="NotifySoapIn">
+		<part name="parameters" element="tns:Notify" />
+	</message>
+
+	<message name="UnsubscribeSoapIn">
+		<part name="parameters" element="tns:Unsubscribe" />
+	</message>
+
+
+
+	<message name="AcknowledgeSoapIn">
+		<part name="parameters" element="tns:Acknowledge" />
+	</message>
+
+	<portType name="BrokerApi">
+
+		<operation name="Publish">
+			<input message="tns:PublishSoapIn" />
+		</operation>
+
+		<operation name="Enqueue">
+			<input message="tns:EnqueueSoapIn" />
+		</operation>
+
+		<operation name="Subscribe">
+			<input message="tns:NotifySoapIn" />
+		</operation>
+
+		<operation name="Listen">
+			<input message="tns:NotifySoapIn" />
+		</operation>
+
+		<operation name="Notification">
+			<output message="tns:NotificationSoapOut" />
+		</operation>
+
+		<operation name="Acknowledge">
+			<input message="tns:AcknowledgeSoapIn" />
+		</operation>
+
+		<operation name="Subscribe">
+			<input message="tns:UnsubscribeSoapIn" />
+		</operation>
+
+	</portType>
+
+	<binding name="BrokerSoapBinding" type="tns:BrokerApi">
+		<wsoap12:binding style="document" transport="http://soap.sapo.pt/jms/tcp" />
+		<wsaw:UsingAddressing required="false" />
+
+		<operation name="Enqueue">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/enqueue" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+
+
+		<operation name="Publish">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/publish" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="Subscribe">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/subscribe" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="Listen">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/listen" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+
+		<operation name="Notify">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/notify" />
+			<output>
+				<wsoap12:body use="literal" />
+			</output>
+		</operation>
+
+		<operation name="Acknowledge">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/acknowledge" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+
+
+		<operation name="Unsubscribe">
+			<wsoap12:operation soapAction="http://services.sapo.pt/broker/unsubscribe" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+
+	</binding>
+
+	<service name="Broker">
+		<port binding="tns:BrokerSoapBinding" name="Broker">
+			<wsoap12:address location="tcp://localhost:2222" />
+		</port>
+	</service>
+
+</definitions>

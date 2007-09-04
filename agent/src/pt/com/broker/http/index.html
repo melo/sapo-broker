@@ -1,0 +1,39 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+	<head>
+		<title> Manage your agent </title>
+	</head>
+	<body>
+		<p>Very humble beginnings of the future management interface.</p>
+		<p>For now it's only possible to change the log level.</p>
+
+		<form method="get" action="">
+			<table align="left" border="1" width="40%" cellpadding="3">
+				<tr>
+					<th width="23%"> Attribute </th>
+					<th width="35%"> Value </th>
+				</tr>
+				<tr>
+					<td><b>Log category</b></a></td>
+					<td><input type="text" name="logcategory" value="" size="34%"></td>
+				</tr>
+				<tr>
+					<td><b>Log level</b></a></td>
+					<td>
+						<select name="loglevel">
+							<option value=""></option>
+							<option value="ERROR">ERROR = All error messages</option>
+							<option value="WARN">WARN  = Warning messages</option>
+							<option value="INFO">INFO  = Information messages</option>
+							<option value="DEBUG">DEBUG = Debugging messages only</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td align="right" colspan="2"><input type="submit" value="Update"></td>
+				</tr>
+			</table>
+		</form>
+
+	</body>
+</html>
