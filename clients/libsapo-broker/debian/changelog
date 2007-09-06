@@ -1,0 +1,23 @@
+libsapo-broker (0.0.3.1) unstable; urgency=low
+
+  * Include support for -dbg package. No longer compatible with sarge.
+
+ -- Daniel Ruoso <daniel.ruoso@segula.pt>  Mon,  7 May 2007 17:33:29 +0100
+
+libsapo-broker (0.0.3) unstable; urgency=low
+
+  * Fixed error messages.
+
+ -- Francisco Lourenço <francisco.lourenco@segula.pt>  Thu,  3 May 2007 19:19:30 +0100
+
+libsapo-broker (0.0.2) unstable; urgency=low
+
+  * Fix of an off-by-one error with messages greater than 8KB.
+
+ -- Daniel Ruoso <daniel.ruoso@segula.pt>  Thu,  3 May 2007 16:49:24 +0100
+
+libsapo-broker (0.0.1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Daniel Ruoso <daniel.ruoso@segula.pt>  Mon, 30 Apr 2007 11:49:20 +0100

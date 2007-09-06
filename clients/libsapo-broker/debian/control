@@ -1,0 +1,53 @@
+Source: libsapo-broker
+Section: libs
+Priority: extra
+Maintainer: Daniel Ruoso <daniel.ruoso@segula.pt>
+Build-Depends: cdbs, debhelper (>= 5), autotools-dev, libtool, autogen, autoconf, automake, libxml2-dev
+Standards-Version: 3.7.2
+
+Package: libsapo-broker0
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Client library for the SAPO Broker
+ This library provides a high-level API for the SAPO
+ Broker TCP agent. This is a synchronous API that
+ manages the entire process of communicating with the
+ broker.
+ .
+ This library also supports the TOPIC-AS-QUEUE 
+ submission type. 
+
+Package: libsapo-broker-dbg
+Architecture: any
+Section: libs
+Depends: libsapo-broker0 (= ${Source-Version}), ${misc:Depends}
+Description: Client library for the SAPO Broker - Debug symbols
+ This library provides a high-level API for the SAPO
+ Broker TCP agent. This is a synchronous API that
+ manages the entire process of communicating with the
+ broker.
+ .
+ This library also supports the TOPIC-AS-QUEUE 
+ submission type.
+ .
+ This package contains unstripped shared libraries. It is provided primarily
+ to provide a backtrace with names in a debugger, this makes it somewhat
+ easier to interpret core dumps. The libraries are installed in
+ /usr/lib/debug and can be used by placing that directory in
+ LD_LIBRARY_PATH.
+ Most people will not need this package.
+
+Package: libsapo-broker-dev
+Architecture: any
+Section: libs
+Depends: libsapo-broker0 (= ${Source-Version}), ${misc:Depends}
+Description: Client library for the SAPO Broker - Headers
+ This library provides a high-level API for the SAPO
+ Broker TCP agent. This is a synchronous API that
+ manages the entire process of communicating with the
+ broker.
+ .
+ This library also supports the TOPIC-AS-QUEUE 
+ submission type. 
+

@@ -1,0 +1,13 @@
+libsapo-brokerxs-perl (0.0.2) unstable; urgency=low
+
+  * Encapsulates the SAPO_BROKER_T inside another structure
+    to avoid confusion of who is responsible for freeing it.
+
+ -- Daniel Ruoso <ruoso@pitombeira>  Tue,  8 May 2007 15:52:42 +0100
+
+libsapo-brokerxs-perl (0.0.1-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Daniel Ruoso <daniel.ruoso@segula.pt>  Mon, 30 Apr 2007 19:03:57 +0100
+

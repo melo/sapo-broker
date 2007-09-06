@@ -1,0 +1,7 @@
+The implementation here is splitted in two sub-projects
+
+ libsapo-broker is a shared object to access the SAPO Broker.
+
+ sapo-broker-agent is meant as an example application more than
+  something really usefull, specially because its features are
+  already implemented by the Perl POE client.
