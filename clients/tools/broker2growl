@@ -1,0 +1,86 @@
+#!/usr/bin/perl -w
+#
+#  A Growl notifier of MantaBus events
+
+#  Created by Pedro Melo on 2006-08-09.
+#  Copyright (c) 2006 PT.Com. All rights reserved.
+#
+
+use strict;
+use POE;
+use POE::Component::MantaTCP;
+use POE::Component::Growl;
+use XML::LibXML;
+use XML::LibXML::XPathContext;
+use Getopt::Long;
+
+my $hostname = '127.0.0.1';
+my $port     = '2222';
+my $xpath    = '';
+my $xml_ns   = '';
+
+my $result = GetOptions(
+    "hostname=s" => \$hostname,
+    "port=i"     => \$port,
+    "xpath=s"    => \$xpath,
+    "ns=s"       => \$xml_ns,
+);
+
+print usage() unless $result && @ARGV;
+
+my $proxy = POE::Component::MantaTCP->spawn(
+    hostname => $hostname,
+    port     => $port,
+    
+    on_connect => \&connected,
+);
+
+my $growl = POE::Component::Growl->spawn(
+    Alias         => 'growl',
+    AppName       => 'broker2growl',
+    Notifications => [ 'messages', 'topics' ],
+);
+
+$proxy->start;
+
+###############################
+# Callbacks for bussiness logic
+
+sub connected {
+  foreach my $topic (@ARGV) {
+    $growl->notify({
+        name  => 'topics',
+        title => $topic,
+        descr => "Subscribing to topic '$topic'",
+    });
+    $proxy->subscribe( topic => $topic, callback => \&new_event );
+  }
+}
+
+
+sub new_event {
+  my ($message) = @_;
+
+  my $notification = {
+    name => 'messages',
+    title => $message->{topic},
+  };
+  
+  if (!$xpath) {
+    $notification->{descr} = $message->{payload};
+  }
+
+  $growl->notify($notification);  
+}
+
+
+sub usage {
+  print STDERR <<EOF;
+broker2growl: subscribes to one or more topics and dumps the payloads he gets via Growl.
+
+Usage: broker2growl [--hostname=IP] [--port=PORT] topic [topic ...]
+  Default hostname is 127.0.0.1, port 2222. A MantaTCP must be running at that address.
+  At least one topic must be given.
+EOF
+  exit(1);
+}
