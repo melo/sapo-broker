@@ -1,0 +1,18 @@
+Requisitos actuais:
+
+PHP4 ou PHP5 com sockets e libxml
+./configure --enable-sockets
+
+A classe usa as funcs de SimpleXML() em PHP5 (faast) para o parsing de mensagens (consumer)
+http://pt.php.net/manual/en/ref.simplexml.php
+
+Ou o xml_parser antigo do PHP4 como fallback.
+
+Hint: O PHP bundled com o OSX Tiger funciona out-of-the-box.
+
+Nos exemplos producer.php e consumer.php mudem o #!/servers/lighty/bin/php -q para o vosso env ou simplesmente retirem a linha.
+
+Mais informações aqui:
+
+http://trac.intra.sapo.pt/projects/broker/wiki/PHPComponent
+
