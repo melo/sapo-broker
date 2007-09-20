@@ -81,14 +81,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			String emsg = wtf.Cause.getMessage();
 			msg = "Client: " + client + ". Message: " + emsg;
 
-			if (log.isDebugEnabled())
-			{
-				log.error(msg, wtf.Cause);
-			}
-			else
-			{
-				log.error(msg);
-			}
+			log.error(msg, wtf.Cause);
 		}
 	}
 
