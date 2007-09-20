@@ -5,6 +5,8 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.gcs.messaging.QueueProcessorList;
+
 public class BrokerConsumer
 {
 	private static BrokerConsumer instance = new BrokerConsumer();
@@ -31,6 +33,7 @@ public class BrokerConsumer
 		{
 			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName);
 			qsl.add(ios);
+			QueueProcessorList.get(sb.destinationName).wakeup();
 			log.info("Create asynchronous message consumer for queue : " + sb.destinationName + ", address: " + ios.getRemoteAddress());
 		}
 		catch (Throwable e)
