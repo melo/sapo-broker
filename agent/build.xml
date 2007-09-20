@@ -5,14 +5,15 @@
 	<path id="project.classpath">
 		<pathelement location="${sapo-broker.location}/bin" />
 		<pathelement location="${sapo-broker.location}/clib/bcel.jar" />
-		<pathelement location="${sapo-broker.location}/lib/asyncweb.jar" />
 		<pathelement location="${sapo-broker.location}/clib/jibx-bind.jar" />
-		<pathelement location="${sapo-broker.location}/lib/jibx-run.jar" />
-		<pathelement location="${sapo-broker.location}/lib/jms.jar" />
-		<pathelement location="${sapo-broker.location}/lib/mantaray_sapo.jar" />
-		<pathelement location="${sapo-broker.location}/lib/mina-core-head-java5.jar" />
-		<pathelement location="${sapo-broker.location}/lib/nlog4j-1.2.25.jar" />
 		<pathelement location="${sapo-broker.location}/lib/sapo-gcs.jar" />
+		<pathelement location="${sapo-broker.location}/lib/jibx-run.jar"/>
+		<pathelement location="${sapo-broker.location}/lib/asyncweb.jar"/>
+		<pathelement location="${sapo-broker.location}/lib/logback-classic-0.9.8.jar"/>
+		<pathelement location="${sapo-broker.location}/lib/logback-core-0.9.8.jar"/>
+		<pathelement location="${sapo-broker.location}/lib/slf4j-api-1.4.3.jar"/>
+		<pathelement location="${sapo-broker.location}/lib/org.caudexorigo.jar"/>
+		<pathelement location="${sapo-broker.location}/lib/mina2-snapshot.jar"/>
 	</path>
 
 
