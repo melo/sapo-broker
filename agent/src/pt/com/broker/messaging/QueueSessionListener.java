@@ -1,7 +1,6 @@
 package pt.com.broker.messaging;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.mina.common.IoSession;
@@ -15,7 +14,9 @@ import pt.com.gcs.messaging.Message;
 
 public class QueueSessionListener extends BrokerListener
 {
-	private static final Random rnd = new Random();
+	private int currentQEP = 0;
+
+	private Object rr_mutex = new Object();
 
 	private static final Logger log = LoggerFactory.getLogger(QueueSessionListener.class);
 
@@ -41,7 +42,7 @@ public class QueueSessionListener extends BrokerListener
 
 					WriteFuture future = ioSession.write(response);
 
-					future.join();
+					future.awaitUninterruptibly();
 					if (future.isWritten())
 					{
 						return;
@@ -74,24 +75,41 @@ public class QueueSessionListener extends BrokerListener
 
 	private IoSession pick()
 	{
-		int n = _sessions.size();
-		if (n == 0)
-			return null;
+		synchronized (rr_mutex)
+		{
+			int n = _sessions.size();
+			if (n == 0)
+				return null;
 
-		int ix = rnd.nextInt(n);
-		return _sessions.get(ix);
+			if (currentQEP == (n - 1))
+			{
+				currentQEP = 0;
+			}
+			else
+			{
+				++currentQEP;
+			}
+
+			try
+			{
+				return _sessions.get(currentQEP);
+			}
+			catch (Exception e)
+			{
+				return _sessions.get(0);
+			}
+		}
 	}
 
 	public void add(IoSession iosession)
 	{
 		_sessions.add(iosession);
 	}
-	
+
 	private synchronized void closeConsumer(IoSession iosession)
 	{
-		System.out.println("!!!!!! QueueSessionListener._closeConsumer() !!!!!!!!");
 		_sessions.remove(iosession);
-		if (_sessions.size()==0)
+		if (_sessions.size() == 0)
 		{
 			Gcs.removeQueueConsumer(this);
 			QueueSessionListenerList.removeValue(this);
