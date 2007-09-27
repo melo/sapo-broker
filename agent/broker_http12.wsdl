@@ -21,7 +21,7 @@
 					<xsd:element name="Expiration" type="xsd:string" />
 					<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
 					<xsd:element minOccurs="1" maxOccurs="1" name="TextPayload" type="xsd:string" />
-				<xsd:all>
+				</xsd:all>
 			</xsd:complexType>
 
 			<xsd:element name="Publish">
