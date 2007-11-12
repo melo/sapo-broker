@@ -9,6 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
+import org.caudexorigo.concurrent.Sleep;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +108,7 @@ public class LocalTopicConsumers
 
 	private void broadCastActionTopicConsumer(String destinationName, String action)
 	{
-		Set<IoSession> sessions = Gcs.getManagedAcceptorSessions();
+		Set<IoSession> sessions = Gcs.getManagedConnectorSessions();
 
 		for (IoSession ioSession : sessions)
 		{

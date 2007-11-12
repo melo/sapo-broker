@@ -1,6 +1,5 @@
 package pt.com.gcs.messaging;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +22,7 @@ public class RemoteTopicConsumers
 	{
 	}
 
-	public static void add(String topicName, IoSession iosession)
+	public synchronized static void add(String topicName, IoSession iosession)
 	{
 		log.info("Adding new remote topic consumer for topic:  {}", topicName);
 		try
@@ -50,7 +49,7 @@ public class RemoteTopicConsumers
 		String topicName = message.getDestination();
 		Set<String> subscriptionNames = instance.remoteTopicConsumers.keySet();
 
-		List<String> matches = new ArrayList<String>();
+		List<String> matches = new CopyOnWriteArrayList<String>();
 		for (String sname : subscriptionNames)
 		{
 			if (sname.equals(topicName))
@@ -71,7 +70,7 @@ public class RemoteTopicConsumers
 		}
 	}
 
-	public static void remove(IoSession iosession)
+	public synchronized static void remove(IoSession iosession)
 	{
 		try
 		{
@@ -92,7 +91,7 @@ public class RemoteTopicConsumers
 		}
 	}
 
-	public static void remove(String topicName, IoSession iosession)
+	public synchronized static void remove(String topicName, IoSession iosession)
 	{
 		try
 		{
@@ -109,12 +108,12 @@ public class RemoteTopicConsumers
 		}
 	}
 
-	public static int size()
+	public synchronized static int size()
 	{
 		return instance.remoteTopicConsumers.size();
 	}
 
-	public static int size(String destinationName)
+	public synchronized static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteTopicConsumers.get(destinationName);
 		if (sessions != null)
@@ -124,7 +123,7 @@ public class RemoteTopicConsumers
 		return 0;
 	}
 
-	public void doNotify(Message message, String destination)
+	private void doNotify(Message message, String destination)
 	{
 		try
 		{
@@ -145,6 +144,7 @@ public class RemoteTopicConsumers
 					{
 						ioSession.write(message);
 					}
+
 				}
 			}
 			else

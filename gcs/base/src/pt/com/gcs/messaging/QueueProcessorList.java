@@ -62,4 +62,9 @@ public class QueueProcessorList
 			throw new RuntimeException(ie);
 		}
 	}
+	
+	public static int size()
+	{
+		return qpCache.size();
+	}
 }

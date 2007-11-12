@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.caudexorigo.cryto.MD5;
@@ -20,9 +21,7 @@ public class Message implements Externalizable
 
 	public static final int DEFAULT_PRIORITY = 4;
 
-	private String _ackId = "";
-
-	private AckMode _ackm = AckMode.AUTO;
+	//private AckMode _ackm = AckMode.AUTO;
 
 	private String _content = "";
 
@@ -48,21 +47,26 @@ public class Message implements Externalizable
 
 	static
 	{
-		BASE_MESSAGE_ID = MD5.getHashString(AgentInfo.getAgentName() + "#" + AgentInfo.getAgentHost() + "#" + AgentInfo.getAgentPort() + "#" + System.nanoTime() + "#" + (new Random()).nextLong());
+		BASE_MESSAGE_ID = MD5.getHashString(UUID.randomUUID().toString() + "#" + System.nanoTime() + "#" + (new Random()).nextLong());
 	}
 
 	public Message()
 	{
-		_id = BASE_MESSAGE_ID  + "#" +  SEQ.incrementAndGet();
+		_id = BASE_MESSAGE_ID + "#" + SEQ.incrementAndGet();
+	}
+	
+	private Message(boolean dummy)
+	{
+
 	}
 
 	public Message(String destination, String content)
-	{	
+	{
 		checkArg(destination);
 		checkArg(content);
 		_content = content;
 		_destination = destination;
-		_id = BASE_MESSAGE_ID  + "#" +  SEQ.incrementAndGet();
+		_id = BASE_MESSAGE_ID + "#" + SEQ.incrementAndGet();
 	}
 
 	public Message(String id, String destination, String content)
@@ -80,15 +84,10 @@ public class Message implements Externalizable
 		}
 	}
 
-	public String getAckId()
-	{
-		return _ackId;
-	}
-
-	public AckMode getAcknowledgementMode()
-	{
-		return _ackm;
-	}
+//	public AckMode getAcknowledgementMode()
+//	{
+//		return _ackm;
+//	}
 
 	public String getContent()
 	{
@@ -135,15 +134,10 @@ public class Message implements Externalizable
 		return _type;
 	}
 
-	public void setAckId(String ackId)
-	{
-		_ackId = ackId;
-	}
-
-	public void setAcknowledgementMode(AckMode ackm)
-	{
-		_ackm = ackm;
-	}
+//	public void setAcknowledgementMode(AckMode ackm)
+//	{
+//		_ackm = ackm;
+//	}
 
 	public void setContent(String content)
 	{
@@ -198,18 +192,16 @@ public class Message implements Externalizable
 
 	public void readExternal(ObjectInput oin) throws IOException, ClassNotFoundException
 	{
-
 		_content = oin.readUTF();
 		_correlationId = oin.readUTF();
 		_destination = oin.readUTF();
 		_id = oin.readUTF();
-		_ackId = oin.readUTF();
 		_priority = oin.readInt();
 		_sourceApp = oin.readUTF();
 		_timestamp = oin.readLong();
 		_ttl = oin.readLong();
 		_type = MessageType.lookup(oin.readInt());
-		_ackm = AckMode.lookup(oin.readInt());
+		//_ackm = AckMode.lookup(oin.readInt());
 	}
 
 	public void writeExternal(ObjectOutput oout) throws IOException
@@ -218,13 +210,12 @@ public class Message implements Externalizable
 		oout.writeUTF(getCorrelationId());
 		oout.writeUTF(getDestination());
 		oout.writeUTF(getMessageId());
-		oout.writeUTF(getAckId());
 		oout.writeInt(getPriority());
 		oout.writeUTF(getSourceApp());
 		oout.writeLong(getTimestamp());
 		oout.writeLong(getTtl());
 		oout.writeInt(getType().getValue());
-		oout.writeInt(getAcknowledgementMode().getValue());
+		//oout.writeInt(getAcknowledgementMode().getValue());
 	}
 
 	@Override
@@ -239,8 +230,6 @@ public class Message implements Externalizable
 		buf.append(SEPARATOR);
 		buf.append(getMessageId());
 		buf.append(SEPARATOR);
-		buf.append(getAckId());
-		buf.append(SEPARATOR);
 		buf.append(getPriority());
 		buf.append(SEPARATOR);
 		buf.append(getSourceApp());
@@ -250,8 +239,8 @@ public class Message implements Externalizable
 		buf.append(getTtl());
 		buf.append(SEPARATOR);
 		buf.append(getType().getValue());
-		buf.append(SEPARATOR);
-		buf.append(getAcknowledgementMode().getValue());
+//		buf.append(SEPARATOR);
+//		buf.append(getAcknowledgementMode().getValue());
 
 		return buf.toString();
 	}
@@ -260,18 +249,17 @@ public class Message implements Externalizable
 	{
 		String[] smsg = instr.split(SEPARATOR);
 
-		Message msg = new Message();
+		Message msg = new Message(false);
 		msg.setContent(smsg[0]);
 		msg.setCorrelationId(smsg[1]);
 		msg.setDestination(smsg[2]);
 		msg.setMessageId(smsg[3]);
-		msg.setAckId(smsg[4]);
-		msg.setPriority(Integer.parseInt(smsg[5]));
-		msg.setSourceApp(smsg[6]);
-		msg.setTimestamp(Long.parseLong(smsg[7]));
-		msg.setTtl(Long.parseLong(smsg[8]));
-		msg.setType(MessageType.lookup(Integer.parseInt(smsg[9])));
-		msg.setAcknowledgementMode(AckMode.lookup(Integer.parseInt(smsg[10])));
+		msg.setPriority(Integer.parseInt(smsg[4]));
+		msg.setSourceApp(smsg[5]);
+		msg.setTimestamp(Long.parseLong(smsg[6]));
+		msg.setTtl(Long.parseLong(smsg[7]));
+		msg.setType(MessageType.lookup(Integer.parseInt(smsg[8])));
+		//msg.setAcknowledgementMode(AckMode.lookup(Integer.parseInt(smsg[9])));
 
 		return msg;
 	}

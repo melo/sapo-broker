@@ -1,5 +1,6 @@
 package pt.com.gcs.net.codec;
 
+import org.apache.mina.common.IoBuffer;
 import org.caudexorigo.io.UnsynchByteArrayInputStream;
 
 import pt.com.gcs.io.SerializerHelper;
@@ -16,6 +17,13 @@ public class GcsDecoder extends SimpleFramingDecoder
 	{
 		UnsynchByteArrayInputStream bin = new UnsynchByteArrayInputStream(packet);
 		Object msg = SerializerHelper.fromStream(bin);
+		return msg;
+	}
+	
+	@Override
+	public Object processBody(IoBuffer in)
+	{
+		Object msg = SerializerHelper.fromStream(in.asInputStream());
 		return msg;
 	}
 

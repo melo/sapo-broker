@@ -20,8 +20,6 @@ import org.apache.mina.filter.codec.ProtocolEncoder;
  */
 public class GcsCodec implements ProtocolCodecFactory
 {
-
-	public static final int HEADER_LENGTH = 8;
 	
 	public static final int DEFAULT_MAX_MESSAGE_SIZE = 256 * 1024;
 	

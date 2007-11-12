@@ -4,10 +4,12 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.io.DbStorage;
+import pt.com.gcs.tasks.GcsExecutor;
 
 public class QueueProcessor
 {
@@ -21,34 +23,45 @@ public class QueueProcessor
 
 	private final AtomicLong _sequence = new AtomicLong(0L);
 
-	private DbStorage dbStorage = new DbStorage();
-
 	public QueueProcessor(String destinationName)
 	{
 		_destinationName = destinationName;
-		// final Runnable waker = new Runnable()
-		// {
-		// public void run()
-		// {
-		// System.out.println("dbStorage.count: " +
-		// dbStorage.count(_destinationName));
-		// }
-		// };
-		// GcsExecutor.scheduleWithFixedDelay(waker, 10, 10, TimeUnit.SECONDS);
+		log.info("Create Queue Processor for '{}'.", _destinationName);
 	}
 
-	public void ack(Message msg)
+	public static void ack(final String msgId)
 	{
-		log.debug("Ack message . AckId: {}", msg.getAckId());
-		dbStorage.ackMessage(msg);
+// final Runnable wack = new Runnable()
+// {
+// public void run()
+// {
+// if (log.isDebugEnabled())
+// {
+// log.debug("Ack message . MsgId: '{}'.", msgId);
+// }
+// DbStorage.ackMessage(msgId);
+// }
+// };
+// GcsExecutor.execute(wack);
+		if (log.isDebugEnabled())
+		{
+			log.debug("Ack message . MsgId: '{}'.", msgId);
+		}
+		DbStorage.ackMessage(msgId);
 	}
 
 	public final void wakeup()
 	{
-		log.debug("Wakeup Queue:enter");
 		if (!hasRecipient())
 		{
-			log.warn("No recipient for this Destination");
+			log.warn("No recipient for this Destination.");
+			_isWorking.set(false);
+			return;
+		}
+
+		if (size() >= 2)
+		{
+			log.info("There are at least one active consumers for this queue.");
 			_isWorking.set(false);
 			return;
 		}
@@ -59,18 +72,35 @@ public class QueueProcessor
 			return;
 		}
 
-		if (dbStorage.count(_destinationName) > 0)
+		if (DbStorage.count(_destinationName) > 0)
 		{
 			if (hasRecipient())
 			{
-				log.debug("Processing stored messages");
+				log.debug("Processing stored messages.");
 				try
 				{
+					Runnable dbcounter = new Runnable()
+					{
+						public void run()
+						{
+							long cnt = DbStorage.count(_destinationName);
+							while (cnt > 0)
+							{
+								log.info("Queue '{}' has {} message(s) to recover.", _destinationName, cnt);
+								Sleep.time(5000);
+								cnt = DbStorage.count(_destinationName);
+							}
+							log.info("Queue '{}' recovery is complete.", _destinationName);
+						}
+					};
+					GcsExecutor.execute(dbcounter);
+
 					do
 					{
-						dbStorage.deliverStoredMessages(this, 0);
+						DbStorage.recoverMessages(this);
 					}
-					while ((dbStorage.count(_destinationName) > 0) && hasRecipient());
+					while ((DbStorage.count(_destinationName) > 0) && hasRecipient());
+
 				}
 				catch (Throwable t)
 				{
@@ -80,11 +110,10 @@ public class QueueProcessor
 			}
 			else
 			{
-				log.warn("No recipient for this Destination");
+				log.warn("No recipient for this Destination.");
 			}
 		}
 		_isWorking.set(false);
-		log.debug("Wakeup Queue:exit");
 	}
 
 	public boolean deliverMessage(Message message)
@@ -104,7 +133,7 @@ public class QueueProcessor
 		}
 		else if ((rqsize == 0) && (lqsize != 0))
 		{
-			LocalQueueConsumers.notify(message);
+			return LocalQueueConsumers.notify(message);
 		}
 		else if ((lqsize > 0) && (rqsize > 0))
 		{
@@ -114,10 +143,7 @@ public class QueueProcessor
 			else
 				return RemoteQueueConsumers.notify(message);
 		}
-		else
-		{
-			return false;
-		}
+
 		return false;
 	}
 
@@ -137,14 +163,17 @@ public class QueueProcessor
 			{
 				if (hasRecipient())
 				{
-					if (deliverMessage(msg))
+					DbStorage.insert(msg, _sequence.incrementAndGet(), 1);
+					if (!deliverMessage(msg))
 					{
-						dbStorage.insert(msg, _sequence.incrementAndGet(), 1);
+						DbStorage.deleteMessage(msg.getMessageId());
+						DbStorage.insert(msg, _sequence.incrementAndGet(), 0);
 						return;
 					}
+					return;
 				}
 			}
-			dbStorage.insert(msg, _sequence.incrementAndGet(), 0);
+			DbStorage.insert(msg, _sequence.incrementAndGet(), 0);
 		}
 		catch (Throwable t)
 		{
@@ -154,7 +183,7 @@ public class QueueProcessor
 
 	public long getQueuedMessages()
 	{
-		return dbStorage.count(_destinationName);
+		return DbStorage.count(_destinationName);
 	}
 
 	public String getDestinationName()

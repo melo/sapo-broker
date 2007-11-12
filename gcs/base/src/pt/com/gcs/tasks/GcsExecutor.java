@@ -16,7 +16,7 @@ public class GcsExecutor
 
 	private GcsExecutor()
 	{
-		exec_srv = CustomExecutors.newULimitCachedThreadPool(50);
+		exec_srv = CustomExecutors.newThreadPool(16);
 
 		shed_exec_srv = new ScheduledThreadPoolExecutor(3);
 	}

@@ -1,6 +1,6 @@
 package pt.com.gcs.net.codec;
 
-import org.apache.mina.common.ByteBuffer;
+import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.CumulativeProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolDecoderOutput;
@@ -9,13 +9,15 @@ public abstract class SimpleFramingDecoder extends CumulativeProtocolDecoder
 {
 	private final int _max_message_size;
 
+	public static final int HEADER_LENGTH = 4;
+
 	public SimpleFramingDecoder(int max_message_size)
 	{
 		_max_message_size = max_message_size;
 	}
 
 	@Override
-	public void decode(IoSession session, ByteBuffer in, ProtocolDecoderOutput out) throws Exception
+	public void decode(IoSession session, IoBuffer in, ProtocolDecoderOutput out) throws Exception
 	{
 		try
 		{
@@ -29,14 +31,14 @@ public abstract class SimpleFramingDecoder extends CumulativeProtocolDecoder
 	}
 
 	@Override
-	protected boolean doDecode(IoSession session, ByteBuffer in, ProtocolDecoderOutput out) throws Exception
+	protected boolean doDecode(IoSession session, IoBuffer in, ProtocolDecoderOutput out) throws Exception
 	{
 		try
 		{
 			// Remember the initial position.
 			int start = in.position();
 
-			if (in.remaining() < GcsCodec.HEADER_LENGTH)
+			if (in.remaining() < HEADER_LENGTH)
 			{
 				// We didn't receive enough bytes to decode the
 				// message length. Cumulate remainder to decode later.
@@ -66,10 +68,14 @@ public abstract class SimpleFramingDecoder extends CumulativeProtocolDecoder
 
 			// We have the all message body, unmarshal the gathered bytes and
 			// forward the message.
+//			System.out.println("SimpleFramingDecoder.doDecode().start: " + start);
+//
+//			out.write(processBody(in.position(start + HEADER_LENGTH)));
 
-			byte[] packet = new byte[msize];
-			in.get(packet);
-			out.write(processBody(packet));
+			 byte[] packet = new byte[msize];
+			 in.get(packet);
+			 out.write(processBody(packet));
+
 			return true;
 
 		}
@@ -80,4 +86,6 @@ public abstract class SimpleFramingDecoder extends CumulativeProtocolDecoder
 	}
 
 	public abstract Object processBody(byte[] packet);
+
+	public abstract Object processBody(IoBuffer in);
 }

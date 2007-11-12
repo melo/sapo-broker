@@ -16,6 +16,6 @@ public class TopicToQueueDispatcher implements MessageListener
 	{
 		message.setDestination(_queueName);
 		Gcs.enqueue(message);
-		QueueProcessorList.get(_queueName).ack(message);
+		Gcs.ackMessage(message.getMessageId());
 	}
 }

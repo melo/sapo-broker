@@ -1,8 +1,11 @@
 package pt.com.gcs.net.codec;
 
+import org.apache.mina.common.IoBuffer;
+import org.apache.mina.filter.codec.ProtocolEncoderOutput;
+import org.caudexorigo.io.UnsynchByteArrayOutputStream;
+
 import pt.com.gcs.io.SerializerHelper;
 import pt.com.gcs.messaging.Message;
-import org.caudexorigo.io.UnsynchByteArrayOutputStream;
 
 public class GcsEncoder extends SimpleFramingEncoder
 {
@@ -12,5 +15,19 @@ public class GcsEncoder extends SimpleFramingEncoder
 		UnsynchByteArrayOutputStream holder = new UnsynchByteArrayOutputStream();
 		SerializerHelper.toStream((Message) message, holder);
 		return holder.toByteArray();
+	}
+
+	@Override
+	public void processBody(Object message, ProtocolEncoderOutput pout)
+	{
+		IoBuffer wbuf = IoBuffer.allocate(2048, false);
+		wbuf.setAutoExpand(true);
+		wbuf.putInt(0);
+		SerializerHelper.toStream((Message) message, wbuf.asOutputStream());
+		wbuf.putInt(0, wbuf.position() - 4);
+
+		wbuf.flip();
+
+		pout.write(wbuf);		
 	}
 }

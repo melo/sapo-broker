@@ -2,10 +2,10 @@ package pt.com.gcs.messaging;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
@@ -17,11 +17,11 @@ import pt.com.gcs.conf.AgentInfo;
 
 public class LocalQueueConsumers
 {
-	private static final Random rnd = new Random();
-
 	private static Logger log = LoggerFactory.getLogger(LocalQueueConsumers.class);
 
 	private static final LocalQueueConsumers instance = new LocalQueueConsumers();
+
+	public static final AtomicLong ackedMessages = new AtomicLong(0L);
 
 	public static void add(String queueName, MessageListener listener)
 	{
@@ -62,6 +62,10 @@ public class LocalQueueConsumers
 
 	private Map<String, CopyOnWriteArrayList<MessageListener>> localQueueConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener>>();
 
+	private int currentQEP = 0;
+
+	private Object rr_mutex = new Object();
+
 	private LocalQueueConsumers()
 	{
 	}
@@ -74,21 +78,21 @@ public class LocalQueueConsumers
 			int n = listeners.size();
 			if (n > 0)
 			{
-				int ix = rnd.nextInt(n);
-				MessageListener listener = listeners.get(ix);
+				MessageListener listener = pick(listeners);
 				if (listener != null)
 				{
 					listener.onMessage(message);
 					return true;
 				}
 			}
-			return false;
 		}
-		else
+
+		if (log.isDebugEnabled())
 		{
 			log.debug("There are no local listeners for queue: {}", message.getDestination());
-			return false;
 		}
+
+		return false;
 	}
 
 	private void broadCastNewQueueConsumer(String topicName)
@@ -119,16 +123,13 @@ public class LocalQueueConsumers
 	public static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(destinationName);
-		if (listeners != null)
-		{
-			listeners.size();
-		}
+		if (listeners != null) { return listeners.size(); }
 		return 0;
 	}
 
 	private void broadCastActionQueueConsumer(String destinationName, String action)
 	{
-		Set<IoSession> sessions = Gcs.getManagedAcceptorSessions();
+		Set<IoSession> sessions = Gcs.getManagedConnectorSessions();
 
 		for (IoSession ioSession : sessions)
 		{
@@ -140,33 +141,62 @@ public class LocalQueueConsumers
 	{
 		if (action.equals("CREATE"))
 		{
-			log.info("Tell {} about new queue consumer for: {}", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell {} about new queue consumer for: {}.", ioSession.getRemoteAddress().toString(), destinationName);
 		}
 		else if (action.equals("DELETE"))
 		{
-			log.info("Tell {} about deleted queue consumer of: {}", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell {} about deleted queue consumer of: {}.", ioSession.getRemoteAddress().toString(),
+					destinationName);
 		}
 
 		Message m = new Message();
 		m.setType(MessageType.SYSTEM_QUEUE);
 		String ptemplate = "<sysmessage><action>%s</action><source-name>%s</source-name><source-ip>%s</source-ip><destination>%s</destination></sysmessage>";
-		String payload = String.format(ptemplate, action, AgentInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
+		String payload = String.format(ptemplate, action, AgentInfo.getAgentName(), ioSession.getLocalAddress().toString(),	destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
 		WriteFuture wf = ioSession.write(m);
 		wf.awaitUninterruptibly();
 	}
 
-	public static void broadCastAcknowledgement(Message msg, IoSession ioSession)
+	public static void acknowledgeMessage(Message msg, IoSession ioSession)
 	{
-		log.debug("Acknowledge message with Id: {}", msg.getMessageId());
+		log.debug("Acknowledge message with Id: '{}'.", msg.getMessageId());
 
-		//System.out.println(ioSession.getRemoteAddress());
-		Message m = new Message();
+		Message m = new Message(msg.getMessageId(), msg.getDestination(), "ACK");
 		m.setType((MessageType.ACK));
-		m.setDestination(msg.getDestination());
-		m.setAckId(msg.getMessageId());
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly();
+//		WriteFuture wf = ioSession.write(m);
+//		wf.awaitUninterruptibly();
+		ioSession.write(m);
 	}
+
+	private MessageListener pick(CopyOnWriteArrayList<MessageListener> listeners)
+	{
+		synchronized (rr_mutex)
+		{
+			int n = listeners.size();
+			if (n == 0)
+				return null;
+
+			if (currentQEP == (n - 1))
+			{
+				currentQEP = 0;
+			}
+			else
+			{
+				++currentQEP;
+			}
+
+			try
+			{
+				return listeners.get(currentQEP);
+			}
+			catch (Exception e)
+			{
+				currentQEP = 0;
+				return listeners.get(currentQEP);
+			}
+		}
+	}
+
 }

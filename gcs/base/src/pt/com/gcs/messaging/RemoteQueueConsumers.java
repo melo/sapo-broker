@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
@@ -12,10 +13,6 @@ import org.slf4j.LoggerFactory;
 
 public class RemoteQueueConsumers
 {
-	private int currentQEP = 0;
-
-	private Object rr_mutex = new Object();
-
 	private static final RemoteQueueConsumers instance = new RemoteQueueConsumers();
 
 	private static Logger log = LoggerFactory.getLogger(RemoteQueueConsumers.class);
@@ -63,11 +60,6 @@ public class RemoteQueueConsumers
 		instance.remoteQueueConsumers.put(queueName, sessions);
 	}
 
-	public static int size()
-	{
-		return instance.remoteQueueConsumers.size();
-	}
-
 	public synchronized static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(destinationName);
@@ -79,6 +71,10 @@ public class RemoteQueueConsumers
 	}
 
 	private Map<String, CopyOnWriteArrayList<IoSession>> remoteQueueConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<IoSession>>();
+
+	private int currentQEP = 0;
+
+	private Object rr_mutex = new Object();
 
 	private RemoteQueueConsumers()
 	{
@@ -93,39 +89,49 @@ public class RemoteQueueConsumers
 
 			if (n > 0)
 			{
-				int ix = getNextEnpoint(n);
-				IoSession ioSession = sessions.get(ix);
+				IoSession ioSession = pick(sessions);
 				if (ioSession != null)
 				{
-					// System.out.println("RemoteQueueConsumers.doNotify().ioSession.getScheduledWriteMessages():
-					// " + ioSession.getScheduledWriteMessages());
 					WriteFuture wf = ioSession.write(message);
-					wf.awaitUninterruptibly();
+					wf.awaitUninterruptibly(10, TimeUnit.MILLISECONDS);
 					return wf.isWritten();
 				}
-				return false;
 			}
-			return false;
 		}
-		else
+
+		if (log.isDebugEnabled())
 		{
 			log.debug("There are no remote consumers for queue: {}", message.getDestination());
-			return false;
 		}
+
+		return false;
 	}
 
-	private int getNextEnpoint(int size)
+	private IoSession pick(CopyOnWriteArrayList<IoSession> sessions)
 	{
 		synchronized (rr_mutex)
 		{
+			int n = sessions.size();
+			if (n == 0)
+				return null;
 
-			if (currentQEP == size - 1)
+			if (currentQEP == (n - 1))
 			{
-				return 0;
+				currentQEP = 0;
 			}
 			else
 			{
-				return ++currentQEP;
+				++currentQEP;
+			}
+
+			try
+			{
+				return sessions.get(currentQEP);
+			}
+			catch (Exception e)
+			{
+				currentQEP = 0;
+				return sessions.get(currentQEP);
 			}
 		}
 	}

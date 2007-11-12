@@ -17,9 +17,7 @@ import pt.com.gcs.messaging.LocalQueueConsumers;
 import pt.com.gcs.messaging.LocalTopicConsumers;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.messaging.MessageType;
-import pt.com.gcs.messaging.QueueProcessorList;
-import pt.com.gcs.messaging.RemoteQueueConsumers;
-import pt.com.gcs.messaging.RemoteTopicConsumers;
+import pt.com.gcs.tasks.GcsExecutor;
 
 public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 {
@@ -39,43 +37,46 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void messageReceived(final IoSession iosession, Object omessage) throws Exception
 	{
+		final Message msg = (Message) omessage;
+		
+		
 
 		if (log.isDebugEnabled())
 		{
 			log.debug("messageReceived() from: {}", getRemoteAddress(iosession));
+			log.debug("messageReceived.Type: " + msg.getType());
 		}
+		
+		
 
-		final Message msg = (Message) omessage;
-
-		if (msg.getType() == MessageType.ACK)
-		{
-			QueueProcessorList.get(msg.getDestination()).ack(msg);
-			return;
-		}
-		else if (msg.getType() == (MessageType.COM_TOPIC))
+		if (msg.getType() == (MessageType.COM_TOPIC))
 		{
 			LocalTopicConsumers.notify(msg);
 		}
 		else if (msg.getType() == (MessageType.COM_QUEUE))
 		{
-			// System.out.println("GcsAcceptorProtocolHandler.messageReceived().MessageId:
-			// " + msg.getMessageId());
-// if (!receivedMessages.isDuplicate(msg.getMessageId()))
-// {
-// LocalQueueConsumers.notify(msg);
-// if (msg.getAcknowledgementMode() == AckMode.AUTO)
-// {
-// LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
-// }
-// }
+
+			// if (!receivedMessages.isDuplicate(msg.getMessageId()))
+			// {
+			// LocalQueueConsumers.notify(msg);
+			// if (msg.getAcknowledgementMode() == AckMode.AUTO)
+			// {
+			// LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
+			// }
+			// }
 
 			LocalQueueConsumers.notify(msg);
-			// System.out.println("GcsAcceptorProtocolHandler.messageReceived().getReadMessages():
-			// " + iosession.getReadMessages());
-			if (msg.getAcknowledgementMode() == AckMode.AUTO)
-			{
-				LocalQueueConsumers.broadCastAcknowledgement(msg, iosession);
-			}
+
+//			final Runnable ack = new Runnable()
+//			{
+//				public void run()
+//				{
+//					LocalQueueConsumers.acknowledgeMessage(msg, iosession);
+//				}
+//			};
+//			GcsExecutor.execute(ack);
+			
+			LocalQueueConsumers.acknowledgeMessage(msg, iosession);
 		}
 		else
 		{
@@ -96,9 +97,6 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	public void sessionClosed(final IoSession iosession) throws Exception
 	{
 		log.debug("sessionClosed():{}", getRemoteAddress(iosession));
-		RemoteTopicConsumers.remove(iosession);
-		RemoteQueueConsumers.remove(iosession);
-
 		Gcs.connect((SocketAddress) iosession.getAttribute("REMOTE_ADDRESS"));
 	}
 
@@ -138,7 +136,8 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 
 	public void sayHello(IoSession iosession)
 	{
-
+		log.debug("sayHello():{}", getRemoteAddress(iosession));
+		
 		Message m = new Message();
 		String agentId = AgentInfo.getAgentName() + "@" + AgentInfo.getAgentHost() + ":" + AgentInfo.getAgentPort();
 		m.setType((MessageType.HELLO));
@@ -150,7 +149,8 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 			log.info("Send agentId: " + agentId);
 		}
 
-		iosession.write(m).awaitUninterruptibly();
+		//iosession.write(m).awaitUninterruptibly();
+		iosession.write(m);
 
 		Set<String> topicNameSet = LocalTopicConsumers.getTopicNameSet();
 		for (String topicName : topicNameSet)
@@ -163,6 +163,5 @@ public class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		{
 			LocalQueueConsumers.broadCastQueueInfo(queueName, "CREATE", iosession);
 		}
-
 	}
 }
