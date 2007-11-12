@@ -41,9 +41,9 @@ public class FilePublisher
 		dir = ".";
 		check_interval = CHECK_DELAY;
 
-		log.debug("DropBox Monitor, dir: " + dir);
-		log.debug("DropBox Monitor, enabled: " + isEnabled);
-		log.debug("DropBox Monitor, check interval: " + check_interval);
+		log.debug("DropBox Monitor, dir: {}" , dir);
+		log.debug("DropBox Monitor, enabled: {}" , isEnabled);
+		log.debug("DropBox Monitor, check interval: {}" , check_interval);
 
 	}
 
@@ -141,7 +141,7 @@ public class FilePublisher
 			if (instance.dropBoxDir.isDirectory())
 			{
 				BrokerExecutor.scheduleWithFixedDelay(instance.publisher, INITIAL_DELAY, instance.check_interval, TimeUnit.SECONDS);
-				log.info("Drop box functionality enabled");
+				log.info("Drop box functionality enabled.");
 			}
 			else
 			{
@@ -156,6 +156,6 @@ public class FilePublisher
 
 	private static void abort()
 	{
-		log.info("Drop box functionality disabled");
+		log.info("Drop box functionality disabled.");
 	}
 }

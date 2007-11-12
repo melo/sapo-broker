@@ -35,19 +35,20 @@ public class TopicSubscriber extends BrokerListener
 				{
 					try
 					{
-						
 						if (ios.isConnected() && !ios.isClosing())
 						{
 							final SoapEnvelope response = buildNotification(amsg);
 							// amsg = null;
 							ios.write(response);
+							if (log.isDebugEnabled())
+							{
+								log.debug("Delivered message: {}", amsg.getMessageId());
+							}
 						}
 						else
 						{
 							closeConsumer(ios);
 						}
-
-
 					}
 					catch (Throwable t)
 					{
@@ -66,10 +67,9 @@ public class TopicSubscriber extends BrokerListener
 				{
 					// Statistics.messageDropped(_appName);
 					// FIXME: Write dropped messages to disk
-					log.warn("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), ios.getRemoteAddress().toString());
+					log.debug("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), ios.getRemoteAddress().toString());
 				}
 			}
-
 		}
 		catch (Throwable e)
 		{
@@ -80,7 +80,7 @@ public class TopicSubscriber extends BrokerListener
 	private synchronized void closeConsumer(IoSession iosession)
 	{
 		_sessions.remove(iosession);
-		if (_sessions.size()==0)
+		if (_sessions.size() == 0)
 		{
 			Gcs.removeTopicConsumer(this);
 			TopicSubscriberList.removeValue(this);
@@ -90,6 +90,5 @@ public class TopicSubscriber extends BrokerListener
 	public void add(IoSession ios)
 	{
 		_sessions.add(ios);
-
 	}
 }

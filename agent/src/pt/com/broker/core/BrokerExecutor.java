@@ -1,19 +1,13 @@
 package pt.com.broker.core;
 
-import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.caudexorigo.concurrent.CustomExecutors;
+
 public class BrokerExecutor
 {
-
-	private static final int MINIMUM_POOL_SIZE = 10;
-
-	private static final int NUM_CPUS = Runtime.getRuntime().availableProcessors();
-
-	private static final int DEFAULT_POOL_SIZE = NUM_CPUS * MINIMUM_POOL_SIZE;
 
 	private static final BrokerExecutor instance = new BrokerExecutor();
 
@@ -23,11 +17,7 @@ public class BrokerExecutor
 
 	private BrokerExecutor()
 	{
-		RejectedExecutionHandler h = new ThreadPoolExecutor.CallerRunsPolicy();
-
-		exec_srv = new ThreadPoolExecutor(MINIMUM_POOL_SIZE, DEFAULT_POOL_SIZE, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
-		exec_srv.prestartAllCoreThreads();
-		exec_srv.setRejectedExecutionHandler(h);
+		exec_srv = CustomExecutors.newThreadPool(10);
 
 		shed_exec_srv = new ScheduledThreadPoolExecutor(3);
 	}

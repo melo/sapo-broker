@@ -5,7 +5,9 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.broker.core.BrokerExecutor;
 import pt.com.gcs.messaging.QueueProcessorList;
+import pt.com.gcs.tasks.QueueStarter;
 
 public class BrokerConsumer
 {
@@ -22,19 +24,19 @@ public class BrokerConsumer
 	{
 	}
 
-	public void acknowledge(Acknowledge ackReq)
-	{
-		WaitingAckMessages.ack(ackReq.messageId);
-	}
-
 	public synchronized void listen(Notify sb, IoSession ios)
 	{
 		try
 		{
-			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName);
+			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName, sb.acknowledgeMode);
 			qsl.add(ios);
-			QueueProcessorList.get(sb.destinationName).wakeup();
 			log.info("Create asynchronous message consumer for queue : " + sb.destinationName + ", address: " + ios.getRemoteAddress());
+
+			if (qsl.size() == 1)
+			{
+				QueueStarter qs = new QueueStarter(QueueProcessorList.get(sb.destinationName));
+				BrokerExecutor.execute(qs);
+			}
 		}
 		catch (Throwable e)
 		{

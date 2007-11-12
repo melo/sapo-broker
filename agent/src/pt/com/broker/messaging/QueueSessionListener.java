@@ -1,7 +1,8 @@
 package pt.com.broker.messaging;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
@@ -11,19 +12,21 @@ import org.slf4j.LoggerFactory;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.gcs.Gcs;
 import pt.com.gcs.messaging.Message;
+import pt.com.gcs.messaging.QueueProcessorList;
 
 public class QueueSessionListener extends BrokerListener
 {
 	private int currentQEP = 0;
 
-	private Object rr_mutex = new Object();
-
 	private static final Logger log = LoggerFactory.getLogger(QueueSessionListener.class);
 
-	private final List<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
+	private final List<IoSession> _sessions = new ArrayList<IoSession>();
 
-	public QueueSessionListener()
+	private final AcknowledgeMode _ackMode;
+
+	public QueueSessionListener(AcknowledgeMode ackMode)
 	{
+		_ackMode = ackMode;
 	}
 
 	public void onMessage(final Message msg)
@@ -31,7 +34,7 @@ public class QueueSessionListener extends BrokerListener
 		if (msg == null)
 			return;
 
-		IoSession ioSession = pick();
+		final IoSession ioSession = pick();
 		try
 		{
 			if (ioSession != null)
@@ -42,15 +45,21 @@ public class QueueSessionListener extends BrokerListener
 
 					WriteFuture future = ioSession.write(response);
 
-					future.awaitUninterruptibly();
+					future.awaitUninterruptibly(100, TimeUnit.MILLISECONDS);
 					if (future.isWritten())
 					{
+						if (log.isDebugEnabled())
+						{
+							log.debug("Delivered message: {}", msg.getMessageId());
+						}
+						// if (_ackMode == AcknowledgeMode.AUTO)
+						Gcs.ackMessage(msg.getMessageId());
+
 						return;
 					}
 					else
 					{
-						ioSession.close();
-						closeConsumer(ioSession);
+						QueueProcessorList.get(msg.getDestination()).process(msg);
 					}
 				}
 				else
@@ -75,7 +84,7 @@ public class QueueSessionListener extends BrokerListener
 
 	private IoSession pick()
 	{
-		synchronized (rr_mutex)
+		synchronized (_sessions)
 		{
 			int n = _sessions.size();
 			if (n == 0)
@@ -96,23 +105,39 @@ public class QueueSessionListener extends BrokerListener
 			}
 			catch (Exception e)
 			{
-				return _sessions.get(0);
+				currentQEP = 0;
+				return _sessions.get(currentQEP);
 			}
 		}
+
 	}
 
 	public void add(IoSession iosession)
 	{
-		_sessions.add(iosession);
+		synchronized (_sessions)
+		{
+			_sessions.add(iosession);
+		}
 	}
 
-	private synchronized void closeConsumer(IoSession iosession)
+	private void closeConsumer(IoSession iosession)
 	{
-		_sessions.remove(iosession);
-		if (_sessions.size() == 0)
+		synchronized (_sessions)
 		{
-			Gcs.removeQueueConsumer(this);
-			QueueSessionListenerList.removeValue(this);
+			_sessions.remove(iosession);
+			if (_sessions.size() == 0)
+			{
+				Gcs.removeQueueConsumer(this);
+				QueueSessionListenerList.removeValue(this);
+			}
+		}
+	}
+
+	public synchronized int size()
+	{
+		synchronized (_sessions)
+		{
+			return _sessions.size();
 		}
 	}
 }

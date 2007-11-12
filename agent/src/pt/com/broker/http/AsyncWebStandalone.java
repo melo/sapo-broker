@@ -1,17 +1,14 @@
-
 package pt.com.broker.http;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
-import org.apache.mina.transport.socket.nio.SocketSessionConfig;
+import org.apache.mina.transport.socket.SocketAcceptor;
+import org.apache.mina.transport.socket.SocketSessionConfig;
+import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.safehaus.asyncweb.codec.HttpServerCodecFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 public class AsyncWebStandalone
 {
@@ -30,8 +27,7 @@ public class AsyncWebStandalone
 	{
 		try
 		{
-			Executor threadPool = Executors.newCachedThreadPool();
-			SocketAcceptor acceptor = new SocketAcceptor(DEFAULT_IO_THREADS, threadPool);
+			SocketAcceptor acceptor = new NioSocketAcceptor(DEFAULT_IO_THREADS);
 
 			acceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new HttpServerCodecFactory()));
 
@@ -46,11 +42,11 @@ public class AsyncWebStandalone
 			acceptor.setHandler(new HttpProtocolHandler());
 
 			acceptor.bind();
-			LOG.info("AsyncWeb server started");
+			LOG.info("AsyncWeb server started.");
 		}
 		catch (Throwable e)
 		{
-			LOG.error("Failed to start HTTP container", e);
+			LOG.error("Failed to start HTTP container!", e);
 			System.exit(1);
 		}
 	}

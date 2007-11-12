@@ -3,7 +3,7 @@ package pt.com.broker.http;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.mina.common.ByteBuffer;
+import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoFutureListener;
 import org.apache.mina.common.IoHandler;
@@ -15,7 +15,7 @@ import org.safehaus.asyncweb.common.HttpMethod;
 import org.safehaus.asyncweb.common.HttpRequest;
 import org.safehaus.asyncweb.common.HttpResponseStatus;
 import org.safehaus.asyncweb.common.MutableHttpResponse;
-import org.safehaus.asyncweb.common.content.ByteBufferContent;
+import org.safehaus.asyncweb.common.content.IoBufferContent;
 import org.safehaus.asyncweb.util.HttpHeaderConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,14 +52,14 @@ public class HttpProtocolHandler implements IoHandler
 
 	public void fault(String faultCode, Throwable cause, MutableHttpResponse response)
 	{
-		ByteBuffer bbf = ByteBuffer.allocate(1024);
+		IoBuffer bbf = IoBuffer.allocate(1024);
 		bbf.setAutoExpand(true);
 		OutputStream out = bbf.asOutputStream();
 
 		SoapEnvelope ex_msg = ErrorHandler.buildSoapFault(faultCode, cause).Message;
 		SoapSerializer.ToXml(ex_msg, out);
 		bbf.flip();
-		response.setContent(new ByteBufferContent(bbf));
+		response.setContent(new IoBufferContent(bbf));
 	}
 
 	public void messageReceived(IoSession session, Object message) throws Exception
@@ -93,8 +93,8 @@ public class HttpProtocolHandler implements IoHandler
 		{
 			if (request.getMethod().equals(HttpMethod.POST))
 			{
-				ByteBufferContent bbci = (ByteBufferContent) request.getContent();
-				ByteBuffer bb = bbci.getByteBuffer();
+				IoBufferContent bbci = (IoBufferContent) request.getContent();
+				IoBuffer bb = bbci.getIoBuffer();
 				byte[] buf = new byte[bb.limit()];
 				bb.position(0);
 				bb.get(buf);
@@ -122,11 +122,11 @@ public class HttpProtocolHandler implements IoHandler
 			else
 			{
 				response.setStatus(HttpResponseStatus.BAD_REQUEST);
-				ByteBuffer bb = ByteBuffer.allocate(GET_RESPONSE.length);
+				IoBuffer bb = IoBuffer.allocate(GET_RESPONSE.length);
 				bb.setAutoExpand(false);
 				bb.put(GET_RESPONSE);
 				bb.flip();
-				response.setContent(new ByteBufferContent(bb));
+				response.setContent(new IoBufferContent(bb));
 			}
 		}
 		catch (Throwable e)

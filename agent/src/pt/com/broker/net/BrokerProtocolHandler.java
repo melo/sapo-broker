@@ -1,12 +1,12 @@
 package pt.com.broker.net;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 
 import org.apache.mina.common.IoFilterChain;
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.filter.traffic.ReadThrottleFilterBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +33,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionCreated(IoSession iosession) throws Exception
 	{
-		IoFilterChain chain = iosession.getFilterChain();
-
-		chain.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
-
-		ReadThrottleFilterBuilder read_th_filter = new ReadThrottleFilterBuilder();
-
-		read_th_filter.setMaximumConnectionBufferSize(4 * 1024);
-		read_th_filter.attach(chain);
+		iosession.setAttribute("REMOTE_CLIENT", iosession.getRemoteAddress());
 
 		if (log.isDebugEnabled())
 		{
@@ -139,7 +132,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		}
 		else if (request.body.acknowledge != null)
 		{
-			_brokerConsumer.acknowledge(request.body.acknowledge);
+			_brokerProducer.acknowledge(request.body.acknowledge);
 			return;
 		}
 		else
@@ -153,7 +146,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		String remoteClient;
 		try
 		{
-			remoteClient = iosession.getRemoteAddress().toString();
+			remoteClient = ((SocketAddress) iosession.getAttribute("REMOTE_CLIENT")).toString();
 		}
 		catch (Throwable e)
 		{

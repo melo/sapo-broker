@@ -5,13 +5,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.mina.common.ByteBuffer;
+import org.apache.mina.common.IoBuffer;
 import org.caudexorigo.text.StringUtils;
 import org.safehaus.asyncweb.common.DefaultHttpResponse;
 import org.safehaus.asyncweb.common.HttpRequest;
 import org.safehaus.asyncweb.common.HttpResponseStatus;
 import org.safehaus.asyncweb.common.MutableHttpResponse;
-import org.safehaus.asyncweb.common.content.ByteBufferContent;
+import org.safehaus.asyncweb.common.content.IoBufferContent;
 import org.safehaus.asyncweb.service.HttpService;
 import org.safehaus.asyncweb.service.HttpServiceContext;
 import org.slf4j.Logger;
@@ -28,10 +28,8 @@ public class ManagementService implements HttpService
 	private byte[] ok_page;
 
 	private byte[] error_page;
-	
+
 	private static final byte[] footer = String.format("<!-- version:%s -->", AgentInfo.AGENT_VERSION).getBytes();
-	
-	
 
 	/**
 	 * Sends the configured message as an HTTP response
@@ -70,7 +68,7 @@ public class ManagementService implements HttpService
 	{
 		MutableHttpResponse response = new DefaultHttpResponse();
 		HttpRequest request = context.getRequest();
-		ByteBuffer bbo = ByteBuffer.allocate(1024);
+		IoBuffer bbo = IoBuffer.allocate(1024);
 		bbo.setAutoExpand(true);
 
 		OutputStream out = bbo.asOutputStream();
@@ -88,14 +86,14 @@ public class ManagementService implements HttpService
 
 			if ((StringUtils.isNotBlank(loglevel)) && (StringUtils.isNotBlank(logcategory)))
 			{
-				//org.apache.log4j.Logger.getLogger(logcategory).setLevel(Level.toLevel(loglevel));
+				// org.apache.log4j.Logger.getLogger(logcategory).setLevel(Level.toLevel(loglevel));
 				out.write(ok_page);
 			}
 			else
 			{
 				out.write(index_page);
 			}
-			
+
 			out.write(footer);
 		}
 		catch (Throwable e)
@@ -115,7 +113,7 @@ public class ManagementService implements HttpService
 		finally
 		{
 			bbo.flip();
-			response.setContent(new ByteBufferContent(bbo));
+			response.setContent(new IoBufferContent(bbo));
 			context.commitResponse(response);
 		}
 	}

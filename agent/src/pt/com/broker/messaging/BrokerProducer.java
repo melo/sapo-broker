@@ -7,8 +7,8 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.broker.core.BrokerExecutor;
 import pt.com.gcs.Gcs;
-import pt.com.gcs.Statistics;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.messaging.MessageType;
 
@@ -33,7 +33,10 @@ public class BrokerProducer
 		BrokerMessage brkm = enqreq.brokerMessage;
 		// brkm.deliveryMode = DeliveryMode.PERSISTENT;
 		Message msg = prepareForSending(brkm, messageSource);
+		msg.setType(MessageType.COM_QUEUE);
+
 		Gcs.enqueue(msg);
+		// Statistics.messageProduced(messageSource);
 	}
 
 	private Message prepareForSending(BrokerMessage brkMessage, String messageSource)
@@ -47,7 +50,7 @@ public class BrokerProducer
 
 			if (StringUtils.isNotBlank(brkMessage.correlationId))
 				message.setCorrelationId(brkMessage.correlationId);
-			
+
 			if (StringUtils.isNotBlank(brkMessage.destinationName))
 				message.setDestination(brkMessage.destinationName);
 
@@ -77,6 +80,12 @@ public class BrokerProducer
 
 			message.setContent(brkMessage.textPayload);
 			message.setSourceApp(messageSource);
+
+			if (log.isDebugEnabled())
+			{
+				log.debug("Received message: {}", message.getMessageId());
+			}
+
 			return message;
 		}
 		catch (Throwable e)
@@ -89,10 +98,22 @@ public class BrokerProducer
 	{
 		final BrokerMessage brkm = pubreq.brokerMessage;
 
-		Message msg = prepareForSending(brkm, messageSource);
-		msg.setType(MessageType.COM_TOPIC);
-		Gcs.publish(msg);
-		Statistics.messageProduced(messageSource);
+		Runnable publisher = new Runnable()
+		{
+			public void run()
+			{
+				Message msg = prepareForSending(brkm, messageSource);
+				msg.setType(MessageType.COM_TOPIC);
+				Gcs.publish(msg);
+				// Statistics.messageProduced(messageSource);
+			}
+		};
+		BrokerExecutor.execute(publisher);
+	}
+
+	public void acknowledge(Acknowledge ackReq)
+	{
+		Gcs.ackMessage(ackReq.messageId);
 	}
 
 }

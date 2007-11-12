@@ -21,11 +21,15 @@ public class QueueSessionListenerList
 
 	private static final CacheFiller<String, QueueSessionListener> queue_listeners_cf = new CacheFiller<String, QueueSessionListener>()
 	{
-		public QueueSessionListener populate(String destinationName)
+		public QueueSessionListener populate(String key)
 		{
 			try
 			{
-				QueueSessionListener qsl = new QueueSessionListener();
+				String k[] = key.split("<#>");
+				String destinationName = k[0];
+				AcknowledgeMode ackMode = AcknowledgeMode.valueOf(k[1]);
+				
+				QueueSessionListener qsl = new QueueSessionListener(ackMode);
 				Gcs.addQueueConsumer(destinationName, qsl);
 				return qsl;
 			}
@@ -36,11 +40,12 @@ public class QueueSessionListenerList
 		}
 	};
 
-	public static QueueSessionListener get(String destinationName)
+	public static QueueSessionListener get(String destinationName, AcknowledgeMode acknowledgeMode)
 	{
 		try
 		{
-			return queueSessionListener.get(destinationName, queue_listeners_cf);
+			String key = destinationName + "<#>" + acknowledgeMode;
+			return queueSessionListener.get(key, queue_listeners_cf);
 		}
 		catch (InterruptedException ie)
 		{
