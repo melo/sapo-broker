@@ -16,8 +16,6 @@ from random import random
 
 broker = Broker.Client('localhost', 2222)
 
-broker.subscribe(destination, kind)
-
 msg = Broker.Message(payload='este é o payload', destination=destination)
 
 for id in xrange(1000):
