@@ -19,6 +19,10 @@ public class QueueProcessor
 
 	private final AtomicBoolean _isWorking = new AtomicBoolean(false);
 
+	private final AtomicBoolean _isInWarning = new AtomicBoolean(false);
+
+	private final AtomicBoolean _isInRecovery = new AtomicBoolean(false);
+
 	private final String _destinationName;
 
 	private final AtomicLong _sequence = new AtomicLong(0L);
@@ -31,18 +35,6 @@ public class QueueProcessor
 
 	public static void ack(final String msgId)
 	{
-// final Runnable wack = new Runnable()
-// {
-// public void run()
-// {
-// if (log.isDebugEnabled())
-// {
-// log.debug("Ack message . MsgId: '{}'.", msgId);
-// }
-// DbStorage.ackMessage(msgId);
-// }
-// };
-// GcsExecutor.execute(wack);
 		if (log.isDebugEnabled())
 		{
 			log.debug("Ack message . MsgId: '{}'.", msgId);
@@ -50,21 +42,38 @@ public class QueueProcessor
 		DbStorage.ackMessage(msgId);
 	}
 
+	Runnable dbcounter = new Runnable()
+	{
+		public void run()
+		{
+			long cnt = DbStorage.count(_destinationName);
+			while (cnt > 0)
+			{
+				log.info("Queue '{}' has {} message(s) to recover.", _destinationName, cnt);
+				Sleep.time(5000);
+				cnt = DbStorage.count(_destinationName);
+				wakeup();
+			}
+			_isInRecovery.set(false);
+			log.info("Queue '{}' recovery is complete.", _destinationName);
+		}
+	};
+
 	public final void wakeup()
 	{
 		if (!hasRecipient())
 		{
-			log.warn("No recipient for this Destination.");
+			log.info("No recipient for this Destination.");
 			_isWorking.set(false);
 			return;
 		}
 
-		if (size() >= 2)
-		{
-			log.info("There are at least one active consumers for this queue.");
-			_isWorking.set(false);
-			return;
-		}
+		// if (size() >= 2)
+		// {
+		// log.info("There are at least one active consumers for this queue.");
+		// _isWorking.set(false);
+		// return;
+		// }
 
 		if (_isWorking.getAndSet(true))
 		{
@@ -79,21 +88,8 @@ public class QueueProcessor
 				log.debug("Processing stored messages.");
 				try
 				{
-					Runnable dbcounter = new Runnable()
-					{
-						public void run()
-						{
-							long cnt = DbStorage.count(_destinationName);
-							while (cnt > 0)
-							{
-								log.info("Queue '{}' has {} message(s) to recover.", _destinationName, cnt);
-								Sleep.time(5000);
-								cnt = DbStorage.count(_destinationName);
-							}
-							log.info("Queue '{}' recovery is complete.", _destinationName);
-						}
-					};
-					GcsExecutor.execute(dbcounter);
+					if (!_isInRecovery.getAndSet(true))
+						GcsExecutor.execute(dbcounter);
 
 					do
 					{
@@ -121,7 +117,6 @@ public class QueueProcessor
 		message.setType((MessageType.COM_QUEUE));
 		int lqsize = LocalQueueConsumers.size(_destinationName);
 		int rqsize = RemoteQueueConsumers.size(_destinationName);
-		// System.out.printf("lqsize: %s. rqsize: %s%n", lqsize, rqsize);
 
 		if ((lqsize == 0) && (rqsize == 0))
 		{
@@ -170,7 +165,39 @@ public class QueueProcessor
 						DbStorage.insert(msg, _sequence.incrementAndGet(), 0);
 						return;
 					}
+
 					return;
+				}
+
+				if (!_isInWarning.getAndSet(true))
+				{
+					Runnable noclientcounter = new Runnable()
+					{
+						public void run()
+						{
+							int lqsize = LocalQueueConsumers.size(_destinationName);
+							int rqsize = RemoteQueueConsumers.size(_destinationName);
+							long cnt = DbStorage.count(_destinationName);
+							if (cnt > 0)
+							{
+								while ((lqsize + rqsize) == 0)
+								{
+									cnt = DbStorage.count(_destinationName);
+									if (cnt > 0)
+									{
+										log.warn("Operator attention required. Queue '{}' has {} message(s) and no consumers.", _destinationName, cnt);
+									}
+
+									Sleep.time(20000);
+									lqsize = LocalQueueConsumers.size(_destinationName);
+									rqsize = RemoteQueueConsumers.size(_destinationName);
+								}
+							}
+							_isInWarning.set(false);
+						}
+					};
+
+					GcsExecutor.execute(noclientcounter);
 				}
 			}
 			DbStorage.insert(msg, _sequence.incrementAndGet(), 0);

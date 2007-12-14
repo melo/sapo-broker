@@ -47,6 +47,10 @@ public class DbStorage
 	private String username;
 
 	private String password;
+	
+	private String dbFile;
+	
+	private String dbName;
 
 	private PreparedStatement insert_prep_stmt;
 
@@ -63,7 +67,9 @@ public class DbStorage
 		try
 		{
 			driverName = "org.h2.Driver"; // org.h2.Driver
-			connURL = "jdbc:h2:file:" + AgentInfo.getBasePersistentDirectory().concat("/").concat(AgentInfo.getAgentName()).concat(";LOG=0;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=5000");
+			dbFile = AgentInfo.getBasePersistentDirectory().concat("/");
+			dbName = AgentInfo.getAgentName();
+			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=0;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=5000");
 			username = "sa";
 			password = "";
 

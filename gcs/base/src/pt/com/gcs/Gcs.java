@@ -6,16 +6,15 @@ import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.DefaultIoFilterChainBuilder;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
-import org.apache.mina.filter.traffic.ReadThrottleFilter;
-import org.apache.mina.filter.traffic.ReadThrottlePolicy;
+import org.apache.mina.filter.executor.IoEventQueueThrottle;
+import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
 import org.apache.mina.filter.traffic.WriteThrottleFilter;
 import org.apache.mina.filter.traffic.WriteThrottlePolicy;
 import org.apache.mina.transport.socket.SocketAcceptor;
@@ -23,7 +22,6 @@ import org.apache.mina.transport.socket.SocketConnector;
 import org.apache.mina.transport.socket.SocketSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
-import org.caudexorigo.concurrent.CustomExecutors;
 import org.caudexorigo.concurrent.Sleep;
 import org.caudexorigo.lang.ErrorAnalyser;
 import org.caudexorigo.text.StringUtils;
@@ -32,6 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.conf.AgentInfo;
 import pt.com.gcs.conf.WorldMap;
+import pt.com.gcs.io.DbStorage;
+import pt.com.gcs.messaging.DispatcherList;
 import pt.com.gcs.messaging.LocalQueueConsumers;
 import pt.com.gcs.messaging.LocalTopicConsumers;
 import pt.com.gcs.messaging.Message;
@@ -58,6 +58,8 @@ public class Gcs
 
 	private static final String SERVICE_NAME = "SAPO GCS";
 
+	private static final int ONE_K = 1024;
+
 	private static final Gcs instance = new Gcs();
 
 	private SocketAcceptor acceptor;
@@ -68,10 +70,10 @@ public class Gcs
 
 	private Gcs()
 	{
-		System.out.println("Gcs.Gcs()!!!!");
 		log.info("{} starting.", SERVICE_NAME);
 		try
 		{
+			DbStorage.init();
 			startAcceptor(AgentInfo.getAgentPort());
 			startConnector();
 			populateWorldMap();
@@ -95,24 +97,25 @@ public class Gcs
 
 		acceptor.setBacklog(100);
 
-		acceptor.setLocalAddress(new InetSocketAddress(portNumber));
-
 		DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 
-		//WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK, 0, 16 * 2048, 0, 16 * 4096, 0, 16 * 8192);
-
+		WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK, 0, 128 * ONE_K, 0, 256 * ONE_K, 0, 512 * ONE_K);
 
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 		// and then a thread pool.
-		filterChainBuilder.addLast("ioExecutor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
-		
-		//filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
+		// filterChainBuilder.addLast("executor", new
+		// ExecutorFilter(CustomExecutors.newThreadPool(16)));
+
+		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS,
+				new IoEventQueueThrottle(4 * 65536))));
+
+		filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
 
 		acceptor.setHandler(new GcsAcceptorProtocolHandler());
 
 		// Bind
-		acceptor.bind();
+		acceptor.bind(new InetSocketAddress(portNumber));
 
 		String localAddr = acceptor.getLocalAddress().toString();
 		log.info("{} listening on:{}.", SERVICE_NAME, localAddr);
@@ -120,23 +123,26 @@ public class Gcs
 
 	private void startConnector()
 	{
-		System.out.println("Gcs.startConnector()");
 		connector = new NioSocketConnector(IO_THREADS);
 
 		DefaultIoFilterChainBuilder filterChainBuilder = connector.getFilterChain();
-		//ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(ReadThrottlePolicy.BLOCK, 16 * 2048, 16 * 4096, 16 * 8192);
 
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 
 		// and then a thread pool.
-		filterChainBuilder.addLast("threadPool", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
+		// ReadThrottleFilter readThrottleFilter = new
+		// ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(),
+		// ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
+		// filterChainBuilder.addLast("executor", new
+		// ExecutorFilter(CustomExecutors.newThreadPool(16)));
+		// filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 
-		//filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
-
-		
+		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS,
+				new IoEventQueueThrottle(2 * 65536))));
 
 		connector.setHandler(new GcsRemoteProtocolHandler());
+		// connector.setConnectTimeout(2);
 	}
 
 	public void populateWorldMap()
@@ -146,10 +152,7 @@ public class Gcs
 		List<Peer> peerList = _wmap.getPeerList();
 		for (Peer peer : peerList)
 		{
-			// System.out.println("Gcs.init.peer.connect: " + peer.getName()
-			// + ":" + peer.getHost() + ":" + peer.getPort());
 			GcsExecutor.execute(new Connect(peer));
-			// GcsRemoteConnector.connect(peer.getHost(), peer.getPort());
 		}
 		// Statistics.init();
 	}
@@ -174,7 +177,7 @@ public class Gcs
 			Sleep.time(2000);
 		}
 	}
-	
+
 	public static void init()
 	{
 		instance.iinit();
@@ -182,9 +185,8 @@ public class Gcs
 
 	private void iinit()
 	{
-		log.info("GCS INIT");
+		log.info("{} initialized.", SERVICE_NAME);
 	}
-	
 
 	public static void publish(Message message)
 	{
@@ -237,9 +239,7 @@ public class Gcs
 	{
 		if (StringUtils.contains(queueName, "@"))
 		{
-			String topicName = StringUtils.substringAfter(queueName, "@");
-			MessageListener dispatcher = new TopicToQueueDispatcher(queueName);
-			LocalTopicConsumers.add(topicName, dispatcher);
+			DispatcherList.add(queueName);
 		}
 		LocalQueueConsumers.add(queueName, listener);
 	}

@@ -66,8 +66,9 @@ public class RemoteTopicConsumers
 		for (String destination : matches)
 		{
 			message.setDestination(destination);
-			instance.doNotify(message, destination);
+			instance.doNotify(message);
 		}
+		
 	}
 
 	public synchronized static void remove(IoSession iosession)
@@ -123,11 +124,11 @@ public class RemoteTopicConsumers
 		return 0;
 	}
 
-	private void doNotify(Message message, String destination)
+	private void doNotify(Message message)
 	{
 		try
 		{
-			CopyOnWriteArrayList<IoSession> sessions = remoteTopicConsumers.get(destination);
+			CopyOnWriteArrayList<IoSession> sessions = remoteTopicConsumers.get(message.getDestination());
 			if (sessions != null)
 			{
 				if (sessions.size() == 0)

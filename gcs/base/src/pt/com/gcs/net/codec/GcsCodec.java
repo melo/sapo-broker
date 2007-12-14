@@ -1,5 +1,6 @@
 package pt.com.gcs.net.codec;
 
+import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolEncoder;
@@ -33,13 +34,25 @@ public class GcsCodec implements ProtocolCodecFactory
 		decoder = new GcsDecoder(DEFAULT_MAX_MESSAGE_SIZE);
 	}
 
-	public ProtocolEncoder getEncoder()
-	{
-		return encoder;
-	}
+//	public ProtocolEncoder getEncoder()
+//	{
+//		return encoder;
+//	}
+//
+//	public ProtocolDecoder getDecoder()
+//	{
+//		return decoder;
+//	}
 
-	public ProtocolDecoder getDecoder()
+	@Override
+	public ProtocolDecoder getDecoder(IoSession arg0) throws Exception
 	{
 		return decoder;
+	}
+
+	@Override
+	public ProtocolEncoder getEncoder(IoSession arg0) throws Exception
+	{
+		return encoder;
 	}
 }

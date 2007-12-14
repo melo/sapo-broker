@@ -12,7 +12,7 @@
 
 	<appender class="ch.qos.logback.core.ConsoleAppender" name="Broker-ConsoleAppender">
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>info</level>
+			<level>debug</level>
 		</filter>
 		<layout class="ch.qos.logback.classic.PatternLayout">
 			<pattern>%5p #BROKER#%C# [%t] %d{dd MMM yyyy HH:mm:ss} - %m%n</pattern>
@@ -27,8 +27,13 @@
 			<pattern>%5p #GCS#%C# [%t] %d{dd MMM yyyy HH:mm:ss} - %m%n</pattern>
 		</layout>
 	</appender>
+	
+	<logger additivity="false" name="org.apache">
+		<level value="error" />
+		<appender-ref ref="ConsoleAppender" />
+	</logger>
 
-	<logger additivity="false" name="org.caudexorigo">
+	<logger additivity="false" name="pt.com.gcs">
 		<level value="info" />
 		<appender-ref ref="GCS-ConsoleAppender" />
 	</logger>

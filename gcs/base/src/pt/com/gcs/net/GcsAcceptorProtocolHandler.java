@@ -137,7 +137,7 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionCreated(IoSession iosession) throws Exception
 	{
-		log.info("sessionCreated():{}", getRemoteAddress(iosession));
+		log.info("sessionCreated():{}", iosession.getRemoteAddress());
 		iosession.setAttribute("REMOTE_ADDRESS", iosession.getRemoteAddress());
 	}
 

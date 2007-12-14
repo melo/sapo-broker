@@ -6,7 +6,7 @@ import pt.com.gcs.net.Peer;
 public class Connect implements Runnable
 {
 	private Peer _peer;
-	
+
 	public Connect(Peer peer)
 	{
 		_peer = peer;

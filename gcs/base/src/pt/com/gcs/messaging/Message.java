@@ -4,14 +4,12 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import org.caudexorigo.cryto.MD5;
 import org.caudexorigo.text.StringUtils;
-
-import pt.com.gcs.conf.AgentInfo;
 
 public class Message implements Externalizable
 {
@@ -21,7 +19,7 @@ public class Message implements Externalizable
 
 	public static final int DEFAULT_PRIORITY = 4;
 
-	//private AckMode _ackm = AckMode.AUTO;
+	// private AckMode _ackm = AckMode.AUTO;
 
 	private String _content = "";
 
@@ -45,16 +43,18 @@ public class Message implements Externalizable
 
 	private static final String BASE_MESSAGE_ID;
 
+	private static final Pattern PSEPARATOR = Pattern.compile(SEPARATOR);
+
 	static
 	{
-		BASE_MESSAGE_ID = MD5.getHashString(UUID.randomUUID().toString() + "#" + System.nanoTime() + "#" + (new Random()).nextLong());
+		BASE_MESSAGE_ID = MD5.getHashString(UUID.randomUUID().toString());
 	}
 
 	public Message()
 	{
 		_id = BASE_MESSAGE_ID + "#" + SEQ.incrementAndGet();
 	}
-	
+
 	private Message(boolean dummy)
 	{
 
@@ -83,11 +83,6 @@ public class Message implements Externalizable
 			throw new IllegalArgumentException("Invalid argument. Message initializers must not empty");
 		}
 	}
-
-//	public AckMode getAcknowledgementMode()
-//	{
-//		return _ackm;
-//	}
 
 	public String getContent()
 	{
@@ -133,11 +128,6 @@ public class Message implements Externalizable
 	{
 		return _type;
 	}
-
-//	public void setAcknowledgementMode(AckMode ackm)
-//	{
-//		_ackm = ackm;
-//	}
 
 	public void setContent(String content)
 	{
@@ -192,30 +182,42 @@ public class Message implements Externalizable
 
 	public void readExternal(ObjectInput oin) throws IOException, ClassNotFoundException
 	{
-		_content = oin.readUTF();
-		_correlationId = oin.readUTF();
-		_destination = oin.readUTF();
-		_id = oin.readUTF();
-		_priority = oin.readInt();
-		_sourceApp = oin.readUTF();
-		_timestamp = oin.readLong();
-		_ttl = oin.readLong();
-		_type = MessageType.lookup(oin.readInt());
-		//_ackm = AckMode.lookup(oin.readInt());
+		 _content = oin.readUTF();
+		 _correlationId = oin.readUTF();
+		 _destination = oin.readUTF();
+		 _id = oin.readUTF();
+		 _priority = oin.readInt();
+		 _sourceApp = oin.readUTF();
+		 _timestamp = oin.readLong();
+		 _ttl = oin.readLong();
+		 _type = MessageType.lookup(oin.readInt());
+
+//		String[] smsg = PSEPARATOR.split(oin.readUTF());
+//
+//		_content = smsg[0];
+//		_correlationId = smsg[1];
+//		_destination = smsg[2];
+//		_id = smsg[3];
+//		_priority = Integer.parseInt(smsg[4]);
+//		_sourceApp = smsg[5];
+//		_timestamp = Long.parseLong(smsg[6]);
+//		_ttl = Long.parseLong(smsg[7]);
+//		_type = MessageType.lookup(Integer.parseInt(smsg[8]));
 	}
 
 	public void writeExternal(ObjectOutput oout) throws IOException
 	{
-		oout.writeUTF(getContent());
-		oout.writeUTF(getCorrelationId());
-		oout.writeUTF(getDestination());
-		oout.writeUTF(getMessageId());
-		oout.writeInt(getPriority());
-		oout.writeUTF(getSourceApp());
-		oout.writeLong(getTimestamp());
-		oout.writeLong(getTtl());
-		oout.writeInt(getType().getValue());
-		//oout.writeInt(getAcknowledgementMode().getValue());
+		 oout.writeUTF(getContent());
+		 oout.writeUTF(getCorrelationId());
+		 oout.writeUTF(getDestination());
+		 oout.writeUTF(getMessageId());
+		 oout.writeInt(getPriority());
+		 oout.writeUTF(getSourceApp());
+		 oout.writeLong(getTimestamp());
+		 oout.writeLong(getTtl());
+		 oout.writeInt(getType().getValue());
+
+		//oout.writeUTF(this.toString());
 	}
 
 	@Override
@@ -239,15 +241,13 @@ public class Message implements Externalizable
 		buf.append(getTtl());
 		buf.append(SEPARATOR);
 		buf.append(getType().getValue());
-//		buf.append(SEPARATOR);
-//		buf.append(getAcknowledgementMode().getValue());
 
 		return buf.toString();
 	}
 
 	public static Message fromString(String instr)
 	{
-		String[] smsg = instr.split(SEPARATOR);
+		String[] smsg = PSEPARATOR.split(instr);
 
 		Message msg = new Message(false);
 		msg.setContent(smsg[0]);
@@ -259,7 +259,6 @@ public class Message implements Externalizable
 		msg.setTimestamp(Long.parseLong(smsg[6]));
 		msg.setTtl(Long.parseLong(smsg[7]));
 		msg.setType(MessageType.lookup(Integer.parseInt(smsg[8])));
-		//msg.setAcknowledgementMode(AckMode.lookup(Integer.parseInt(smsg[9])));
 
 		return msg;
 	}

@@ -24,7 +24,8 @@ public class GcsEncoder extends SimpleFramingEncoder
 		wbuf.setAutoExpand(true);
 		wbuf.putInt(0);
 		SerializerHelper.toStream((Message) message, wbuf.asOutputStream());
-		wbuf.putInt(0, wbuf.position() - 4);
+		int msize = wbuf.position() - 4;
+		wbuf.putInt(0, msize);
 
 		wbuf.flip();
 
