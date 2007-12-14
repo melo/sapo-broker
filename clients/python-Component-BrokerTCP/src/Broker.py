@@ -65,6 +65,11 @@ import string
 #for locking
 import threading
 
+#for workaround in date parsing from broker
+import re
+
+from datetime import datetime
+
 #since 2.3 an xml sax parser is shipped with python so sax is both faster than dom and always available in all reasonable versions
 import xml.sax
 import xml.sax.saxutils
@@ -149,6 +154,27 @@ def safe_cast(function, value):
         return function(value)
     except:
         return None
+
+
+date_clean_rx = re.compile(r'\.\d+\D')
+def date_cast(date):
+    if isinstance( date, basestring ):
+        #it's a string (should be ISO8601, hope you know what you are doing)
+        return date
+    elif isinstance( date, datetime ):
+        #it's a regular datetime object as it should
+        ret = date.isoformat()
+        #check whether ther is time information
+        if date.tzinfo is None:
+            ret += 'Z'
+
+        #workaround for bug in broker
+        return date_clean_rx.sub('', ret)
+
+    elif type(date) in (type(0), type(0.0)):
+        #it's a number. Assume it's a unix timestamp
+        return date_cast(datetime.utcfromtimestamp(date))
+
 
 class SaxHandler(xml.sax.ContentHandler):
     """
@@ -464,6 +490,8 @@ class Message:
         deliveryMode can either be PERSISTENT or TRANSIENT
 
         timestamp and expiration are supposed to be datetime objects and default to None and are thus optional.
+        If these fields don't have timezone information, they are assumed to be in UTC.
+        You can also pass seconds since the epoch or a string in ISO8601 (use at your own risk)
 
         id is supposed to be a unique id of the message and defaults to None meaning that the Broker server will generate one automatically.
 
@@ -505,7 +533,9 @@ class Message:
             ('MessageId', 'id', None),
             ('TextPayload', 'payload', None),
             ('Priority', 'priority', lambda x : str(x)),
-            ('correlationId', 'correlationId', None)
+            ('CorrelationId', 'correlationId', None),
+            ('Timestamp', 'timestamp', date_cast),
+            ('Expiration', 'expiration', date_cast),
         ):
             content = getattr(self, attr, None)
 
@@ -515,8 +545,9 @@ class Message:
                 pass
             else:
                 if fun is not None:
-                    content = fun(content)
-                ret+= "\t<%(tname)s>%(content)s</%(tname)s>\n" % {'tname':tname, 'content':escape_xml(content)}
+                    content = safe_cast(fun, content)
+                if content is not None:
+                    ret+= "\t<%(tname)s>%(content)s</%(tname)s>\n" % {'tname':tname, 'content':escape_xml(content)}
 
         ret += '</BrokerMessage>'
         return ret
