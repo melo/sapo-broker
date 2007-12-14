@@ -49,10 +49,11 @@ for message in broker:
 
 import socket
 import struct
-from xml.dom.minidom import parseString
 import string
 import threading
 
+import xml.dom.minidom
+import xml.sax
 
 import logging
 log = logging.getLogger("Broker")
@@ -65,6 +66,9 @@ NS = {
     'wsa'    : 'http://www.w3.org/2005/08/addressing',
     'broker' : 'http://services.sapo.pt/broker'
     }
+
+broker_ns = NS['broker']
+soap_ns   = NS['soap']
 
 xml_entities = [('&', 'amp'), ('"', 'quot'), ('\'', 'apos'), ('<', 'lt'), ('>', 'gt')]
 def escape_xml(input):
@@ -86,6 +90,9 @@ def check_kind(kind):
         raise AttributeError("Unknown kind '%s'" % kind)
 
 def check_msg(msg):
+    """
+    Checks whether its argument is a subclass of a broker message.
+    """
     if not isinstance(msg, Message):
         raise TypeError("%s is not a subclass of %s.%s" % (repr(msg), Message.__module__, Message.__name__))
 
@@ -123,6 +130,86 @@ def subscribe_msg(destination, kind, ack=False):
 def str2hex(raw):
     return string.join( ["%02X" % ord(c) for c in raw ], ':')
 
+def safe_cast(function, value):
+    try:
+        return function(value)
+    except:
+        return None
+
+class SaxHandler(xml.sax.ContentHandler):
+    """
+    Handler for sax events while parsing a Broker notification
+    """
+    def startDocument(self):
+        self.__fields  = {}
+        self.__txt     = u""
+        self.__count   = 0
+        self.__consume = False
+
+        #setup default handlers
+        self.startElementNS = self.top_start
+        self.endElementNS   = self.def_end
+        #self.characters     = self.def_characters
+
+    def fields(self):
+        return self.__fields
+
+    def characters(self, data):
+        if self.__consume:
+            self.__txt += data
+
+    def startElementNS(self, name, qname, attrs):
+        pass
+
+    def endElementNS(self, name, qname):
+        pass
+
+    def endDocument(self):
+        pass
+
+    def top_start(self, name, qname, attrs):
+        if (soap_ns, u'Envelope') == name:
+            self.startElementNS = self.envelope_start
+
+    def envelope_start(self, name, qname, attrs):
+        if (soap_ns, u'Body') == name:
+            self.startElementNS = self.body_start
+
+    def body_start(self, name, qname, attrs):
+        if (broker_ns, u'Notification') == name:
+            self.startElementNS = self.notification_start
+
+    def notification_start(self, name, qname, attrs):
+        if (broker_ns, u'BrokerMessage') == name:
+            self.startElementNS = self.broker_start
+            self.endElementNS   = self.broker_end
+            self.__consume      = True
+
+    def broker_start(self, name, qname, attrs):
+        self.__txt = u""
+        if broker_ns == name[0] and name[1] is not None:
+            self.__count += 1
+        else:
+            pass
+
+    def broker_end(self, name, qname):
+        self.__count -= 1
+        if 0 == self.__count:
+            if broker_ns == name[0] and name[1] is not None:
+                self.__fields[name[1]] = self.__txt
+            else:
+                pass
+        else:
+            self.startElementNS = self.def_start
+            self.endElementNS   = self.def_end
+            self.__consume      = False
+
+    def def_end(self, name, qname):
+        pass
+
+    def def_start(self, name, qname, attrs):
+        pass
+
 class Client:
     """
     Abstracts access to a broker server.
@@ -130,7 +217,7 @@ class Client:
 
     class DisconnectedError(EOFError):
         """
-        Class to indicate that the Server disconnected while the client was waiting for a response
+        Class to indicate that the Server disconnected while the client was wainting for a response
         """
 
         def __init__(self, message):
@@ -141,7 +228,7 @@ class Client:
         Constructs a server object to connect to a broker at host:port using the binary TCP protocol
         """
 
-        log.info("Client for %s:%s", host, port)
+        log.info("Server for %s:%s", host, port)
         self.__mutex_r  = threading.Lock()
         self.__mutex_w  = threading.Lock()
         self.host       = host
@@ -234,7 +321,7 @@ class Client:
 
     def __read_raw(self):
         """
-        Reads and returns the raw message broker notification. (without the length header)
+        Reads and returns the raw message broker notification. (without the lengt header)
         """
         log.debug("Reading raw message")
         msg_len = struct.unpack("!L", self.__read_len(4))[0]
@@ -288,19 +375,6 @@ class Client:
             self.subscribed.add( (destination, kind) )
             log.debug('Currently subscribed to %s', self.subscribed)
 
-#    def unsubscribe(self, destination, kind=DEFAULT_KIND):
-#        """
-#        Unsubscribes for notification for destination with kind either TOPIC or QUEUE.
-#        """
-#        log.info("Client.unsubscribe (%s, %s)", destination, kind)
-#
-#        if( (destination, kind) in self.subscribed ):
-#            self.__write_raw(build_msg('unsubscribe', subscribe_msg(destination, kind)))
-#            self.subscribed.remove( (destination, kind) )
-#            log.debug('Currently subscribed to %s', self.subscribed)
-#        else:
-#            log.warn("destination (%s, %s) not subscribed so can't unsubscribe" %(destination, kind))
-
     def consume(self):
         """
         Wait for a notification and return it as a Message object.
@@ -339,7 +413,7 @@ class Client:
 
     def __iter__(self):
         """
-        Syntax sugar to allow iterating over a Consumer and get the received messages.
+        Syntax sugar to allow iterating over a Broker Client and getting the received messages.
 
         This allows for construct such as:
 
@@ -375,21 +449,22 @@ class Message:
             If you want to send binary data consider first encoding it to an ASCII string (base64 or uuencode) and then send these characters.
         """
 
-        self.payload      = payload
-        self.destination  = destination
-        self.deliveryMode = deliveryMode
-        self.id           = id
-        self.timestamp    = timestamp
-        self.expiration   = expiration
-        self.priority     = priority
+        self.payload       = payload
+        self.destination   = destination
+        self.deliveryMode  = deliveryMode
+        self.id            = id
+        self.timestamp     = timestamp
+        self.expiration    = expiration
+        self.priority      = priority
+        self.correlationId = correlationId
 
     def fromXML_minidom(raw):
         """
-        Given an xml representing the message returns an object describing it
+        XML parsing. minidom implementation. (slowest)
         """
         #now try and parse the actual parameters
         #XXX no need to worry about date data for the time being
-        dom = parseString(raw)
+        dom = xml.dom.minidom.parseString(raw)
         id          = getMessageData(dom, 'MessageId', 'broker')
         priority    = getMessageData(dom, 'Priority', 'broker', int)
         destination = getMessageData(dom, 'DestinationName', 'broker')
@@ -399,8 +474,55 @@ class Message:
         #XXX process all date time fields into nice python objects
         return Message(payload=payload, destination=destination, id=id, priority=priority)
 
+    def fromXML_minidom_iter(raw):
+        """
+        XML parsing minidom iterating the document tree version. (20% faster  than the slowest)
+        """
+        #print "fromXML_minidom_iter"
+        dom = xml.dom.minidom.parseString(raw)
+        #try to get to the soap body node
+
+        soap_node = dom.childNodes[0]
+        fields = {}
+
+        for node in soap_node.childNodes:
+            if get_tag_name(node) == (soap_ns, u'Body'):
+                body_node = node
+                for node in body_node.childNodes:
+                    if get_tag_name(node) == (broker_ns, u'Notification'):
+                        notification_node = node
+                        for node in notification_node.childNodes:
+                            if get_tag_name(node) == (broker_ns, u'BrokerMessage'):
+                                broker_node = node
+                                for node in broker_node.childNodes:
+                                    (ns, name) = get_tag_name(node)
+                                    if ns == broker_ns and name is not None:
+                                        child = node.firstChild
+                                        if child:
+                                            fields[name] = child.nodeValue
+
+        #now for the actual normalization of fields
+        priority = safe_cast(int, fields['Priority'])
+        return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
+
+    def fromXML_sax(raw):
+        parser = xml.sax.make_parser()
+        #we want to parse using namespaces
+        parser.setFeature(xml.sax.handler.feature_namespaces, 1)
+        sax_handler = SaxHandler()
+        parser.setContentHandler(sax_handler)
+        parser.feed(raw)
+        parser.close()
+
+        fields = sax_handler.fields()
+        priority = safe_cast(int, fields['Priority']) 
+        return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
+
+
+    #XXX this needs to either be chosen automatically by seeing which modules are installed and/or allow the user to choose
     #generate a static method
-    fromXML = staticmethod(fromXML_minidom)
+    #fromXML = staticmethod(fromXML)
+    fromXML = staticmethod(fromXML_sax)
 
     def toXML(self):
         """
@@ -412,18 +534,18 @@ class Message:
             ('DestinationName', 'destination', None),
             ('MessageId', 'id', None),
             ('TextPayload', 'payload', None),
-            ('Priority', 'priority', lambda x : str(x))
+            ('Priority', 'priority', lambda x : str(x)),
+            ('correlationId', 'correlationId', None)
         ):
-            fun = {None: lambda x:x}.get(fun, fun)
-
             content = getattr(self, attr, None)
 
             if content is None:
                 #do not output the tag
-                #could just place it empry
+                #could just place it empty
                 pass
             else:
-                content = fun(content)
+                if fun is not None:
+                    content = fun(content)
                 ret+= "\t<%(tname)s>%(content)s</%(tname)s>\n" % {'tname':tname, 'content':escape_xml(content)}
 
         ret += '</BrokerMessage>'
@@ -459,4 +581,9 @@ def getMessageData(dom, key, ns=None, fun = lambda x : x):
             ret = dom.getElementsByTagName(key).item(0).childNodes[0].nodeValue
         return fun(ret)
     except:
-        return
+        pass
+    
+    return None
+
+def get_tag_name(node):
+    return (node.namespaceURI, node.localName)
