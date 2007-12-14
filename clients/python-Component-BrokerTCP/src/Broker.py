@@ -11,6 +11,13 @@
 #
 #  * All IO is blocking with no timeout
 #
+#
+#  * Thread safety:
+#   * All IO should be thread safe. 2 mutexes are used, one for reading and another for writting.
+#   * Reading in one thread while writting in another is possible.
+#   * All other operations done in python are assumed to be thread safe.
+#   * Thread safety status of XML parsing is unknown to me since several backends can be used. This could be a problem.
+#
 ###########################
 
 """
@@ -48,12 +55,19 @@ for message in broker:
 """
 
 import socket
+
+#for pack/unpack
 import struct
+
+#for hexlen (debugging for the pack/unpack routines)
 import string
+
+#for locking
 import threading
 
-import xml.dom.minidom
+#since 2.3 an xml sax parser is shipped with python so sax is both faster than dom and always available in all reasonable versions
 import xml.sax
+import xml.sax.saxutils
 
 import logging
 log = logging.getLogger("Broker")
@@ -67,25 +81,17 @@ NS = {
     'broker' : 'http://services.sapo.pt/broker'
     }
 
-broker_ns = NS['broker']
-soap_ns   = NS['soap']
-
-xml_entities = [('&', 'amp'), ('"', 'quot'), ('\'', 'apos'), ('<', 'lt'), ('>', 'gt')]
-def escape_xml(input):
-    s=input 
-    for (look, rep) in xml_entities:
-        s=s.replace(look, '&'+rep+';')
-
-    if(isinstance(s, unicode)):
-        #coerce everything into utf-8 bytes
-        s=s.encode('utf-8')
-    return s
+#just an alias
+escape_xml = xml.sax.saxutils.escape
 
 DEFAULT_KIND  = 'TOPIC'
 #XXX no support for TOPIC_AS_QUEUE (yet)
 ALLOWED_KINDS = ('TOPIC', 'QUEUE')
 
 def check_kind(kind):
+    """
+    Checks whether kind is a valid destination kind.
+    """
     if kind not in ALLOWED_KINDS:
         raise AttributeError("Unknown kind '%s'" % kind)
 
@@ -98,6 +104,8 @@ def check_msg(msg):
 
 soap_open       = """<soap:Envelope xmlns:soap="%s"><soap:Body>""" % (escape_xml(NS['soap']))
 soap_close      = """</soap:Body></soap:Envelope>"""
+broker_ns       = NS['broker']
+soap_ns         = NS['soap']
 
 #aux function to pre-build open/close xml tags
 def prod_tags(tagname, ns='broker'):
@@ -109,8 +117,8 @@ taglist = (
     ('publish', 'Publish'),
     ('enqueue', 'Enqueue'),
     ('subscribe', 'Notify'),
-    #('unsubscribe', 'Unsubscribe'),
     ('acknowledge', 'Acknowledge'))
+
 #pre-built tags
 tags = dict( map( lambda (name, tag): (name, prod_tags(tag)) , taglist) )
 
@@ -128,9 +136,15 @@ def subscribe_msg(destination, kind, ack=False):
 
 #aux function for debugging
 def str2hex(raw):
+    """
+    Given raw binary data outputs a string will all octets in hexadecimal notation.
+    """
     return string.join( ["%02X" % ord(c) for c in raw ], ':')
 
 def safe_cast(function, value):
+    """
+    Returns function(value) or None in case some error occurred.
+    """
     try:
         return function(value)
     except:
@@ -138,7 +152,8 @@ def safe_cast(function, value):
 
 class SaxHandler(xml.sax.ContentHandler):
     """
-    Handler for sax events while parsing a Broker notification
+    Handler for sax events while parsing a Broker notification.
+    Very lax since as it stands there could be extra tags between the tags we are expecting until reaching the actual broker message and it would still give meaningfull results.
     """
     def startDocument(self):
         self.__fields  = {}
@@ -149,11 +164,11 @@ class SaxHandler(xml.sax.ContentHandler):
         #setup default handlers
         self.startElementNS = self.top_start
         self.endElementNS   = self.def_end
-        #self.characters     = self.def_characters
 
     def fields(self):
         return self.__fields
 
+    #for some unkown reason, this can't be changed at run time by the parser. The original method is the one that is always called. (pretty dumb and sloppy)
     def characters(self, data):
         if self.__consume:
             self.__txt += data
@@ -210,6 +225,20 @@ class SaxHandler(xml.sax.ContentHandler):
     def def_start(self, name, qname, attrs):
         pass
 
+def fromXML_sax(raw):
+    parser = xml.sax.make_parser()
+    #we want to parse using namespaces
+    parser.setFeature(xml.sax.handler.feature_namespaces, 1)
+    sax_handler = SaxHandler()
+    parser.setContentHandler(sax_handler)
+    parser.feed(raw)
+    parser.close()
+
+    fields = sax_handler.fields()
+    priority = safe_cast(int, fields['Priority']) 
+    return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
+
+
 class Client:
     """
     Abstracts access to a broker server.
@@ -225,7 +254,7 @@ class Client:
 
     def __init__ (self, host, port):
         """
-        Constructs a server object to connect to a broker at host:port using the binary TCP protocol
+        Constructs a client object to connect to a broker at host:port using the binary TCP protocol
         """
 
         log.info("Server for %s:%s", host, port)
@@ -321,7 +350,7 @@ class Client:
 
     def __read_raw(self):
         """
-        Reads and returns the raw message broker notification. (without the lengt header)
+        Reads and returns the raw message broker notification. (without the length header)
         """
         log.debug("Reading raw message")
         msg_len = struct.unpack("!L", self.__read_len(4))[0]
@@ -331,7 +360,7 @@ class Client:
 
     def close(self):
         """
-        Closes current server object. No other operation should be possible with this object afterwards.
+        Closes current client object. No other operation should be possible with this object afterwards.
         """
         log.debug("Close")
         if self.__closed:
@@ -388,8 +417,10 @@ class Client:
         """
         Send a notification to the broker.
         message must be a Message object.
+        Blocking call (no timeout).
         """
         log.info("Client.produce(%s, %s)", repr(message), kind)
+        check_kind(kind)
         check_msg(message)
         msg_xml = message.toXML()
         name = {'TOPIC': 'publish', 'QUEUE': 'enqueue'}[kind]
@@ -399,6 +430,7 @@ class Client:
         """
         Acknowledge that the client did receive/process a message.
         message must either be a Message object or an id that one wishes to acknowledge.
+        Blocking call (no timeout).
         """
         log.info("Client.acknowledge(%s)", repr(message))
         id = None
@@ -426,7 +458,7 @@ class Client:
 class Message:
     def __init__(self, payload, destination, id=None, correlationId=None, timestamp=None, expiration=None, priority=None, deliveryMode=None):
         """
-        Creates a Broker message given the manadatory payload and destination.
+        Creates a Broker message given the mandatory payload and destination.
         All other fields are optional.
         
         deliveryMode can either be PERSISTENT or TRANSIENT
@@ -440,9 +472,9 @@ class Message:
         This object should be constructed to send an event notification to the Server and is returned by the Client object when a new event is received.
 
         Notice regarding Unicode and all text fields (payload, destination, id, and correlationId):
-            All text fields can wither be unicode strings (preferably) or regular strings (byte arrays).
+            All text fields may either be unicode strings (preferably) or regular strings (byte arrays).
             If these fields are unicode strings, then its content is encoded into utf-8 bytes, xml escaped and sent through the network.
-            If the filds are regular strings they are only xml-escaped and apart from that are sent "ipis verbis". This can be problematica in case one wishes to sent raw binary information (no character semantics) because this strem might no be valid utf-8 and a decent XML browser will throw an error.
+            If the fields are regular strings they are only xml-escaped and apart from that are sent "ipis verbis". This can be problematic in case one wishes to sent raw binary information (no character semantics) because this strem might no be valid utf-8 and a decent XML browser will throw an error.
 
         Bottom line:
             If you don't use unicode strings as input make sure you know what you are doing (utf-8 encode everything)
@@ -458,70 +490,8 @@ class Message:
         self.priority      = priority
         self.correlationId = correlationId
 
-    def fromXML_minidom(raw):
-        """
-        XML parsing. minidom implementation. (slowest)
-        """
-        #now try and parse the actual parameters
-        #XXX no need to worry about date data for the time being
-        dom = xml.dom.minidom.parseString(raw)
-        id          = getMessageData(dom, 'MessageId', 'broker')
-        priority    = getMessageData(dom, 'Priority', 'broker', int)
-        destination = getMessageData(dom, 'DestinationName', 'broker')
-        payload     = getMessageData(dom, 'TextPayload', 'broker')
 
-        #XXX what to do with action?
-        #XXX process all date time fields into nice python objects
-        return Message(payload=payload, destination=destination, id=id, priority=priority)
-
-    def fromXML_minidom_iter(raw):
-        """
-        XML parsing minidom iterating the document tree version. (20% faster  than the slowest)
-        """
-        #print "fromXML_minidom_iter"
-        dom = xml.dom.minidom.parseString(raw)
-        #try to get to the soap body node
-
-        soap_node = dom.childNodes[0]
-        fields = {}
-
-        for node in soap_node.childNodes:
-            if get_tag_name(node) == (soap_ns, u'Body'):
-                body_node = node
-                for node in body_node.childNodes:
-                    if get_tag_name(node) == (broker_ns, u'Notification'):
-                        notification_node = node
-                        for node in notification_node.childNodes:
-                            if get_tag_name(node) == (broker_ns, u'BrokerMessage'):
-                                broker_node = node
-                                for node in broker_node.childNodes:
-                                    (ns, name) = get_tag_name(node)
-                                    if ns == broker_ns and name is not None:
-                                        child = node.firstChild
-                                        if child:
-                                            fields[name] = child.nodeValue
-
-        #now for the actual normalization of fields
-        priority = safe_cast(int, fields['Priority'])
-        return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
-
-    def fromXML_sax(raw):
-        parser = xml.sax.make_parser()
-        #we want to parse using namespaces
-        parser.setFeature(xml.sax.handler.feature_namespaces, 1)
-        sax_handler = SaxHandler()
-        parser.setContentHandler(sax_handler)
-        parser.feed(raw)
-        parser.close()
-
-        fields = sax_handler.fields()
-        priority = safe_cast(int, fields['Priority']) 
-        return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
-
-
-    #XXX this needs to either be chosen automatically by seeing which modules are installed and/or allow the user to choose
     #generate a static method
-    #fromXML = staticmethod(fromXML)
     fromXML = staticmethod(fromXML_sax)
 
     def toXML(self):
@@ -568,22 +538,3 @@ class Message:
     def __str__(self):
         return unicode(self).encode('utf-8')
 
-def getMessageData(dom, key, ns=None, fun = lambda x : x):
-    """
-    Auxiliary function for parsing XML.
-    Given a dom tree, a tag name, a namespace and a transformation function, returns the result of aplying it to the text content of the node or None in case of error.
-    """
-    try:
-        ret = None
-        if ns:
-            ret = dom.getElementsByTagNameNS(NS[ns], key).item(0).childNodes[0].nodeValue
-        else:
-            ret = dom.getElementsByTagName(key).item(0).childNodes[0].nodeValue
-        return fun(ret)
-    except:
-        pass
-    
-    return None
-
-def get_tag_name(node):
-    return (node.namespaceURI, node.localName)
