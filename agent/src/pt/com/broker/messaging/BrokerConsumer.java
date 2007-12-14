@@ -29,8 +29,7 @@ public class BrokerConsumer
 		try
 		{
 			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName, sb.acknowledgeMode);
-			qsl.add(ios);
-			log.info("Create asynchronous message consumer for queue : " + sb.destinationName + ", address: " + ios.getRemoteAddress());
+			qsl.addConsumer(ios);
 
 			if (qsl.size() == 1)
 			{
@@ -54,8 +53,7 @@ public class BrokerConsumer
 		try
 		{
 			TopicSubscriber subscriber = TopicSubscriberList.get(sb.destinationName);
-			subscriber.add(ios);
-			log.info("Create asynchronous message consumer for topic : " + sb.destinationName + ", address: " + ios.getRemoteAddress());
+			subscriber.addConsumer(ios);
 		}
 		catch (Throwable e)
 		{
@@ -64,6 +62,25 @@ public class BrokerConsumer
 				Thread.currentThread().interrupt();
 			}
 			throw new RuntimeException(e);
+		}
+	}
+
+	public synchronized void unsubscribe(Unsubscribe unsubs, IoSession session)
+	{
+		String dname = unsubs.destinationName;
+		String dtype = unsubs.destinationType;
+		if (unsubs.destinationType.equals("TOPIC"))
+		{
+			TopicSubscriber subscriber = TopicSubscriberList.get(dname);
+			subscriber.removeConsumer(session);
+		}
+		else if (unsubs.destinationType.equals("QUEUE"))
+		{
+			QueueSessionListener qsl_a = QueueSessionListenerList.get(dname, AcknowledgeMode.AUTO);
+			qsl_a.removeConsumer(session);
+
+			QueueSessionListener qsl_c = QueueSessionListenerList.get(dname, AcknowledgeMode.CLIENT);
+			qsl_c.removeConsumer(session);
 		}
 	}
 }

@@ -1,5 +1,6 @@
 package pt.com.broker.net.codec;
 
+import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolEncoder;
@@ -34,13 +35,15 @@ public class SoapCodec implements ProtocolCodecFactory
 		decoder = new SoapDecoder(MQ.MAX_MESSAGE_SIZE);
 	}
 
-	public ProtocolEncoder getEncoder()
-	{
-		return encoder;
-	}
-
-	public ProtocolDecoder getDecoder()
+	@Override
+	public ProtocolDecoder getDecoder(IoSession arg0) throws Exception
 	{
 		return decoder;
+	}
+
+	@Override
+	public ProtocolEncoder getEncoder(IoSession arg0) throws Exception
+	{
+		return encoder;
 	}
 }

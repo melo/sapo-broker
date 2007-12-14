@@ -7,13 +7,13 @@
 		<pathelement location="${sapo-broker.location}/clib/bcel.jar" />
 		<pathelement location="${sapo-broker.location}/clib/jibx-bind.jar" />
 		<pathelement location="${sapo-broker.location}/clib/sapo-gcs.jar" />
-		<pathelement location="${sapo-broker.location}/lib/jibx-run.jar"/>
-		<pathelement location="${sapo-broker.location}/lib/asyncweb.jar"/>
-		<pathelement location="${sapo-broker.location}/lib/logback-classic-0.9.8.jar"/>
-		<pathelement location="${sapo-broker.location}/lib/logback-core-0.9.8.jar"/>
-		<pathelement location="${sapo-broker.location}/lib/slf4j-api-1.4.3.jar"/>
-		<pathelement location="${sapo-broker.location}/lib/org.caudexorigo.jar"/>
-		<pathelement location="${sapo-broker.location}/lib/mina2-snapshot.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/jibx-run.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/mina_http_filter.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/logback-classic-0.9.8.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/logback-core-0.9.8.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/slf4j-api-1.4.3.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/org.caudexorigo.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/mina2-snapshot.jar"/>
 	</path>
 
 
@@ -69,6 +69,7 @@
 		<mkdir dir="dist/lib" />
 		<unzip dest="dist/classes">
 			<fileset dir="lib" />
+			<fileset file="clib/sapo-gcs.jar" />
 		</unzip>
 		<copy todir="dist/classes">
 			<fileset dir="bin"/>
@@ -81,17 +82,17 @@
 
 	<target name="package" depends="one-jar">
 
-		<copy file="README.txt" todir="dist" />
-		<copy file="SampleMessages.txt" todir="dist" />
-		<copy file="manta-proxy.config" todir="dist" />
-		<copy file="bus.bat" todir="dist" />
-		<copy file="bus.sh" todir="dist" />
-		<copy file="start_bus_mac_os_x.sh" todir="dist" />
-		<copy file="broker.wsdl" todir="dist" />
-		<copy file="broker_http.wsdl" todir="dist" />
-		<copy file="VERSIONS.html" todir="dist" />
+		<copy todir="dist/doc">
+			<fileset dir="doc"/>
+  		</copy>
+		<copy todir="dist/conf">
+			<fileset dir="conf"/>
+  		</copy>
+		
+		<copy file="broker.bat" todir="dist" />
+		<copy file="broker.sh" todir="dist" />
 		<tar tarfile="sapo-broker.tar" >
-			<tarfileset dir="dist" prefix="mantabus"></tarfileset>
+			<tarfileset dir="dist" prefix="sapo-broker"></tarfileset>
 		</tar>
 		<gzip src="sapo-broker.tar" destfile="sapo-broker.tar.gz" />
 		<delete file="sapo-broker.tar" />

@@ -25,7 +25,7 @@ public class TopicSubscriberList
 		{
 			try
 			{
-				TopicSubscriber subscriber = new TopicSubscriber();
+				TopicSubscriber subscriber = new TopicSubscriber(destinationName);
 				Gcs.addTopicConsumer(destinationName, subscriber);
 				return subscriber;
 			}

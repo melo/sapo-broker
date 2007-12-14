@@ -17,9 +17,11 @@ public class TopicSubscriber extends BrokerListener
 
 	private final List<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
 
-	public TopicSubscriber()
-	{
+	private final String _dname;
 
+	public TopicSubscriber(String destinationName)
+	{
+		_dname = destinationName;
 	}
 
 	public void onMessage(Message amsg)
@@ -47,12 +49,12 @@ public class TopicSubscriber extends BrokerListener
 						}
 						else
 						{
-							closeConsumer(ios);
+							removeConsumer(ios);
 						}
 					}
 					catch (Throwable t)
 					{
-						closeConsumer(ios);
+						removeConsumer(ios);
 						try
 						{
 							(ios.getHandler()).exceptionCaught(ios, t);
@@ -77,18 +79,26 @@ public class TopicSubscriber extends BrokerListener
 		}
 	}
 
-	private synchronized void closeConsumer(IoSession iosession)
+	public void removeConsumer(IoSession iosession)
 	{
-		_sessions.remove(iosession);
-		if (_sessions.size() == 0)
+		synchronized (_sessions)
 		{
-			Gcs.removeTopicConsumer(this);
-			TopicSubscriberList.removeValue(this);
+			_sessions.remove(iosession);
+			if (_sessions.size() == 0)
+			{
+				Gcs.removeTopicConsumer(this);
+				TopicSubscriberList.removeValue(this);
+			}
 		}
+		log.info("Remove message consumer for topic: " + _dname + ", address: " + iosession.getRemoteAddress());
 	}
 
-	public void add(IoSession ios)
+	public void addConsumer(IoSession iosession)
 	{
-		_sessions.add(ios);
+		synchronized (_sessions)
+		{
+			_sessions.add(iosession);
+		}
+		log.info("Create message consumer for topic: " + _dname + ", address: " + iosession.getRemoteAddress());
 	}
 }

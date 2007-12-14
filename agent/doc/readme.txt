@@ -1,5 +1,5 @@
-﻿
-Documentação perliminar do Manta-Bus
+
+Documentação perliminar do Sapo-Broker
 ----------------------------------
 
 * Configurar a port: especicar o argumento  -Dbus_port=####
@@ -12,7 +12,7 @@ Documentação perliminar do Manta-Bus
 order que indica o tamanho (em bytes) da mensagem.
 
 
-* TIP: "Don't 'kill -9' the Manta-Bus" se isto for feito os "shutdown hooks" não 
+* Nota: "Don't 'kill -9' the Sapo-Broker" se isto for feito os "shutdown hooks" não 
 são efectuadas e podemos ficar num estado inconsistente.
 
 * O encoding das mensagens deve de ser em UTF-8.

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<world>
+	<domain>
+		<peer>
+			<name>broker1</name>
+			<transport>
+				<type>TCP</type>
+				<ip>127.0.0.1</ip>
+				<port>6615</port>
+			</transport>
+		</peer>
+	</domain>
+</world>

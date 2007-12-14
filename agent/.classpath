@@ -2,12 +2,7 @@
 <classpath>
 	<classpathentry excluding="**/.svn/*" kind="src" output="bin" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/jibx-run.jar"/>
-	<classpathentry kind="lib" path="lib/asyncweb.jar"/>
-	<classpathentry kind="lib" path="lib/logback-classic-0.9.8.jar"/>
-	<classpathentry kind="lib" path="lib/logback-core-0.9.8.jar"/>
-	<classpathentry kind="lib" path="lib/slf4j-api-1.4.3.jar"/>
-	<classpathentry kind="lib" path="lib/org.caudexorigo.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Sapo-GCS"/>
-	<classpathentry kind="lib" path="lib/mina2-snapshot.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Sapo-BrokerV2-Libs"/>
+	<classpathentry kind="output" path="bin"/>
 </classpath>

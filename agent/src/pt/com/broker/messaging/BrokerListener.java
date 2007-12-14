@@ -2,6 +2,7 @@ package pt.com.broker.messaging;
 
 import java.util.Date;
 
+import org.apache.mina.common.IoSession;
 import org.caudexorigo.text.DateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,4 +53,8 @@ public abstract class BrokerListener implements MessageListener
 
 		return soap_env;
 	}
+	
+	public abstract void addConsumer(IoSession iosession);
+	
+	public abstract void removeConsumer(IoSession iosession);
 }

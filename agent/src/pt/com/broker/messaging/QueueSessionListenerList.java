@@ -1,5 +1,9 @@
 package pt.com.broker.messaging;
 
+import java.util.Collection;
+import java.util.Iterator;
+
+import org.apache.mina.common.IoSession;
 import org.caudexorigo.ds.Cache;
 import org.caudexorigo.ds.CacheFiller;
 import org.slf4j.Logger;
@@ -29,7 +33,7 @@ public class QueueSessionListenerList
 				String destinationName = k[0];
 				AcknowledgeMode ackMode = AcknowledgeMode.valueOf(k[1]);
 				
-				QueueSessionListener qsl = new QueueSessionListener(ackMode);
+				QueueSessionListener qsl = new QueueSessionListener(destinationName, ackMode);
 				Gcs.addQueueConsumer(destinationName, qsl);
 				return qsl;
 			}
@@ -59,6 +63,23 @@ public class QueueSessionListenerList
 		try
 		{
 			queueSessionListener.removeValue(value);
+		}
+		catch (InterruptedException ie)
+		{
+			Thread.currentThread().interrupt();
+		}
+	}
+	
+	public static void removeSession(IoSession iosession)
+	{
+		try
+		{
+			Collection<QueueSessionListener> list = queueSessionListener.values();
+			for (QueueSessionListener queueSessionListener : list)
+			{
+				queueSessionListener.removeConsumer(iosession);
+			}
+			
 		}
 		catch (InterruptedException ie)
 		{

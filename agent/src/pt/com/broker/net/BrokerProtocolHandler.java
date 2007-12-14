@@ -3,19 +3,19 @@ package pt.com.broker.net;
 import java.io.IOException;
 import java.net.SocketAddress;
 
-import org.apache.mina.common.IoFilterChain;
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.core.ErrorHandler;
+import pt.com.broker.messaging.AcknowledgeMode;
 import pt.com.broker.messaging.BrokerConsumer;
 import pt.com.broker.messaging.BrokerProducer;
 import pt.com.broker.messaging.MQ;
 import pt.com.broker.messaging.Notify;
-import pt.com.broker.net.codec.SoapCodec;
+import pt.com.broker.messaging.QueueSessionListenerList;
+import pt.com.broker.messaging.Unsubscribe;
 import pt.com.broker.xml.SoapEnvelope;
 
 public class BrokerProtocolHandler extends IoHandlerAdapter
@@ -48,6 +48,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		{
 			String remoteClient = getClientAddress(iosession);
 			log.info("Session closed: " + remoteClient);
+			QueueSessionListenerList.removeSession(iosession);
 		}
 		catch (Throwable e)
 		{
@@ -74,7 +75,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			String emsg = wtf.Cause.getMessage();
 			msg = "Client: " + client + ". Message: " + emsg;
 
-			log.error(msg, wtf.Cause);
+			log.info(msg, wtf.Cause);
 		}
 	}
 
@@ -116,6 +117,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			}
 			else if (sb.destinationType.equals("TOPIC_AS_QUEUE"))
 			{
+				sb.acknowledgeMode = AcknowledgeMode.AUTO;
 				_brokerConsumer.listen(sb, session);
 			}
 			return;
@@ -133,6 +135,12 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		else if (request.body.acknowledge != null)
 		{
 			_brokerProducer.acknowledge(request.body.acknowledge);
+			return;
+		}
+		else if (request.body.unsubscribe != null)
+		{
+			Unsubscribe unsubs = request.body.unsubscribe;
+			_brokerConsumer.unsubscribe(unsubs, session);
 			return;
 		}
 		else

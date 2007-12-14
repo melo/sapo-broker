@@ -29,6 +29,7 @@
 		<structure field="enqueue" usage="optional" />
 		<structure field="publish" usage="optional" />
 		<structure field="notify" usage="optional" />
+		<structure field="unsubscribe" usage="optional" />
 		<structure field="notification" usage="optional" />
 		<structure field="acknowledge" usage="optional" />
 		<structure field="fault" usage="optional" />

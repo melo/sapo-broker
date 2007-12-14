@@ -28,17 +28,6 @@ public class BrokerProducer
 
 	}
 
-	public void enqueueMessage(Enqueue enqreq, String messageSource)
-	{
-		BrokerMessage brkm = enqreq.brokerMessage;
-		// brkm.deliveryMode = DeliveryMode.PERSISTENT;
-		Message msg = prepareForSending(brkm, messageSource);
-		msg.setType(MessageType.COM_QUEUE);
-
-		Gcs.enqueue(msg);
-		// Statistics.messageProduced(messageSource);
-	}
-
 	private Message prepareForSending(BrokerMessage brkMessage, String messageSource)
 	{
 		try
@@ -94,6 +83,16 @@ public class BrokerProducer
 		}
 	}
 
+	public void enqueueMessage(Enqueue enqreq, String messageSource)
+	{
+		BrokerMessage brkm = enqreq.brokerMessage;
+		Message msg = prepareForSending(brkm, messageSource);
+		msg.setType(MessageType.COM_QUEUE);
+
+		Gcs.enqueue(msg);
+		// Statistics.messageProduced(messageSource);
+	}
+
 	public void publishMessage(final Publish pubreq, final String messageSource)
 	{
 		final BrokerMessage brkm = pubreq.brokerMessage;
@@ -109,6 +108,7 @@ public class BrokerProducer
 			}
 		};
 		BrokerExecutor.execute(publisher);
+
 	}
 
 	public void acknowledge(Acknowledge ackReq)

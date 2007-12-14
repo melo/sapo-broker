@@ -24,9 +24,12 @@ public class QueueSessionListener extends BrokerListener
 
 	private final AcknowledgeMode _ackMode;
 
-	public QueueSessionListener(AcknowledgeMode ackMode)
+	private final String _dname;
+
+	public QueueSessionListener(String destinationName, AcknowledgeMode ackMode)
 	{
 		_ackMode = ackMode;
+		_dname = destinationName;
 	}
 
 	public void onMessage(final Message msg)
@@ -52,19 +55,20 @@ public class QueueSessionListener extends BrokerListener
 						{
 							log.debug("Delivered message: {}", msg.getMessageId());
 						}
-						// if (_ackMode == AcknowledgeMode.AUTO)
-						Gcs.ackMessage(msg.getMessageId());
+
+						if (_ackMode == AcknowledgeMode.AUTO)
+							Gcs.ackMessage(msg.getMessageId());
 
 						return;
 					}
 					else
 					{
-						QueueProcessorList.get(msg.getDestination()).process(msg);
+						QueueProcessorList.get(msg.getDestination()).wakeup();
 					}
 				}
 				else
 				{
-					closeConsumer(ioSession);
+					removeConsumer(ioSession);
 				}
 			}
 		}
@@ -73,7 +77,7 @@ public class QueueSessionListener extends BrokerListener
 			try
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);
-				closeConsumer(ioSession);
+				removeConsumer(ioSession);
 			}
 			catch (Throwable t)
 			{
@@ -112,19 +116,22 @@ public class QueueSessionListener extends BrokerListener
 
 	}
 
-	public void add(IoSession iosession)
+	public void addConsumer(IoSession iosession)
 	{
 		synchronized (_sessions)
 		{
 			_sessions.add(iosession);
 		}
+		log.info("Create message consumer for queue: " + _dname + ", address: " + iosession.getRemoteAddress());
 	}
 
-	private void closeConsumer(IoSession iosession)
+	public void removeConsumer(IoSession iosession)
 	{
 		synchronized (_sessions)
 		{
-			_sessions.remove(iosession);
+			if (_sessions.remove(iosession))
+				log.info("Remove message consumer for queue: " + _dname + ", address: " + iosession.getRemoteAddress());
+
 			if (_sessions.size() == 0)
 			{
 				Gcs.removeQueueConsumer(this);
