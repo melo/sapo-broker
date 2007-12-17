@@ -45,26 +45,12 @@ public class BrokerProducer
 
 			if (StringUtils.isNotBlank(brkMessage.timestamp))
 			{
-				try
-				{
-					message.setTimestamp(DateUtil.parseISODate(brkMessage.timestamp).getTime());
-				}
-				catch (ParseException e)
-				{
-					throw new RuntimeException(e);
-				}
+				message.setTimestamp(DateUtil.parseISODate(brkMessage.timestamp).getTime());
 			}
 
 			if (StringUtils.isNotBlank(brkMessage.expiration))
 			{
-				try
-				{
-					message.setTimestamp(DateUtil.parseISODate(brkMessage.expiration).getTime());
-				}
-				catch (ParseException e)
-				{
-					throw new RuntimeException(e);
-				}
+				message.setExpiration(DateUtil.parseISODate(brkMessage.expiration).getTime());
 			}
 
 			message.setContent(brkMessage.textPayload);

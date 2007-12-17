@@ -18,6 +18,8 @@ public class Message implements Externalizable
 	private static final long serialVersionUID = -3656321513130930115L;
 
 	public static final int DEFAULT_PRIORITY = 4;
+	
+	private static final long DEFAULT_EXPIRY = 1000L * 3600L * 24L * 3L;
 
 	// private AckMode _ackm = AckMode.AUTO;
 
@@ -35,7 +37,7 @@ public class Message implements Externalizable
 
 	private long _timestamp = System.currentTimeMillis();
 
-	private long _ttl = 0; // for ever
+	private long _expiration = System.currentTimeMillis() + DEFAULT_EXPIRY; // for ever
 
 	private MessageType _type = MessageType.UNDEF;
 
@@ -119,9 +121,9 @@ public class Message implements Externalizable
 		return _timestamp;
 	}
 
-	public long getTtl()
+	public long getExpiration()
 	{
-		return _ttl;
+		return _expiration;
 	}
 
 	public MessageType getType()
@@ -170,9 +172,9 @@ public class Message implements Externalizable
 		_timestamp = timestamp;
 	}
 
-	public void setTtl(long ttl)
+	public void setExpiration(long ttl)
 	{
-		_ttl = ttl;
+		_expiration = ttl;
 	}
 
 	public void setType(MessageType type)
@@ -189,7 +191,7 @@ public class Message implements Externalizable
 		 _priority = oin.readInt();
 		 _sourceApp = oin.readUTF();
 		 _timestamp = oin.readLong();
-		 _ttl = oin.readLong();
+		 _expiration = oin.readLong();
 		 _type = MessageType.lookup(oin.readInt());
 
 //		String[] smsg = PSEPARATOR.split(oin.readUTF());
@@ -214,7 +216,7 @@ public class Message implements Externalizable
 		 oout.writeInt(getPriority());
 		 oout.writeUTF(getSourceApp());
 		 oout.writeLong(getTimestamp());
-		 oout.writeLong(getTtl());
+		 oout.writeLong(getExpiration());
 		 oout.writeInt(getType().getValue());
 
 		//oout.writeUTF(this.toString());
@@ -238,7 +240,7 @@ public class Message implements Externalizable
 		buf.append(SEPARATOR);
 		buf.append(getTimestamp());
 		buf.append(SEPARATOR);
-		buf.append(getTtl());
+		buf.append(getExpiration());
 		buf.append(SEPARATOR);
 		buf.append(getType().getValue());
 
@@ -257,7 +259,7 @@ public class Message implements Externalizable
 		msg.setPriority(Integer.parseInt(smsg[4]));
 		msg.setSourceApp(smsg[5]);
 		msg.setTimestamp(Long.parseLong(smsg[6]));
-		msg.setTtl(Long.parseLong(smsg[7]));
+		msg.setExpiration(Long.parseLong(smsg[7]));
 		msg.setType(MessageType.lookup(Integer.parseInt(smsg[8])));
 
 		return msg;

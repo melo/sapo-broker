@@ -33,15 +33,6 @@ public class QueueProcessor
 		log.info("Create Queue Processor for '{}'.", _destinationName);
 	}
 
-	public static void ack(final String msgId)
-	{
-		if (log.isDebugEnabled())
-		{
-			log.debug("Ack message . MsgId: '{}'.", msgId);
-		}
-		DbStorage.ackMessage(msgId);
-	}
-
 	Runnable dbcounter = new Runnable()
 	{
 		public void run()
@@ -59,11 +50,51 @@ public class QueueProcessor
 		}
 	};
 
+	Runnable noclientcounter = new Runnable()
+	{
+		public void run()
+		{
+			if (!_isInWarning.getAndSet(true))
+			{
+
+				int lqsize = LocalQueueConsumers.size(_destinationName);
+				int rqsize = RemoteQueueConsumers.size(_destinationName);
+				long cnt = DbStorage.count(_destinationName);
+				if (cnt > 0)
+				{
+					while ((lqsize + rqsize) == 0)
+					{
+						cnt = DbStorage.count(_destinationName);
+						if (cnt > 0)
+						{
+							log.warn("Operator attention required. Queue '{}' has {} message(s) and no consumers.", _destinationName, cnt);
+						}
+
+						Sleep.time(20000);
+						lqsize = LocalQueueConsumers.size(_destinationName);
+						rqsize = RemoteQueueConsumers.size(_destinationName);
+					}
+				}
+				_isInWarning.set(false);
+			}
+			
+		}
+	};
+
+	public static void ack(final String msgId)
+	{
+		if (log.isDebugEnabled())
+		{
+			log.debug("Ack message . MsgId: '{}'.", msgId);
+		}
+		DbStorage.ackMessage(msgId);
+	}
+
 	public final void wakeup()
 	{
 		if (!hasRecipient())
 		{
-			log.info("No recipient for this Destination.");
+			GcsExecutor.execute(noclientcounter);
 			_isWorking.set(false);
 			return;
 		}
@@ -94,6 +125,7 @@ public class QueueProcessor
 					do
 					{
 						DbStorage.recoverMessages(this);
+						//Sleep.time(1000); // give some time to process acked messages
 					}
 					while ((DbStorage.count(_destinationName) > 0) && hasRecipient());
 
@@ -106,7 +138,7 @@ public class QueueProcessor
 			}
 			else
 			{
-				log.warn("No recipient for this Destination.");
+				GcsExecutor.execute(noclientcounter);
 			}
 		}
 		_isWorking.set(false);
@@ -169,36 +201,7 @@ public class QueueProcessor
 					return;
 				}
 
-				if (!_isInWarning.getAndSet(true))
-				{
-					Runnable noclientcounter = new Runnable()
-					{
-						public void run()
-						{
-							int lqsize = LocalQueueConsumers.size(_destinationName);
-							int rqsize = RemoteQueueConsumers.size(_destinationName);
-							long cnt = DbStorage.count(_destinationName);
-							if (cnt > 0)
-							{
-								while ((lqsize + rqsize) == 0)
-								{
-									cnt = DbStorage.count(_destinationName);
-									if (cnt > 0)
-									{
-										log.warn("Operator attention required. Queue '{}' has {} message(s) and no consumers.", _destinationName, cnt);
-									}
-
-									Sleep.time(20000);
-									lqsize = LocalQueueConsumers.size(_destinationName);
-									rqsize = RemoteQueueConsumers.size(_destinationName);
-								}
-							}
-							_isInWarning.set(false);
-						}
-					};
-
-					GcsExecutor.execute(noclientcounter);
-				}
+				GcsExecutor.execute(noclientcounter);
 			}
 			DbStorage.insert(msg, _sequence.incrementAndGet(), 0);
 		}

@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.caudexorigo.concurrent.Sleep;
 import org.caudexorigo.lang.ErrorAnalyser;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
@@ -28,13 +29,13 @@ public class DbStorage
 
 	private static final DbStorage instance = new DbStorage();
 
-	private static final String insert_sql = "INSERT INTO Message (destination, priority, mtimestamp, sequence_nr, msg_id, delivery_count, msg) VALUES (?, ?, ?, ?, ?, ?, ?)";
+	private static final String insert_sql = "INSERT INTO Message (destination, priority, expiration, sequence_nr, msg_id, delivery_count, msg) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
 	private static final String update_state_sql = "UPDATE Message SET delivery_count=delivery_count+1 WHERE msg_id = ?";
 
 	private static final String ack_sql = "DELETE FROM Message WHERE msg_id = ?";
 
-	private static final String fetch_msg_sql = "SELECT msg FROM Message WHERE destination = ? ORDER BY priority ASC, mtimestamp ASC, sequence_nr ASC";
+	private static final String fetch_msg_sql = "SELECT msg, expiration, delivery_count FROM Message WHERE destination = ? ORDER BY priority ASC, expiration ASC, sequence_nr ASC";
 
 	private static final String count_msg_sql = "SELECT COUNT(*) FROM Message WHERE destination = ?";
 
@@ -47,9 +48,9 @@ public class DbStorage
 	private String username;
 
 	private String password;
-	
+
 	private String dbFile;
-	
+
 	private String dbName;
 
 	private PreparedStatement insert_prep_stmt;
@@ -61,6 +62,8 @@ public class DbStorage
 	private PreparedStatement count_msg_prep_stmt;
 
 	private final ConcurrentMap<String, String> msgsAwaitingAck = new ConcurrentHashMap<String, String>();
+
+	private static final int MAX_DELIVERY_COUNT = 25;
 
 	private DbStorage()
 	{
@@ -173,7 +176,7 @@ public class DbStorage
 
 	private synchronized void buildSchema() throws Throwable
 	{
-		BufferedReader in = new BufferedReader(new InputStreamReader(DbStorage.class.getResourceAsStream("/create_schema.sql")));
+		BufferedReader in = new BufferedReader(new InputStreamReader(DbStorage.class.getResourceAsStream("/pt/com/gcs/etc/create_schema.sql")));
 		String sql;
 		while ((sql = in.readLine()) != null)
 		{
@@ -276,25 +279,38 @@ public class DbStorage
 			while (rs.next())
 			{
 				Message msg = Message.fromString(rs.getString(1));
+				long expiration = rs.getLong(2);
+				int deliveryCount = rs.getInt(3);
+				long mark = System.currentTimeMillis();
+				
+				System.out.println("mark: " + mark + ", expiration: " + expiration + ", deliveryCount: " + deliveryCount);
 
-				if (processor.deliverMessage(msg))
+				if ((expiration <= mark) && (deliveryCount <= MAX_DELIVERY_COUNT))
 				{
-					msgsAwaitingAck.put(msg.getMessageId(), msg.getMessageId());
-					if (log.isDebugEnabled())
+					if (processor.deliverMessage(msg))
 					{
-						log.debug("Message delivered. Dump: {}", msg.toString());
+						msgsAwaitingAck.put(msg.getMessageId(), msg.getMessageId());
+						if (log.isDebugEnabled())
+						{
+							log.debug("Message delivered. Dump: {}", msg.toString());
+						}
+					}
+					else
+					{
+						if (log.isDebugEnabled())
+						{
+							log.debug("Could not deliver message. Dump: {}", msg.toString());
+						}
+						break;
 					}
 				}
 				else
 				{
-					if (log.isDebugEnabled())
-					{
-						log.debug("Could not deliver message. Dump: {}", msg.toString());
-					}
-					break;
+					log.warn("Expired or overdelivered message: {}", msg.getMessageId());
+					ideleteMessage(msg.getMessageId());
 				}
-			}
 
+			}
 			batchUpdateState();
 		}
 		catch (Throwable t)

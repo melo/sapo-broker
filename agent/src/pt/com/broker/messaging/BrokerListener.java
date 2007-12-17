@@ -17,8 +17,6 @@ public abstract class BrokerListener implements MessageListener
 {
 	private static final Logger log = LoggerFactory.getLogger(BrokerListener.class);
 
-	private static final long ONE_YEAR = 1000L * 3600L * 24L * 365L;
-
 	public SoapEnvelope buildNotification(Message msg)
 	{
 		Notification nt = new Notification();
@@ -27,14 +25,9 @@ public abstract class BrokerListener implements MessageListener
 		// String sourceAgent = msg.getStringProperty(MQ.MESSAGE_SOURCE);
 
 		bkrm.correlationId = msg.getCorrelationId();
-		// bkrm.deliveryMode = DeliveryMode.lookup(msg.getJMSDeliveryMode());
 		bkrm.destinationName = msg.getDestination();
-		if (msg.getTtl() == 0)
-		{
-			// Set the expiration a year from now
-			bkrm.expiration = DateUtil.formatISODate(new Date(System.currentTimeMillis() + ONE_YEAR));
-		}
-
+		bkrm.timestamp = DateUtil.formatISODate(new Date(msg.getTimestamp()));
+		bkrm.expiration = DateUtil.formatISODate(new Date(msg.getExpiration()));
 		bkrm.messageId = msg.getMessageId();
 		bkrm.priority = msg.getPriority();
 		bkrm.textPayload = msg.getContent();
