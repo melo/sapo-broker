@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project basedir="." default="build" name="sapo-broker">
 	<property name="sapo-broker.location" value="." />
+	<property name="dist" value="../dist" />
+	<property name="gcs" value="../gcs/base/bin" />
+	<property name="gcs_src" value="../gcs/base/src" />
+	
 
 	<path id="project.classpath">
 		<pathelement location="${sapo-broker.location}/bin" />
 		<pathelement location="${sapo-broker.location}/clib/bcel.jar" />
 		<pathelement location="${sapo-broker.location}/clib/jibx-bind.jar" />
-		<pathelement location="${sapo-broker.location}/clib/sapo-gcs.jar" />
+		<pathelement location="${sapo-broker.location}/${gcs}" />
 		<pathelement location="${sapo-broker.location}/../common-libs/jibx-run.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/mina_http_filter.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/logback-classic-0.9.8.jar"/>
@@ -30,12 +34,14 @@
 
 	<target name="init">
 		<mkdir dir="bin" />
+		<mkdir dir="${gcs}" />
 	</target>
 
 	<target name="clean">
 		<delete dir="bin" />
-		<delete dir="dist" />
-		<delete file="sapo-broker.tar.gz" />
+		<delete dir="${gcs}" />
+		<delete file="../sapo-broker.tar.gz" />
+		<delete dir="${dist}" />		
 	</target>
 
 
@@ -53,6 +59,15 @@
 
 	<target name="compile"  depends="init" >
 		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac destdir="${gcs}" encoding="UTF-8">
+			<src path="${gcs_src}" />
+			<classpath refid="project.classpath" />
+		</javac>		
+		<copy todir="${gcs}">
+			<fileset dir="${gcs_src}" excludes="**/*.java"/>
+		</copy>
+		
+		
 		<javac destdir="bin" encoding="UTF-8">
 			<src path="src" />
 			<classpath refid="project.classpath" />
@@ -64,39 +79,48 @@
 
 	<target name="build" depends="compile,bind" />
 
-	<target name="one-jar" depends="build">
-		<mkdir dir="dist/classes" />
-		<mkdir dir="dist/lib" />
-		<unzip dest="dist/classes">
-			<fileset dir="lib" />
-			<fileset file="clib/sapo-gcs.jar" />
-		</unzip>
-		<copy todir="dist/classes">
-			<fileset dir="bin"/>
-		</copy>
-		<jar destfile="dist/lib/sapo-broker.jar">
-			<fileset dir="dist/classes"/>
+
+	<target name="package" depends="build">
+		
+
+		<mkdir dir="${dist}/lib" />
+
+
+		
+		<copy todir="${dist}/lib">
+			<fileset dir="${sapo-broker.location}/../common-libs/">
+				<include name="*.jar"/>
+			</fileset>
+  		</copy>
+		
+		<jar destfile="${dist}/lib/sapo-gcs.jar">
+			<fileset dir="${gcs}"/>
 		</jar>
-		<delete dir="dist/classes" />
-	</target>
-
-	<target name="package" depends="one-jar">
-
-		<copy todir="dist/doc">
+		
+		<jar destfile="${dist}/lib/sapo-broker.jar">
+			<fileset dir="bin"/>
+		</jar>
+		
+		<copy todir="${dist}/doc">
 			<fileset dir="doc"/>
   		</copy>
-		<copy todir="dist/conf">
+
+
+		<copy todir="${dist}/doc">
+			<fileset dir="doc"/>
+  		</copy>
+		<copy todir="${dist}/conf">
 			<fileset dir="conf"/>
   		</copy>
 		
-		<copy file="broker.bat" todir="dist" />
-		<copy file="broker.sh" todir="dist" />
-		<tar tarfile="sapo-broker.tar" >
-			<tarfileset dir="dist" prefix="sapo-broker"></tarfileset>
+		<copy file="broker.bat" todir="${dist}" />
+		<copy file="broker.sh" todir="${dist}" />
+		<tar tarfile="../sapo-broker.tar" >
+			<tarfileset dir="${dist}" prefix="sapo-broker"></tarfileset>
 		</tar>
-		<gzip src="sapo-broker.tar" destfile="sapo-broker.tar.gz" />
-		<delete file="sapo-broker.tar" />
-		<delete dir="dist" />
+		<gzip src="../sapo-broker.tar" destfile="../sapo-broker.tar.gz" />
+		<delete file="../sapo-broker.tar" />
+		<!-- <delete dir="${dist}" /> -->
 	</target>
 
 </project>
