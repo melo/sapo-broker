@@ -72,6 +72,8 @@ from datetime import datetime
 
 import xml.sax.saxutils
 
+import iso8601
+
 import logging
 log = logging.getLogger("Broker")
 
@@ -131,6 +133,9 @@ def build_msg(name, payload):
 
 def subscribe_msg(destination, kind, ack=False):
     check_kind(kind)
+    if ack is None:
+        #client managed acknowledgement
+        ack = True
     return """<DestinationName>%s</DestinationName>\n<DestinationType>%s</DestinationType>\n<AcknowledgeMode>%s</AcknowledgeMode>""" % (
     escape_xml(destination),
     escape_xml(kind),
@@ -153,27 +158,23 @@ def safe_cast(function, value):
     except:
         return None
 
+def date_cast(date):
+    if isinstance( date, datetime ):
+        return date
+    elif isinstance( date, basestring ):
+        return iso8601.parse_date(date)
+    elif type(date) in (type(0), type(0.0)):
+        return datetime.utcfromtimestamp(date)
 
 date_clean_rx = re.compile(r'\.\d+\D')
-def date_cast(date):
-    if isinstance( date, basestring ):
-        #it's a string (should be ISO8601, hope you know what you are doing)
-        return date
-    elif isinstance( date, datetime ):
-        #it's a regular datetime object as it should
-        ret = date.isoformat()
-        #check whether ther is time information
-        if date.tzinfo is None:
-            ret += 'Z'
+def date2iso(date):
+    ret = date.isoformat()
+    #check whether ther is time information
+    if date.tzinfo is None:
+        ret += 'Z'
 
-        #workaround for bug in broker
-        return date_clean_rx.sub('', ret)
-
-    elif type(date) in (type(0), type(0.0)):
-        #it's a number. Assume it's a unix timestamp
-        return date_cast(datetime.utcfromtimestamp(date))
-
-
+    #workaround for bug in broker
+    return date_clean_rx.sub('', ret)
 
 try:
     try:
@@ -297,7 +298,14 @@ except ImportError:
 
 def msgfromFields(fields):
     priority = safe_cast(int, fields['Priority']) 
-    return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
+    return Message(
+        payload=fields['TextPayload'],
+        destination=fields['DestinationName'],
+        id=fields['MessageId'],
+        priority=priority,
+        expiration=fields.get('Expiration'),
+        timestamp=fields.get('Timestamp')
+    )
 
 
 class Client:
@@ -325,6 +333,7 @@ class Client:
         self.port       = port
         self.endpoint   = "%s:%s" % (host, port)
         self.subscribed = set()
+        self.__auto_ack = set()
         self.__closed   = False
 
         #first create the socket
@@ -417,6 +426,7 @@ class Client:
         msg_len = struct.unpack("!L", self.__read_len(4))[0]
         log.debug("len = %d", msg_len)
         msg = self.__read_len(msg_len)
+        log.debug("Message read = [%s]", msg)
         return msg
 
     def close(self):
@@ -447,12 +457,14 @@ class Client:
         else:
             self.close()
 
-    def subscribe(self, destination, kind=DEFAULT_KIND, acknowledge=False):
+    def subscribe(self, destination, kind=DEFAULT_KIND, acknowledge=None):
         """
         Subscribes for notification for destination with kind either TOPIC or QUEUE.
 
-        acknowledge determines whether the client need to acknowledge the messages it receives.
-        By default acknowledgement is automatic so no client action is needed.
+        acknowledge determines whether the client needs to acknowledge the messages it receives.
+            By default acknowledgement is None meaning it's done automatically each time a message is consumed.
+            A True value requires the user to call acknowledge explicitelly when he sees fit.
+            A False value means there is no acknowledgement involved. The broker considers every sent message has delivered.
         """
         log.info("Client.subscribe (%s, %s)", destination, kind)
 
@@ -465,6 +477,10 @@ class Client:
             self.subscribed.add( (destination, kind) )
             log.debug('Currently subscribed to %s', self.subscribed)
 
+        if acknowledge is None:
+            log.debug('Using client auto-acknowledgement on consume')
+            self.__auto_ack.add(destination)
+
     def consume(self):
         """
         Wait for a notification and return it as a Message object.
@@ -472,7 +488,14 @@ class Client:
         """
         log.info("Client.consume")
         content = self.__read_raw()
-        return Message.fromXML(content)
+        msg = Message.fromXML(content)
+
+        if msg.destination in self.__auto_ack:
+            #XXX I can't tell whether this is from a TOPIC or QUEUE which is a pain
+            log.info("Auto acknowledging received message")
+            self.acknowledge(msg)
+        
+        return msg
 
     def produce(self, message, kind=DEFAULT_KIND):
         """
@@ -517,6 +540,7 @@ class Client:
             yield self.consume()
 
 class Message:
+    __all__ = ['__init__', 'toXML', 'fromXML']
     def __init__(self, payload, destination, id=None, correlationId=None, timestamp=None, expiration=None, priority=None, deliveryMode=None):
         """
         Creates a Broker message given the mandatory payload and destination.
@@ -548,11 +572,10 @@ class Message:
         self.destination   = destination
         self.deliveryMode  = deliveryMode
         self.id            = id
-        self.timestamp     = timestamp
-        self.expiration    = expiration
+        self.__timestamp   = timestamp
+        self.__expiration  = expiration
         self.priority      = priority
         self.correlationId = correlationId
-
 
     #generate a static method
     fromXML = staticmethod(fromXML)
@@ -569,8 +592,8 @@ class Message:
             ('TextPayload', 'payload', None),
             ('Priority', 'priority', lambda x : str(x)),
             ('CorrelationId', 'correlationId', None),
-            ('Timestamp', 'timestamp', date_cast),
-            ('Expiration', 'expiration', date_cast),
+            ('Timestamp', 'timestamp', date2iso),
+            ('Expiration', 'expiration', date2iso),
         ):
             content = getattr(self, attr, None)
 
@@ -603,4 +626,21 @@ class Message:
 
     def __str__(self):
         return unicode(self).encode('utf-8')
+
+    def __get_expiration(self):
+        self.__expiration = date_cast(self.__expiration)
+        return self.__expiration
+
+    def __get_timestamp(self):
+        self.__timestamp = date_cast(self.__timestamp)
+        return self.__timestamp
+
+    def __set_expiration(self, value):
+        self.__expiration = value
+
+    def __set_timestamp(self, value):
+        self.__timeout = value
+
+    timestamp  = property(fget=__get_timestamp, fset=__set_timestamp)
+    expiration = property(fget=__get_expiration, fset=__set_expiration)
 
