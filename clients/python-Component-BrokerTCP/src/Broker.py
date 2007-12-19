@@ -70,8 +70,6 @@ import re
 
 from datetime import datetime
 
-#since 2.3 an xml sax parser is shipped with python so sax is both faster than dom and always available in all reasonable versions
-import xml.sax
 import xml.sax.saxutils
 
 import logging
@@ -176,91 +174,128 @@ def date_cast(date):
         return date_cast(datetime.utcfromtimestamp(date))
 
 
-class SaxHandler(xml.sax.ContentHandler):
-    """
-    Handler for sax events while parsing a Broker notification.
-    Very lax since as it stands there could be extra tags between the tags we are expecting until reaching the actual broker message and it would still give meaningfull results.
-    """
-    def startDocument(self):
-        self.__fields  = {}
-        self.__txt     = u""
-        self.__count   = 0
-        self.__consume = False
 
-        #setup default handlers
-        self.startElementNS = self.top_start
-        self.endElementNS   = self.def_end
+try:
+    try:
+        import cElementTree as ElementTree
+        log.info("Using cElementTree as XML backend")
+    except ImportError:
+        #comment the next line if you want to consider using the pure python ElementTree parser.
+        #my benchmarks show that this is actually slower than the fallback xml.sax parser so I just don't see the point of using it
+        raise ImportError()
+        from elementtree import ElementTree
+        log.info("Using ElementTree as XML backend")
 
-    def fields(self):
-        return self.__fields
+    #so simple it almost hurts
+    #just as lax as the sax parser
+    def fromXML(raw):
+        tree = ElementTree.fromstring(raw)
+        broker = tree.find('.//{%s}BrokerMessage' % broker_ns)
 
-    #for some unkown reason, this can't be changed at run time by the parser. The original method is the one that is always called. (pretty dumb and sloppy)
-    def characters(self, data):
-        if self.__consume:
-            self.__txt += data
+        fields = {}
+        for node in broker:
+            if len(node) > 0:
+                pass
+            else:
+                (_, tag) = node.tag.split('}')[0:2]
+                fields[tag] = node.text
 
-    def startElementNS(self, name, qname, attrs):
-        pass
+        return msgfromFields(fields)
 
-    def endElementNS(self, name, qname):
-        pass
+except ImportError:
+    #since 2.3 an xml sax parser is shipped with python so sax is both faster than dom and always available in all reasonable versions
+    import xml.sax
 
-    def endDocument(self):
-        pass
+    log.info("Using fallback xml.sax as XML backend")
 
-    def top_start(self, name, qname, attrs):
-        if (soap_ns, u'Envelope') == name:
-            self.startElementNS = self.envelope_start
+    class SaxHandler(xml.sax.ContentHandler):
+        """
+        Handler for sax events while parsing a Broker notification.
+        Very lax since as it stands there could be extra tags between the tags we are expecting until reaching the actual broker message and it would still give meaningfull results.
+        """
+        def startDocument(self):
+            self.__fields  = {}
+            self.__txt     = u""
+            self.__count   = 0
+            self.__consume = False
 
-    def envelope_start(self, name, qname, attrs):
-        if (soap_ns, u'Body') == name:
-            self.startElementNS = self.body_start
+            #setup default handlers
+            self.startElementNS = self.top_start
+            self.endElementNS   = self.def_end
 
-    def body_start(self, name, qname, attrs):
-        if (broker_ns, u'Notification') == name:
-            self.startElementNS = self.notification_start
+        def fields(self):
+            return self.__fields
 
-    def notification_start(self, name, qname, attrs):
-        if (broker_ns, u'BrokerMessage') == name:
-            self.startElementNS = self.broker_start
-            self.endElementNS   = self.broker_end
-            self.__consume      = True
+        #For some unkown reason, this can't be changed at run time by the parser.
+        #The original method is the one that is always called. (pretty dumb and sloppy)
+        def characters(self, data):
+            if self.__consume:
+                self.__txt += data
 
-    def broker_start(self, name, qname, attrs):
-        self.__txt = u""
-        if broker_ns == name[0] and name[1] is not None:
-            self.__count += 1
-        else:
+        def startElementNS(self, name, qname, attrs):
             pass
 
-    def broker_end(self, name, qname):
-        self.__count -= 1
-        if 0 == self.__count:
+        def endElementNS(self, name, qname):
+            pass
+
+        def endDocument(self):
+            pass
+
+        def top_start(self, name, qname, attrs):
+            if (soap_ns, u'Envelope') == name:
+                self.startElementNS = self.envelope_start
+
+        def envelope_start(self, name, qname, attrs):
+            if (soap_ns, u'Body') == name:
+                self.startElementNS = self.body_start
+
+        def body_start(self, name, qname, attrs):
+            if (broker_ns, u'Notification') == name:
+                self.startElementNS = self.notification_start
+
+        def notification_start(self, name, qname, attrs):
+            if (broker_ns, u'BrokerMessage') == name:
+                self.startElementNS = self.broker_start
+                self.endElementNS   = self.broker_end
+                self.__consume      = True
+
+        def broker_start(self, name, qname, attrs):
+            self.__txt = u""
             if broker_ns == name[0] and name[1] is not None:
-                self.__fields[name[1]] = self.__txt
+                self.__count += 1
             else:
                 pass
-        else:
-            self.startElementNS = self.def_start
-            self.endElementNS   = self.def_end
-            self.__consume      = False
 
-    def def_end(self, name, qname):
-        pass
+        def broker_end(self, name, qname):
+            self.__count -= 1
+            if 0 == self.__count:
+                if broker_ns == name[0] and name[1] is not None:
+                    self.__fields[name[1]] = self.__txt
+                else:
+                    pass
+            else:
+                self.startElementNS = self.def_start
+                self.endElementNS   = self.def_end
+                self.__consume      = False
 
-    def def_start(self, name, qname, attrs):
-        pass
+        def def_end(self, name, qname):
+            pass
 
-def fromXML_sax(raw):
-    parser = xml.sax.make_parser()
-    #we want to parse using namespaces
-    parser.setFeature(xml.sax.handler.feature_namespaces, 1)
-    sax_handler = SaxHandler()
-    parser.setContentHandler(sax_handler)
-    parser.feed(raw)
-    parser.close()
+        def def_start(self, name, qname, attrs):
+            pass
 
-    fields = sax_handler.fields()
+    def fromXML(raw):
+        parser = xml.sax.make_parser()
+        #we want to parse using namespaces
+        parser.setFeature(xml.sax.handler.feature_namespaces, 1)
+        sax_handler = SaxHandler()
+        parser.setContentHandler(sax_handler)
+        parser.feed(raw)
+        parser.close()
+        return msgfromFields(sax_handler.fields())
+    
+
+def msgfromFields(fields):
     priority = safe_cast(int, fields['Priority']) 
     return Message( payload=fields['TextPayload'], destination=fields['DestinationName'], id=fields['MessageId'], priority=priority )
 
@@ -300,7 +335,7 @@ class Client:
 
     def __lock_w(self):
         """
-        Locks the object's read mutex
+        Locks the object's write mutex
         """
         log.debug("Thread write locking")
         self.__mutex_w.acquire()
@@ -308,7 +343,7 @@ class Client:
 
     def __unlock_w(self):
         """
-        Unlocks the object's read mutex
+        Unlocks the object's write mutex
         """
         log.debug("Thread write unlocking")
         self.__mutex_w.release()
@@ -491,7 +526,7 @@ class Message:
 
         timestamp and expiration are supposed to be datetime objects and default to None and are thus optional.
         If these fields don't have timezone information, they are assumed to be in UTC.
-        You can also pass seconds since the epoch or a string in ISO8601 (use at your own risk)
+        You can also pass seconds since the epoch or a string in ISO8601 (use at your own risk).
 
         id is supposed to be a unique id of the message and defaults to None meaning that the Broker server will generate one automatically.
 
@@ -520,7 +555,7 @@ class Message:
 
 
     #generate a static method
-    fromXML = staticmethod(fromXML_sax)
+    fromXML = staticmethod(fromXML)
 
     def toXML(self):
         """
