@@ -190,6 +190,7 @@ try:
     #so simple it almost hurts
     #just as lax as the sax parser
     def fromXML(raw):
+        """Constructs a broker message from its XML representation. ((c)ElementTree backend)"""
         tree = ElementTree.fromstring(raw)
         broker = tree.find('.//{%s}BrokerMessage' % broker_ns)
 
@@ -286,6 +287,7 @@ except ImportError:
             pass
 
     def fromXML(raw):
+        """Constructs a broker message from its XML representation. (xml.sax backend)"""
         parser = xml.sax.make_parser()
         #we want to parse using namespaces
         parser.setFeature(xml.sax.handler.feature_namespaces, 1)
@@ -315,7 +317,7 @@ class Client:
 
     class DisconnectedError(EOFError):
         """
-        Class to indicate that the Server disconnected while the client was wainting for a response
+        Class to indicate that the Server disconnected while the client was waiting for a response.
         """
 
         def __init__(self, message):
@@ -323,7 +325,7 @@ class Client:
 
     def __init__ (self, host, port):
         """
-        Constructs a client object to connect to a broker at host:port using the binary TCP protocol
+        Constructs a client object to connect to a broker at host:port using the binary TCP protocol.
         """
 
         log.info("Server for %s:%s", host, port)
@@ -344,7 +346,7 @@ class Client:
 
     def __lock_w(self):
         """
-        Locks the object's write mutex
+        Locks the object's write mutex.
         """
         log.debug("Thread write locking")
         self.__mutex_w.acquire()
@@ -352,7 +354,7 @@ class Client:
 
     def __unlock_w(self):
         """
-        Unlocks the object's write mutex
+        Unlocks the object's write mutex.
         """
         log.debug("Thread write unlocking")
         self.__mutex_w.release()
@@ -360,7 +362,7 @@ class Client:
 
     def __lock_r(self):
         """
-        Locks the object's read mutex
+        Locks the object's read mutex.
         """
         log.debug("Thread read locking")
         self.__mutex_r.acquire()
@@ -368,7 +370,7 @@ class Client:
 
     def __unlock_r(self):
         """
-        Unlocks the object's read mutex
+        Unlocks the object's read mutex.
         """
         log.debug("Thread read unlocking")
         self.__mutex_r.release()
@@ -545,8 +547,10 @@ class Message:
         """
         Creates a Broker message given the mandatory payload and destination.
         All other fields are optional.
+
+        This object has as fields all the parameters used in this construtor.
         
-        deliveryMode can either be PERSISTENT or TRANSIENT
+        deliveryMode can either be PERSISTENT or TRANSIENT.
 
         timestamp and expiration are supposed to be datetime objects and default to None and are thus optional.
         If these fields don't have timezone information, they are assumed to be in UTC.
@@ -554,7 +558,7 @@ class Message:
 
         id is supposed to be a unique id of the message and defaults to None meaning that the Broker server will generate one automatically.
 
-        correlationId is an identifier supposed to provide logical aggreagtion of messages of differente ids.
+        correlationId is an identifier supposed to provide logical aggregation of messages of different ids.
 
         This object should be constructed to send an event notification to the Server and is returned by the Client object when a new event is received.
 
