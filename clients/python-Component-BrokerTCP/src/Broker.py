@@ -648,3 +648,45 @@ class Message:
     timestamp  = property(fget=__get_timestamp, fset=__set_timestamp)
     expiration = property(fget=__get_expiration, fset=__set_expiration)
 
+#log handler code
+
+import cPickle as pickle
+fqdn = socket.getfqdn()
+
+class LogHandler(logging.Handler):
+    def __init__(self, host, port, kind, topic):
+        logging.Handler.__init__(self)
+        self.__broker = Client(host, port)
+        self.__kind   = kind
+        self.__topic  = topic
+
+    def handleError(self, record):
+        #for now just propagate through the inheritance chain
+        logging.Handler.handleError(self, record)
+
+    def get_obj(self, record):
+        obj = {}
+        obj['fqdn'] = fqdn
+        obj['message'] = record.getMessage()
+        obj['logline'] = self.format(record)
+        obj.update( dict( map( lambda x: (x, getattr(record, x, None)), self.fields()) ) )
+        return obj
+
+    def serialize(self, record):
+        return pickle.dumps( self.get_obj(record))
+
+    def emit(self, record):
+        msg = Message(payload=self.serialize(record), destination=self.__topic)
+        self.__broker.produce(msg, self.__kind)
+
+    def fields(self):
+        return ['asctime', 'created' ,'exc_text', 'filename', 'levelname', 'levelno', 'lineno', 'message', 'module', 'name', 'pathname', 'process', 'relativeCreated', 'thread', 'threadName']
+
+    def close(self):
+        self.__broker.close()
+        logging.Handler.close(self)
+
+class LogListener:
+    #TODO
+    #for now just have a look at the examples
+    pass
