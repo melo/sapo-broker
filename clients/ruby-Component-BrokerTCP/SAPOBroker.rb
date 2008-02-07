@@ -1,8 +1,6 @@
 # Ruby module to interact with the SAPO Broker
 # Author: André Cruz <andre.cruz@co.sapo.pt>
 
-module SAPOBroker
-
 # WARNING: This API is NOT threadsafe!
 # PRODUCER EXAMPLE:
 # require 'SAPOBroker'
@@ -26,6 +24,19 @@ module SAPOBroker
 #   msg = client.receive
 # end
 
+# ASYNC CONSUMER EXAMPLE:
+# require 'SAPOBroker'
+
+# client = SAPOBroker::Client.new(["10.135.5.110:2222"])
+# client.subscribe('/blogoscopio/test', 'QUEUE')
+
+# thr = client.receive do |msg|
+#     puts msg.payload
+#   end
+# # Go on with your life
+# thr.join
+
+module SAPOBroker
 
   require 'socket'
   require 'rexml/document'
@@ -116,6 +127,36 @@ END_ACK
     end
 
     def receive
+      if block_given?
+        # we want assynchronous behaviour
+        Thread.new do
+          loop do
+            yield _receive
+          end
+        end
+      else
+        _receive
+      end
+    end
+
+    private
+    def initialize(server_list, logger = nil)
+      
+      if logger
+        @logger = logger
+      else
+        require 'logger'
+        @logger = Logger.new(STDOUT)
+      end
+
+      @sub_map = {}
+
+      @server_list = server_list
+      reconnect()
+
+    end
+
+    def _receive
       catch(:retry) do
         msg_len = @sock.recv(4).unpack('N')[0]
         throw(:retry) if sick_socket?(msg_len)
@@ -129,21 +170,6 @@ END_ACK
           @sub_map[message.destination][:ack_mode] == 'AUTO'
         message
       end
-    end
-
-    private
-    def initialize(server_list, logger = nil)
-      
-      unless logger
-        require 'logger'
-        @logger = Logger.new(STDOUT)
-      end
-
-      @sub_map = {}
-
-      @server_list = server_list
-      reconnect()
-
     end
 
     def reconnect
