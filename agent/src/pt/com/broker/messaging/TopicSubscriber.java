@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +20,8 @@ public class TopicSubscriber extends BrokerListener
 
 	private final String _dname;
 
+	private static final int WRITE_BUFFER_SIZE = 4096 * 1024;
+
 	public TopicSubscriber(String destinationName)
 	{
 		_dname = destinationName;
@@ -35,7 +36,7 @@ public class TopicSubscriber extends BrokerListener
 		{
 			for (IoSession ios : _sessions)
 			{
-				if (ios.getScheduledWriteBytes() < (2048 * 1024))
+				if (ios.getScheduledWriteBytes() < WRITE_BUFFER_SIZE)
 				{
 					try
 					{
@@ -43,41 +44,6 @@ public class TopicSubscriber extends BrokerListener
 						{
 							final SoapEnvelope response = buildNotification(amsg);
 							ios.write(response);
-
-							// final SoapEnvelope response =
-							// buildNotification(amsg);
-							// long beginWrite = System.currentTimeMillis();
-							// WriteFuture wf = ios.write(response);
-							// wf.awaitUninterruptibly(2);
-							// long endWrite = System.currentTimeMillis();
-							// long duration = endWrite - beginWrite;
-							// if (duration > 10)
-							// {
-							// System.out.println("Time for write:" + duration +
-							// " ms");
-							// }
-
-							// if (wf.isWritten())
-							// {
-							// if (log.isDebugEnabled())
-							// {
-							// log.debug("Delivered message: {}",
-							// amsg.getMessageId());
-							// }
-							// //return true;
-							// }
-							// else
-							// {
-							// if (log.isDebugEnabled())
-							// {
-							// log.debug("Slow client: \"{}\". message will be
-							// discarded. Client Address: {}",
-							// amsg.getSourceApp(),
-							// IoSessionHelper.getRemoteAddress(ios));
-							// }
-							// //return false;
-							// }
-
 						}
 						else
 						{
@@ -99,8 +65,10 @@ public class TopicSubscriber extends BrokerListener
 				}
 				else
 				{
-					// Statistics.messageDropped(_appName);
-					log.debug("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
+					if (log.isDebugEnabled())
+					{
+						log.debug("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
+					}
 				}
 			}
 			return true;
