@@ -17,6 +17,8 @@ class RemoteTopicConsumers
 	private static final RemoteTopicConsumers instance = new RemoteTopicConsumers();
 
 	private Map<String, CopyOnWriteArrayList<IoSession>> remoteTopicConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<IoSession>>();
+	
+	private static final int WRITE_BUFFER_SIZE = 1024 * 1024;
 
 	private RemoteTopicConsumers()
 	{
@@ -145,13 +147,11 @@ class RemoteTopicConsumers
 				{
 					if (ioSession != null)
 					{
-						if (ioSession.getScheduledWriteBytes() < 1048576)
+						if (ioSession.getScheduledWriteBytes() < WRITE_BUFFER_SIZE)
 						{
 							ioSession.write(message);
 						}
-
 					}
-
 				}
 			}
 			else
