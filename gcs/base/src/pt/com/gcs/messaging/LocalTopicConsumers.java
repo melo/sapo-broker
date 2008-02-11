@@ -6,24 +6,23 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
-import org.caudexorigo.concurrent.Sleep;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.Gcs;
 import pt.com.gcs.conf.AgentInfo;
 
-public class LocalTopicConsumers
+class LocalTopicConsumers
 {
 	private static Logger log = LoggerFactory.getLogger(LocalTopicConsumers.class);
 
 	private static final LocalTopicConsumers instance = new LocalTopicConsumers();
 
-	public static void add(String topicName, MessageListener listener)
+	public static void add(String topicName, MessageListener listener, boolean broadcast)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
 		if (listeners == null)
@@ -32,12 +31,16 @@ public class LocalTopicConsumers
 		}
 		listeners.add(listener);
 		instance.localTopicConsumers.put(topicName, listeners);
-		instance.broadCastNewTopicConsumer(topicName);
+		if (broadcast)
+		{
+			instance.broadCastNewTopicConsumer(topicName);
+			instance.broadCastableTopics.add(topicName);
+		}	
 	}
 
-	public static Set<String> getTopicNameSet()
+	public static Set<String> getBroadcastableTopics()
 	{
-		return Collections.unmodifiableSet(instance.localTopicConsumers.keySet());
+		return Collections.unmodifiableSet(instance.broadCastableTopics);
 	}
 
 	public static void notify(Message message)
@@ -87,20 +90,25 @@ public class LocalTopicConsumers
 
 	public static void remove(MessageListener listener)
 	{
-		Set<String> keys = instance.localTopicConsumers.keySet();
-		for (String topicName : keys)
+		if (listener!=null)
 		{
-			CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
-			if (listeners != null)
+			Set<String> keys = instance.localTopicConsumers.keySet();
+			for (String topicName : keys)
 			{
-				listeners.remove(listener);
+				CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
+				if (listeners != null)
+				{
+					listeners.remove(listener);
+				}
+				instance.localTopicConsumers.remove(listeners);
+				instance.broadCastRemovedTopicConsumer(topicName);
 			}
-			instance.localTopicConsumers.remove(listeners);
-			instance.broadCastRemovedTopicConsumer(topicName);
 		}
 	}
 
 	private Map<String, CopyOnWriteArrayList<MessageListener>> localTopicConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener>>();
+	
+	private Set<String> broadCastableTopics = new CopyOnWriteArraySet<String>();
 
 	private LocalTopicConsumers()
 	{

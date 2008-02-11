@@ -4,14 +4,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RemoteQueueConsumers
+class RemoteQueueConsumers
 {
 	private static final RemoteQueueConsumers instance = new RemoteQueueConsumers();
 
@@ -29,6 +28,11 @@ public class RemoteQueueConsumers
 			sessions.add(iosession);
 		}
 		instance.remoteQueueConsumers.put(queueName, sessions);
+	}
+
+	public synchronized static void delete(String queueName)
+	{
+		// TODO: delete consumer
 	}
 
 	public static boolean notify(Message message)
@@ -49,7 +53,7 @@ public class RemoteQueueConsumers
 			instance.remoteQueueConsumers.put(queueName, sessions);
 		}
 	}
-
+	
 	public synchronized static void remove(String queueName, IoSession iosession)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(queueName);
@@ -93,7 +97,8 @@ public class RemoteQueueConsumers
 				if (ioSession != null)
 				{
 					WriteFuture wf = ioSession.write(message);
-					wf.awaitUninterruptibly(10, TimeUnit.MILLISECONDS);
+					//wf.awaitUninterruptibly(200, TimeUnit.MILLISECONDS);
+					wf.awaitUninterruptibly();
 					return wf.isWritten();
 				}
 			}

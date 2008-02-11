@@ -12,16 +12,26 @@ import org.apache.mina.common.WriteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.Gcs;
 import pt.com.gcs.conf.AgentInfo;
 
-public class LocalQueueConsumers
+class LocalQueueConsumers
 {
 	private static Logger log = LoggerFactory.getLogger(LocalQueueConsumers.class);
 
 	private static final LocalQueueConsumers instance = new LocalQueueConsumers();
 
 	public static final AtomicLong ackedMessages = new AtomicLong(0L);
+
+	public static void acknowledgeMessage(Message msg, IoSession ioSession)
+	{
+		log.debug("Acknowledge message with Id: '{}'.", msg.getMessageId());
+
+		Message m = new Message(msg.getMessageId(), msg.getDestination(), "ACK");
+		m.setType((MessageType.ACK));
+		// WriteFuture wf = ioSession.write(m);
+		// wf.awaitUninterruptibly();
+		ioSession.write(m);
+	}
 
 	public static void add(String queueName, MessageListener listener)
 	{
@@ -35,29 +45,74 @@ public class LocalQueueConsumers
 		instance.broadCastNewQueueConsumer(queueName);
 	}
 
+
+	public static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
+	{
+		if (action.equals("CREATE"))
+		{
+			log.info("Tell {} about new queue consumer for: {}.", ioSession.getRemoteAddress().toString(), destinationName);
+		}
+		else if (action.equals("DELETE"))
+		{
+			log.info("Tell {} about deleted queue consumer of: {}.", ioSession.getRemoteAddress().toString(), destinationName);
+		}
+
+		Message m = new Message();
+		m.setType(MessageType.SYSTEM_QUEUE);
+		String ptemplate = "<sysmessage><action>%s</action><source-name>%s</source-name><source-ip>%s</source-ip><destination>%s</destination></sysmessage>";
+		String payload = String.format(ptemplate, action, AgentInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
+		m.setDestination(destinationName);
+		m.setContent(payload);
+		WriteFuture wf = ioSession.write(m);
+		wf.awaitUninterruptibly();
+	}
+	
+	public synchronized static void delete(String queueName)
+	{
+		// TODO: delete consumer
+	}
+
+	public static Set<String> getBroadcastableQueues()
+	{
+		return Collections.unmodifiableSet(instance.localQueueConsumers.keySet());
+	}
+
+	public static boolean notify(Message message)
+	{
+		return instance.doNotify(message);
+	}
+
 	public static void remove(MessageListener listener)
 	{
-		Set<String> keys = instance.localQueueConsumers.keySet();
-		for (String queueName : keys)
+		if (listener != null)
 		{
-			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
-			if (listeners != null)
+			Set<String> keys = instance.localQueueConsumers.keySet();
+			for (String queueName : keys)
 			{
-				listeners.remove(listener);
+				CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
+				if (listeners != null)
+				{
+					listeners.remove(listener);
+				}
+				instance.localQueueConsumers.remove(listeners);
+				instance.broadCastRemovedQueueConsumer(queueName);
 			}
-			instance.localQueueConsumers.remove(listeners);
-			instance.broadCastRemovedQueueConsumer(queueName);
 		}
 	}
 
-	public static void remove(String queueName, MessageListener listener)
+	public static int size()
 	{
-		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
+		return instance.localQueueConsumers.size();
+	}
+
+	public static int size(String destinationName)
+	{
+		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(destinationName);
 		if (listeners != null)
 		{
-			listeners.remove(listener);
+			return listeners.size();
 		}
-		instance.localQueueConsumers.put(queueName, listeners);
+		return 0;
 	}
 
 	private Map<String, CopyOnWriteArrayList<MessageListener>> localQueueConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener>>();
@@ -68,6 +123,26 @@ public class LocalQueueConsumers
 
 	private LocalQueueConsumers()
 	{
+	}
+
+	private void broadCastActionQueueConsumer(String destinationName, String action)
+	{
+		Set<IoSession> sessions = Gcs.getManagedConnectorSessions();
+
+		for (IoSession ioSession : sessions)
+		{
+			broadCastQueueInfo(destinationName, action, ioSession);
+		}
+	}
+
+	private void broadCastNewQueueConsumer(String topicName)
+	{
+		broadCastActionQueueConsumer(topicName, "CREATE");
+	}
+
+	private void broadCastRemovedQueueConsumer(String topicName)
+	{
+		broadCastActionQueueConsumer(topicName, "DELETE");
 	}
 
 	public boolean doNotify(Message message)
@@ -81,8 +156,7 @@ public class LocalQueueConsumers
 				MessageListener listener = pick(listeners);
 				if (listener != null)
 				{
-					listener.onMessage(message);
-					return true;
+					return listener.onMessage(message);
 				}
 			}
 		}
@@ -93,81 +167,6 @@ public class LocalQueueConsumers
 		}
 
 		return false;
-	}
-
-	private void broadCastNewQueueConsumer(String topicName)
-	{
-		broadCastActionQueueConsumer(topicName, "CREATE");
-	}
-
-	private void broadCastRemovedQueueConsumer(String topicName)
-	{
-		broadCastActionQueueConsumer(topicName, "DELETE");
-	}
-
-	public static Set<String> getQueueNameSet()
-	{
-		return Collections.unmodifiableSet(instance.localQueueConsumers.keySet());
-	}
-
-	public static boolean notify(Message message)
-	{
-		return instance.doNotify(message);
-	}
-
-	public static int size()
-	{
-		return instance.localQueueConsumers.size();
-	}
-
-	public static int size(String destinationName)
-	{
-		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(destinationName);
-		if (listeners != null) { return listeners.size(); }
-		return 0;
-	}
-
-	private void broadCastActionQueueConsumer(String destinationName, String action)
-	{
-		Set<IoSession> sessions = Gcs.getManagedConnectorSessions();
-
-		for (IoSession ioSession : sessions)
-		{
-			broadCastQueueInfo(destinationName, action, ioSession);
-		}
-	}
-
-	public static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
-	{
-		if (action.equals("CREATE"))
-		{
-			log.info("Tell {} about new queue consumer for: {}.", ioSession.getRemoteAddress().toString(), destinationName);
-		}
-		else if (action.equals("DELETE"))
-		{
-			log.info("Tell {} about deleted queue consumer of: {}.", ioSession.getRemoteAddress().toString(),
-					destinationName);
-		}
-
-		Message m = new Message();
-		m.setType(MessageType.SYSTEM_QUEUE);
-		String ptemplate = "<sysmessage><action>%s</action><source-name>%s</source-name><source-ip>%s</source-ip><destination>%s</destination></sysmessage>";
-		String payload = String.format(ptemplate, action, AgentInfo.getAgentName(), ioSession.getLocalAddress().toString(),	destinationName);
-		m.setDestination(destinationName);
-		m.setContent(payload);
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly();
-	}
-
-	public static void acknowledgeMessage(Message msg, IoSession ioSession)
-	{
-		log.debug("Acknowledge message with Id: '{}'.", msg.getMessageId());
-
-		Message m = new Message(msg.getMessageId(), msg.getDestination(), "ACK");
-		m.setType((MessageType.ACK));
-//		WriteFuture wf = ioSession.write(m);
-//		wf.awaitUninterruptibly();
-		ioSession.write(m);
 	}
 
 	private MessageListener pick(CopyOnWriteArrayList<MessageListener> listeners)

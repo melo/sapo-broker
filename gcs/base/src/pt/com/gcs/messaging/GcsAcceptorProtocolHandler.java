@@ -1,31 +1,20 @@
-package pt.com.gcs.net;
+package pt.com.gcs.messaging;
 
 import java.net.SocketAddress;
 
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
-import org.caudexorigo.lang.ErrorAnalyser;
+import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.Gcs;
-import pt.com.gcs.messaging.Message;
-import pt.com.gcs.messaging.MessageType;
-import pt.com.gcs.messaging.QueueProcessor;
-import pt.com.gcs.messaging.QueueProcessorList;
-import pt.com.gcs.messaging.ReceivedMessages;
-import pt.com.gcs.messaging.RemoteQueueConsumers;
-import pt.com.gcs.messaging.RemoteTopicConsumers;
-import pt.com.gcs.tasks.GcsExecutor;
-import pt.com.gcs.tasks.QueueStarter;
+import pt.com.gcs.net.Peer;
 
-public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
+class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 {
 	private static Logger log = LoggerFactory.getLogger(GcsAcceptorProtocolHandler.class);
-
-	private static ReceivedMessages receivedMessages = new ReceivedMessages();
 
 	@Override
 	public void exceptionCaught(IoSession iosession, Throwable cause) throws Exception
@@ -48,12 +37,11 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			log.debug("GcsAcceptorProtocolHandler.messageReceived() from: {}", getRemoteAddress(iosession));
 			log.debug("messageReceived.Type: " + msg.getType());
 		}
-				
 
 		if (msg.getType() == MessageType.ACK)
 		{
 
-			QueueProcessor.ack(msg.getMessageId());
+			Gcs.ackMessage(msg.getDestination(), msg.getMessageId());
 
 			return;
 		}
@@ -79,8 +67,8 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			String payload = msg.getContent();
 			log.info(payload);
 			final String action = extract(payload, "<action>", "</action>");
-			final String src_name = extract(payload, "<source-name>", "</source-name>");
-			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
+//			final String src_name = extract(payload, "<source-name>", "</source-name>");
+//			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
 			final String destinationName = extract(payload, "<destination>", "</destination>");
 
 			if (msg.getType() == MessageType.SYSTEM_TOPIC)
@@ -98,12 +86,14 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			{
 				if (action.equals("CREATE"))
 				{
-					RemoteQueueConsumers.add(msg.getDestination(), iosession);
-					if (QueueProcessorList.size() == 1)
+
+					if (StringUtils.contains(msg.getDestination(), "@"))
 					{
-						QueueStarter qs = new QueueStarter(QueueProcessorList.get(destinationName));
-						GcsExecutor.execute(qs);
+						DispatcherList.create(msg.getDestination());
 					}
+					
+					RemoteQueueConsumers.add(msg.getDestination(), iosession);
+					QueueProcessorList.get(destinationName);
 				}
 				else if (action.equals("DELETE"))
 				{
@@ -187,7 +177,7 @@ public class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 		}
 		catch (Throwable e)
 		{
-			remoteServer = "Can't determine server address";
+			remoteServer = "Can't determine peer address";
 		}
 		return remoteServer;
 	}

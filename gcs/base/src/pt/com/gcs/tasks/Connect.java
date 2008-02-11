@@ -1,6 +1,6 @@
 package pt.com.gcs.tasks;
 
-import pt.com.gcs.Gcs;
+import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.net.Peer;
 
 public class Connect implements Runnable

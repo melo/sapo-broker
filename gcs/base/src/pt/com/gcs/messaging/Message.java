@@ -6,7 +6,6 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 import org.caudexorigo.cryto.MD5;
 import org.caudexorigo.text.StringUtils;
@@ -18,10 +17,8 @@ public class Message implements Externalizable
 	private static final long serialVersionUID = -3656321513130930115L;
 
 	public static final int DEFAULT_PRIORITY = 4;
-	
-	private static final long DEFAULT_EXPIRY = 1000L * 3600L * 24L * 3L;
 
-	// private AckMode _ackm = AckMode.AUTO;
+	private static final long DEFAULT_EXPIRY = 1000L * 3600L * 24L * 3L; // 3 days
 
 	private String _content = "";
 
@@ -37,15 +34,13 @@ public class Message implements Externalizable
 
 	private long _timestamp = System.currentTimeMillis();
 
-	private long _expiration = System.currentTimeMillis() + DEFAULT_EXPIRY; // for ever
+	private long _expiration = System.currentTimeMillis() + DEFAULT_EXPIRY;
 
 	private MessageType _type = MessageType.UNDEF;
 
 	private static final String SEPARATOR = "<#>";
 
 	private static final String BASE_MESSAGE_ID;
-
-	private static final Pattern PSEPARATOR = Pattern.compile(SEPARATOR);
 
 	static
 	{
@@ -55,11 +50,6 @@ public class Message implements Externalizable
 	public Message()
 	{
 		_id = BASE_MESSAGE_ID + "#" + SEQ.incrementAndGet();
-	}
-
-	private Message(boolean dummy)
-	{
-
 	}
 
 	public Message(String destination, String content)
@@ -184,42 +174,28 @@ public class Message implements Externalizable
 
 	public void readExternal(ObjectInput oin) throws IOException, ClassNotFoundException
 	{
-		 _content = oin.readUTF();
-		 _correlationId = oin.readUTF();
-		 _destination = oin.readUTF();
-		 _id = oin.readUTF();
-		 _priority = oin.readInt();
-		 _sourceApp = oin.readUTF();
-		 _timestamp = oin.readLong();
-		 _expiration = oin.readLong();
-		 _type = MessageType.lookup(oin.readInt());
-
-//		String[] smsg = PSEPARATOR.split(oin.readUTF());
-//
-//		_content = smsg[0];
-//		_correlationId = smsg[1];
-//		_destination = smsg[2];
-//		_id = smsg[3];
-//		_priority = Integer.parseInt(smsg[4]);
-//		_sourceApp = smsg[5];
-//		_timestamp = Long.parseLong(smsg[6]);
-//		_ttl = Long.parseLong(smsg[7]);
-//		_type = MessageType.lookup(Integer.parseInt(smsg[8]));
+		_content = oin.readUTF();
+		_correlationId = oin.readUTF();
+		_destination = oin.readUTF();
+		_id = oin.readUTF();
+		_priority = oin.readInt();
+		_sourceApp = oin.readUTF();
+		_timestamp = oin.readLong();
+		_expiration = oin.readLong();
+		_type = MessageType.lookup(oin.readInt());
 	}
 
 	public void writeExternal(ObjectOutput oout) throws IOException
 	{
-		 oout.writeUTF(getContent());
-		 oout.writeUTF(getCorrelationId());
-		 oout.writeUTF(getDestination());
-		 oout.writeUTF(getMessageId());
-		 oout.writeInt(getPriority());
-		 oout.writeUTF(getSourceApp());
-		 oout.writeLong(getTimestamp());
-		 oout.writeLong(getExpiration());
-		 oout.writeInt(getType().getValue());
-
-		//oout.writeUTF(this.toString());
+		oout.writeUTF(getContent());
+		oout.writeUTF(getCorrelationId());
+		oout.writeUTF(getDestination());
+		oout.writeUTF(getMessageId());
+		oout.writeInt(getPriority());
+		oout.writeUTF(getSourceApp());
+		oout.writeLong(getTimestamp());
+		oout.writeLong(getExpiration());
+		oout.writeInt(getType().getValue());
 	}
 
 	@Override
@@ -245,23 +221,5 @@ public class Message implements Externalizable
 		buf.append(getType().getValue());
 
 		return buf.toString();
-	}
-
-	public static Message fromString(String instr)
-	{
-		String[] smsg = PSEPARATOR.split(instr);
-
-		Message msg = new Message(false);
-		msg.setContent(smsg[0]);
-		msg.setCorrelationId(smsg[1]);
-		msg.setDestination(smsg[2]);
-		msg.setMessageId(smsg[3]);
-		msg.setPriority(Integer.parseInt(smsg[4]));
-		msg.setSourceApp(smsg[5]);
-		msg.setTimestamp(Long.parseLong(smsg[6]));
-		msg.setExpiration(Long.parseLong(smsg[7]));
-		msg.setType(MessageType.lookup(Integer.parseInt(smsg[8])));
-
-		return msg;
 	}
 }

@@ -2,7 +2,7 @@ package pt.com.gcs.messaging;
 
 import org.caudexorigo.text.StringUtils;
 
-public class TopicMatcher
+class TopicMatcher
 {
 	public static boolean match(String subscriptionName, String topicName)
 	{

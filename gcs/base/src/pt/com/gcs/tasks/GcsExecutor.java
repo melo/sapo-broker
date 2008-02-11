@@ -18,7 +18,7 @@ public class GcsExecutor
 	{
 		exec_srv = CustomExecutors.newThreadPool(16);
 
-		shed_exec_srv = new ScheduledThreadPoolExecutor(3);
+		shed_exec_srv = new ScheduledThreadPoolExecutor(10);
 	}
 
 	public static void execute(Runnable task)

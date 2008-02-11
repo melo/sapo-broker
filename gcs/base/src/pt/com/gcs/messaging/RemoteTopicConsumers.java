@@ -10,7 +10,7 @@ import org.apache.mina.common.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RemoteTopicConsumers
+class RemoteTopicConsumers
 {
 	private static Logger log = LoggerFactory.getLogger(RemoteTopicConsumers.class);
 
@@ -68,7 +68,7 @@ public class RemoteTopicConsumers
 			message.setDestination(destination);
 			instance.doNotify(message);
 		}
-		
+
 	}
 
 	public synchronized static void remove(IoSession iosession)
@@ -143,7 +143,11 @@ public class RemoteTopicConsumers
 				{
 					if (ioSession != null)
 					{
-						ioSession.write(message);
+						if (ioSession.getScheduledWriteBytes()<1048576)
+						{
+							ioSession.write(message);
+						}
+						
 					}
 
 				}

@@ -6,8 +6,6 @@ import pt.com.gcs.tasks.GcsExecutor;
 
 public class QueueJanitor
 {
-	private static final QueueJanitor instance = new QueueJanitor();
-
 	private QueueJanitor()
 	{
 		final Runnable cleaner = new Runnable()

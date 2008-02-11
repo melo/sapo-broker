@@ -1,4 +1,4 @@
-package pt.com.gcs;
+package pt.com.gcs.messaging;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -6,6 +6,7 @@ import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.ConnectFuture;
@@ -13,8 +14,8 @@ import org.apache.mina.common.DefaultIoFilterChainBuilder;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
-import org.apache.mina.filter.executor.IoEventQueueThrottle;
-import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
+import org.apache.mina.filter.traffic.ReadThrottleFilter;
+import org.apache.mina.filter.traffic.ReadThrottlePolicy;
 import org.apache.mina.filter.traffic.WriteThrottleFilter;
 import org.apache.mina.filter.traffic.WriteThrottlePolicy;
 import org.apache.mina.transport.socket.SocketAcceptor;
@@ -22,27 +23,16 @@ import org.apache.mina.transport.socket.SocketConnector;
 import org.apache.mina.transport.socket.SocketSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
+import org.caudexorigo.ErrorAnalyser;
+import org.caudexorigo.Shutdown;
+import org.caudexorigo.concurrent.CustomExecutors;
 import org.caudexorigo.concurrent.Sleep;
-import org.caudexorigo.lang.ErrorAnalyser;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.conf.AgentInfo;
 import pt.com.gcs.conf.WorldMap;
-import pt.com.gcs.io.DbStorage;
-import pt.com.gcs.messaging.DispatcherList;
-import pt.com.gcs.messaging.LocalQueueConsumers;
-import pt.com.gcs.messaging.LocalTopicConsumers;
-import pt.com.gcs.messaging.Message;
-import pt.com.gcs.messaging.MessageListener;
-import pt.com.gcs.messaging.MessageType;
-import pt.com.gcs.messaging.QueueProcessor;
-import pt.com.gcs.messaging.QueueProcessorList;
-import pt.com.gcs.messaging.RemoteTopicConsumers;
-import pt.com.gcs.messaging.TopicToQueueDispatcher;
-import pt.com.gcs.net.GcsAcceptorProtocolHandler;
-import pt.com.gcs.net.GcsRemoteProtocolHandler;
 import pt.com.gcs.net.Peer;
 import pt.com.gcs.net.codec.GcsCodec;
 import pt.com.gcs.tasks.Connect;
@@ -66,21 +56,24 @@ public class Gcs
 
 	private SocketConnector connector;
 
-	private WorldMap _wmap;
-
 	private Gcs()
 	{
 		log.info("{} starting.", SERVICE_NAME);
 		try
 		{
-			DbStorage.init();
+		
 			startAcceptor(AgentInfo.getAgentPort());
 			startConnector();
-			populateWorldMap();
+			connectToAllPeers();
+			
+			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 5, 5, TimeUnit.SECONDS);
+			GcsExecutor.scheduleWithFixedDelay(new QueueCounter(), 20, 20, TimeUnit.SECONDS);
+			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 120, 120, TimeUnit.SECONDS);
 		}
 		catch (Throwable t)
 		{
-			log.error(ErrorAnalyser.findRootCause(t).getMessage());
+			Throwable rootCause = ErrorAnalyser.findRootCause(t);
+			log.error(rootCause.getMessage(), rootCause);
 			Shutdown.now();
 		}
 		Sleep.time(AgentInfo.getInitialDelay());
@@ -99,17 +92,14 @@ public class Gcs
 
 		DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 
+		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 256 * ONE_K, 512 * ONE_K, 1024 * ONE_K);
 		WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK, 0, 128 * ONE_K, 0, 256 * ONE_K, 0, 512 * ONE_K);
 
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 		// and then a thread pool.
-		// filterChainBuilder.addLast("executor", new
-		// ExecutorFilter(CustomExecutors.newThreadPool(16)));
-
-		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS,
-				new IoEventQueueThrottle(4 * 65536))));
-
+		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
+		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 		filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
 
 		acceptor.setHandler(new GcsAcceptorProtocolHandler());
@@ -131,31 +121,28 @@ public class Gcs
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 
 		// and then a thread pool.
-		// ReadThrottleFilter readThrottleFilter = new
-		// ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(),
-		// ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
-		// filterChainBuilder.addLast("executor", new
-		// ExecutorFilter(CustomExecutors.newThreadPool(16)));
-		// filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
+		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
+		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
+		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 
-		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS,
-				new IoEventQueueThrottle(2 * 65536))));
+		// filterChainBuilder.addLast("executor", new ExecutorFilter(new
+		// OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS, new
+		// IoEventQueueThrottle(2 * 65536))));
 
 		connector.setHandler(new GcsRemoteProtocolHandler());
 		// connector.setConnectTimeout(2);
 	}
-
-	public void populateWorldMap()
+	
+	private void connectToAllPeers()
 	{
-		_wmap = new WorldMap();
-
-		List<Peer> peerList = _wmap.getPeerList();
+		List<Peer> peerList = WorldMap.getPeerList();
 		for (Peer peer : peerList)
 		{
 			GcsExecutor.execute(new Connect(peer));
 		}
-		// Statistics.init();
 	}
+
+
 
 	public static void connect(String host, int port)
 	{
@@ -177,6 +164,20 @@ public class Gcs
 			Sleep.time(2000);
 		}
 	}
+	
+	public static void disconnect(SocketAddress address)
+	{
+		String message = "Disconnecting from '{}'.";
+		log.info(message, address.toString());
+
+//		Sleep.time(2000);
+//		while (!cf.isConnected())
+//		{
+//			log.info(message, address.toString());
+//			cf = instance.connector.connect(address).awaitUninterruptibly();
+//			Sleep.time(2000);
+//		}
+	}
 
 	public static void init()
 	{
@@ -185,6 +186,13 @@ public class Gcs
 
 	private void iinit()
 	{
+		String[] virtual_queues = DbStorage.getVirtualQueuesNames();
+
+		for (String vqueue : virtual_queues)
+		{
+			System.out.println(vqueue);
+			iaddQueueConsumer(vqueue, null);
+		}	
 		log.info("{} initialized.", SERVICE_NAME);
 	}
 
@@ -193,7 +201,7 @@ public class Gcs
 		instance.ipublish(message);
 	}
 
-	private void ipublish(Message message)
+	private void ipublish(final Message message)
 	{
 		message.setType(MessageType.COM_TOPIC);
 		LocalTopicConsumers.notify(message);
@@ -207,17 +215,17 @@ public class Gcs
 
 	private void ienqueue(final Message message)
 	{
-		QueueProcessorList.get(message.getDestination()).process(message);
+		QueueProcessorList.get(message.getDestination()).store(message);
 	}
 
-	public static void ackMessage(final String msgId)
+	public static void ackMessage(String queueName, final String msgId)
 	{
-		instance.iackMessage(msgId);
+		instance.iackMessage(queueName, msgId);
 	}
 
-	private void iackMessage(final String msgId)
+	private void iackMessage(String queueName, final String msgId)
 	{
-		QueueProcessor.ack(msgId);
+		QueueProcessorList.get(queueName).ack(msgId);
 	}
 
 	public static void addTopicConsumer(String topicName, MessageListener listener)
@@ -227,7 +235,10 @@ public class Gcs
 
 	private void iaddTopicConsumer(String topicName, MessageListener listener)
 	{
-		LocalTopicConsumers.add(topicName, listener);
+		if (listener != null)
+		{
+			LocalTopicConsumers.add(topicName, listener, true);
+		}
 	}
 
 	public static void addQueueConsumer(String queueName, MessageListener listener)
@@ -236,12 +247,16 @@ public class Gcs
 	}
 
 	private void iaddQueueConsumer(String queueName, MessageListener listener)
-	{
+	{	
 		if (StringUtils.contains(queueName, "@"))
 		{
-			DispatcherList.add(queueName);
+			DispatcherList.create(queueName);
 		}
-		LocalQueueConsumers.add(queueName, listener);
+
+		if (listener != null)
+		{			
+			LocalQueueConsumers.add(queueName, listener);
+		}
 	}
 
 	public static void removeTopicConsumer(MessageListener listener)
@@ -256,7 +271,7 @@ public class Gcs
 
 	public static List<Peer> getPeerList()
 	{
-		return Collections.unmodifiableList(instance._wmap.getPeerList());
+		return WorldMap.getPeerList();
 	}
 
 	public static Set<IoSession> getManagedConnectorSessions()

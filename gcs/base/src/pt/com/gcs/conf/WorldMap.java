@@ -2,29 +2,40 @@ package pt.com.gcs.conf;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
 
+import org.caudexorigo.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import pt.com.gcs.Shutdown;
 import pt.com.gcs.net.Peer;
 
 public class WorldMap
 {
-	private static Logger log = LoggerFactory.getLogger(WorldMap.class);
+	private static final Logger log = LoggerFactory.getLogger(WorldMap.class);
 
-	private static final List<Peer> _peerList = new ArrayList<Peer>();
+	private final List<Peer> peerList = new ArrayList<Peer>();
+	
+	private static final WorldMap instance = new WorldMap();
+	
+	private AtomicLong last_modified = new AtomicLong(0L);
 
 
-	public WorldMap()
+	private WorldMap()
+	{
+		populateWorldMap();
+	}
+	
+	private synchronized void populateWorldMap()
 	{
 		String selfName = AgentInfo.getAgentName();
 		String selfHost = AgentInfo.getAgentHost();
@@ -55,6 +66,8 @@ public class WorldMap
 		//System.out.println("_selfName: " + _selfName);
 		
 		boolean isSelfPeerInWorldMap = false;
+		
+		peerList.clear();
 
 		for (int i = 0; i < npeers; i++)
 		{
@@ -71,7 +84,7 @@ public class WorldMap
 			else
 			{
 				//System.out.println("names[i]: " + names[i]);
-				_peerList.add(new Peer(names[i], hosts[i], Integer.parseInt(ports[i])));
+				peerList.add(new Peer(names[i], hosts[i], Integer.parseInt(ports[i])));
 			}
 		}
 		
@@ -89,9 +102,11 @@ public class WorldMap
 			// Create a builder factory
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			factory.setValidating(validating);
+			File xmlFile = new File(filename);
+			last_modified.set(xmlFile.lastModified());
 
 			// Create the builder and parse the file
-			Document doc = factory.newDocumentBuilder().parse(new File(filename));
+			Document doc = factory.newDocumentBuilder().parse(xmlFile);
 			return doc;
 		}
 		catch (Throwable t)
@@ -114,9 +129,14 @@ public class WorldMap
 		return value;
 	}
 
-	public List<Peer> getPeerList()
+	public static List<Peer> getPeerList()
 	{
-		return _peerList;
+		return Collections.unmodifiableList(instance.peerList);
+	}
+	
+	public static long lastModified()
+	{
+		return instance.last_modified.get();
 	}
 
 }

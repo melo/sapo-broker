@@ -6,12 +6,12 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
+import org.caudexorigo.Shutdown;
 import org.caudexorigo.io.FilenameUtils;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.Shutdown;
 
 public class AgentInfo
 {
@@ -62,13 +62,6 @@ public class AgentInfo
 		{
 			return FilenameUtils.normalizeNoEndSeparator(prop);
 		}
-	}
-
-	public static long getSegmentSize()
-	{
-
-		long lprop = instance.conf.getNet().getPort();
-		return lprop;
 	}
 
 	public static int getInitialDelay()

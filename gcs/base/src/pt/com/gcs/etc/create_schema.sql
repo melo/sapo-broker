@@ -1,2 +1,2 @@
-CREATE TABLE IF NOT EXISTS Message (destination varchar(100), priority int, expiration bigint, sequence_nr bigint, msg_id varchar(50) PRIMARY KEY, delivery_count int, msg nvarchar);
-CREATE INDEX IF NOT EXISTS idx_01 ON Message(destination);
+CREATE TABLE IF NOT EXISTS Message (msg_id varchar(50), correlation_id varchar(50), destination varchar(255), priority int, mtimestamp bigint, expiration bigint, source_app varchar(100), content varchar, sequence_nr bigint, delivery_count int, local_only boolean DEFAULT false, PRIMARY KEY(msg_id, destination));
+CREATE TABLE IF NOT EXISTS VirtualQueue (queue_name varchar(255), PRIMARY KEY(queue_name));

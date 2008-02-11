@@ -1,5 +1,7 @@
 package pt.com.gcs.messaging;
 
+import java.util.Collection;
+
 import org.caudexorigo.ds.Cache;
 import org.caudexorigo.ds.CacheFiller;
 import org.slf4j.Logger;
@@ -63,8 +65,39 @@ public class QueueProcessorList
 		}
 	}
 	
+	public static void remove(String queueName)
+	{
+		try
+		{
+			qpCache.remove(queueName);
+		}
+		catch (InterruptedException ie)
+		{
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(ie);
+		}
+	}
+	
 	public static int size()
 	{
 		return qpCache.size();
+	}
+	
+	public static int size(String destinationName)
+	{
+		return get(destinationName).size();
+	}
+	
+	public static Collection<QueueProcessor> values()
+	{
+		try
+		{
+			return qpCache.values();
+		}
+		catch (InterruptedException ie)
+		{
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(ie);
+		}
 	}
 }
