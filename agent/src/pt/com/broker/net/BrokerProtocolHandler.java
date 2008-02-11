@@ -1,7 +1,6 @@
 package pt.com.broker.net;
 
 import java.io.IOException;
-import java.net.SocketAddress;
 
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
@@ -9,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.core.ErrorHandler;
-import pt.com.broker.messaging.AcknowledgeMode;
 import pt.com.broker.messaging.BrokerConsumer;
 import pt.com.broker.messaging.BrokerProducer;
 import pt.com.broker.messaging.MQ;
@@ -17,6 +15,7 @@ import pt.com.broker.messaging.Notify;
 import pt.com.broker.messaging.QueueSessionListenerList;
 import pt.com.broker.messaging.Unsubscribe;
 import pt.com.broker.xml.SoapEnvelope;
+import pt.com.gcs.net.IoSessionHelper;
 
 public class BrokerProtocolHandler extends IoHandlerAdapter
 {
@@ -33,11 +32,10 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionCreated(IoSession iosession) throws Exception
 	{
-		iosession.setAttribute("REMOTE_CLIENT", iosession.getRemoteAddress());
-
+		IoSessionHelper.tagWithRemoteAddress(iosession);
 		if (log.isDebugEnabled())
 		{
-			log.debug("Session created: " + iosession.getRemoteAddress());
+			log.debug("Session created: " + IoSessionHelper.getRemoteAddress(iosession));
 		}
 	}
 
@@ -46,7 +44,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	{
 		try
 		{
-			String remoteClient = getClientAddress(iosession);
+			String remoteClient = IoSessionHelper.getRemoteAddress(iosession);
 			log.info("Session closed: " + remoteClient);
 			QueueSessionListenerList.removeSession(iosession);
 		}
@@ -69,7 +67,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			if (iosession == null)
 				return;
 
-			String client = getClientAddress(iosession);
+			String client = IoSessionHelper.getRemoteAddress(iosession);
 
 			String msg = "";
 			String emsg = wtf.Cause.getMessage();
@@ -117,7 +115,6 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			}
 			else if (sb.destinationType.equals("TOPIC_AS_QUEUE"))
 			{
-				sb.acknowledgeMode = AcknowledgeMode.AUTO;
 				_brokerConsumer.listen(sb, session);
 			}
 			return;
@@ -135,6 +132,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		else if (request.body.acknowledge != null)
 		{
 			_brokerProducer.acknowledge(request.body.acknowledge);
+
 			return;
 		}
 		else if (request.body.unsubscribe != null)
@@ -147,19 +145,5 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		{
 			throw new RuntimeException("Not a valid request");
 		}
-	}
-
-	private String getClientAddress(IoSession iosession)
-	{
-		String remoteClient;
-		try
-		{
-			remoteClient = ((SocketAddress) iosession.getAttribute("REMOTE_CLIENT")).toString();
-		}
-		catch (Throwable e)
-		{
-			remoteClient = "Can't determine client address";
-		}
-		return remoteClient;
 	}
 }

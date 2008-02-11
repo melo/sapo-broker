@@ -81,6 +81,7 @@
 			<xsd:element name="Acknowledge">
 				<xsd:complexType>
 					<xsd:all>
+						<xsd:element name="DestinationName" type="xsd:string" />
 						<xsd:element name="MessageId" type="xsd:string" />
 					</xsd:all>
 				</xsd:complexType>

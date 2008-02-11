@@ -64,7 +64,7 @@
 		<value name="AcknowledgeMode" field="acknowledgeMode" usage="optional" default="AUTO" ns="http://services.sapo.pt/broker" />
 	</mapping>
 	
-	<mapping name="Unsubscribe" class="pt.com.broker.messaging.Unsubscribe" ns="http://services.sapo.pt/broker">
+	<mapping name="Unsubscribe" class="pt.com.broker.messaging.Unsubscribe" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationType" field="destinationType" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>	
@@ -73,7 +73,8 @@
 		<structure field="brokerMessage" />
 	</mapping>
 
-	<mapping name="Acknowledge" class="pt.com.broker.messaging.Acknowledge" ns="http://services.sapo.pt/broker">
+	<mapping name="Acknowledge" class="pt.com.broker.messaging.Acknowledge" ns="http://services.sapo.pt/broker" ordered="false">
+		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="required" ns="http://services.sapo.pt/broker" />
 	</mapping>
 

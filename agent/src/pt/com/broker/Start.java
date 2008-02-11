@@ -30,12 +30,4 @@ public class Start
 
 		FilePublisher.init();
 	}
-	
-	public static void shutdown()
-	{
-		while (true)
-		{
-			System.exit(-1);
-		}
-	}
 }

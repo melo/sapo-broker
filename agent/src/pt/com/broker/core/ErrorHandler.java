@@ -3,14 +3,13 @@ package pt.com.broker.core;
 import java.io.PrintWriter;
 
 import org.apache.mina.common.ExceptionMonitor;
+import org.caudexorigo.ErrorAnalyser;
+import org.caudexorigo.text.StringBuilderWriter;
+import org.caudexorigo.text.StringUtils;
 import org.jibx.runtime.JiBXException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.caudexorigo.text.StringBuilderWriter;
-import org.caudexorigo.text.StringUtils;
-
-import pt.com.broker.Start;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.broker.xml.SoapFault;
 
@@ -20,43 +19,24 @@ public class ErrorHandler extends ExceptionMonitor
 
 	public void exceptionCaught(Throwable cause)
 	{
-		Throwable rootCause = findRootCause(cause);
+		Throwable rootCause = ErrorAnalyser.findRootCause(cause);
 		if (log.isWarnEnabled())
 		{
 			log.error("Unexpected exception.", rootCause);
 		}
-		exitIfOOM(rootCause);
-	}
-
-	public static Throwable findRootCause(Throwable ex)
-	{
-		Throwable error_ex = new Exception(ex);
-		while (error_ex.getCause() != null)
-		{
-			error_ex = error_ex.getCause();
-		}
-		return error_ex;
-	}
-
-	public static void exitIfOOM(Throwable t)
-	{
-		if (t instanceof OutOfMemoryError)
-		{
-			log.error("Giving up, reason: " + t.getMessage());
-			Start.shutdown();
-		}
+		ErrorAnalyser.exitIfOOM(rootCause);
 	}
 
 	public static void checkAbort(Throwable t)
 	{
-		Throwable rootCause = findRootCause(t);
-		exitIfOOM(rootCause);
+		Throwable rootCause = ErrorAnalyser.findRootCause(t);
+		ErrorAnalyser.exitIfOOM(rootCause);
 	}
 
 	public static WTF buildSoapFault(Throwable ex)
 	{
-		Throwable rootCause = findRootCause(ex);
-		exitIfOOM(rootCause);
+		Throwable rootCause = ErrorAnalyser.findRootCause(ex);
+		ErrorAnalyser.exitIfOOM(rootCause);
 
 		String ereason = "soap:Receiver";
 		if (rootCause instanceof JiBXException)
@@ -78,8 +58,8 @@ public class ErrorHandler extends ExceptionMonitor
 			return buildSoapFault(ex);
 		}
 
-		Throwable rootCause = findRootCause(ex);
-		exitIfOOM(rootCause);
+		Throwable rootCause = ErrorAnalyser.findRootCause(ex);
+		ErrorAnalyser.exitIfOOM(rootCause);
 		return _buildSoapFault(faultCode, rootCause);
 	}
 

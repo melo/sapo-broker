@@ -5,10 +5,6 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.broker.core.BrokerExecutor;
-import pt.com.gcs.messaging.QueueProcessorList;
-import pt.com.gcs.tasks.QueueStarter;
-
 public class BrokerConsumer
 {
 	private static BrokerConsumer instance = new BrokerConsumer();
@@ -30,12 +26,6 @@ public class BrokerConsumer
 		{
 			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName, sb.acknowledgeMode);
 			qsl.addConsumer(ios);
-
-			if (qsl.size() == 1)
-			{
-				QueueStarter qs = new QueueStarter(QueueProcessorList.get(sb.destinationName));
-				BrokerExecutor.execute(qs);
-			}
 		}
 		catch (Throwable e)
 		{
@@ -69,12 +59,12 @@ public class BrokerConsumer
 	{
 		String dname = unsubs.destinationName;
 		String dtype = unsubs.destinationType;
-		if (unsubs.destinationType.equals("TOPIC"))
+		if (dtype.equals("TOPIC"))
 		{
 			TopicSubscriber subscriber = TopicSubscriberList.get(dname);
 			subscriber.removeConsumer(session);
 		}
-		else if (unsubs.destinationType.equals("QUEUE"))
+		else if (dtype.equals("QUEUE"))
 		{
 			QueueSessionListener qsl_a = QueueSessionListenerList.get(dname, AcknowledgeMode.AUTO);
 			qsl_a.removeConsumer(session);

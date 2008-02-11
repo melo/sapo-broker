@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import org.caudexorigo.ErrorAnalyser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +104,7 @@ public class FilePublisher
 						}
 						catch (Throwable e)
 						{
-							log.error("Error processing file \"" + msgf.getAbsolutePath() + "\". Error message: " + ErrorHandler.findRootCause(e).getMessage());
+							log.error("Error processing file \"" + msgf.getAbsolutePath() + "\". Error message: " + ErrorAnalyser.findRootCause(e).getMessage());
 						}
 
 						if (isFileValid)

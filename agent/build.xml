@@ -32,7 +32,7 @@
 		<echo message="package    creates distribution" />
 	</target>
 
-	<target name="init">
+	<target name="init" depends="clean">
 		<mkdir dir="bin" />
 		<mkdir dir="${gcs}" />
 	</target>
@@ -68,7 +68,7 @@
 		</copy>
 		
 		
-		<javac destdir="bin" encoding="UTF-8">
+		<javac destdir="bin" encoding="UTF-8" debug="true" debuglevel="lines,vars,source">
 			<src path="src" />
 			<classpath refid="project.classpath" />
 		</javac>

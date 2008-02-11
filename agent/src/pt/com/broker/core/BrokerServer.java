@@ -2,32 +2,32 @@ package pt.com.broker.core;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.DefaultIoFilterChainBuilder;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
+import org.apache.mina.filter.executor.IoEventQueueThrottle;
+import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
 import org.apache.mina.filter.traffic.ReadThrottleFilter;
 import org.apache.mina.filter.traffic.ReadThrottlePolicy;
-import org.apache.mina.filter.traffic.WriteThrottleFilter;
-import org.apache.mina.filter.traffic.WriteThrottlePolicy;
 import org.apache.mina.transport.socket.SocketAcceptor;
 import org.apache.mina.transport.socket.SocketSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
-import org.caudexorigo.concurrent.CustomExecutors;
+import org.caudexorigo.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.broker.Start;
 import pt.com.broker.net.BrokerProtocolHandler;
 import pt.com.broker.net.codec.SoapCodec;
-import pt.com.gcs.Gcs;
+import pt.com.gcs.messaging.Gcs;
 
 public class BrokerServer
 {
 	private static Logger log = LoggerFactory.getLogger(BrokerServer.class);
 
 	private int _portNumber;
-	
+
 	private static final int ONE_K = 1024;
 
 	private static final int NCPU = Runtime.getRuntime().availableProcessors();
@@ -42,7 +42,7 @@ public class BrokerServer
 		try
 		{
 			log.info("SAPO-BROKER starting.");
-			
+
 			Gcs.init();
 			SocketAcceptor acceptor = new NioSocketAcceptor(NCPU);
 
@@ -51,12 +51,18 @@ public class BrokerServer
 
 			DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 			ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 256 * ONE_K, 512 * ONE_K, 1024 * ONE_K);
-			WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK, 0, 1024 * ONE_K, 0, 2048 * ONE_K, 0, 4096 * ONE_K);
+			//WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.FAIL, 0, 1024 * ONE_K, 0, 4096 * ONE_K, 0, 4096 * ONE_K);
+			//WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK);
 
-			filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
+			
 			filterChainBuilder.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
-			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
-			filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
+//			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));	
+//			filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
+			filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
+			//filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
+			
+			
+
 			acceptor.setHandler(new BrokerProtocolHandler());
 
 			// Bind
@@ -66,7 +72,7 @@ public class BrokerServer
 		catch (Throwable e)
 		{
 			log.error(e.getMessage(), e);
-			Start.shutdown();
+			Shutdown.now();
 		}
 	}
 

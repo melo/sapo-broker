@@ -1,5 +1,6 @@
 package pt.com.broker.xml;
 
+import org.caudexorigo.Shutdown;
 import org.jibx.runtime.BindingDirectory;
 import org.jibx.runtime.IBindingFactory;
 import org.jibx.runtime.IMarshallingContext;
@@ -27,7 +28,7 @@ public class JibxActors
 		catch (JiBXException e)
 		{
 			log.error(e.getMessage(), e);
-			Start.shutdown();
+			Shutdown.now();
 		}
 	}
 

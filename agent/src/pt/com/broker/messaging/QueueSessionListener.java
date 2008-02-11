@@ -2,7 +2,6 @@ package pt.com.broker.messaging;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
@@ -10,9 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.xml.SoapEnvelope;
-import pt.com.gcs.Gcs;
+import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
-import pt.com.gcs.messaging.QueueProcessorList;
+import pt.com.gcs.net.IoSessionHelper;
 
 public class QueueSessionListener extends BrokerListener
 {
@@ -32,45 +31,51 @@ public class QueueSessionListener extends BrokerListener
 		_dname = destinationName;
 	}
 
-	public void onMessage(final Message msg)
+	public boolean onMessage(final Message msg)
 	{
 		if (msg == null)
-			return;
+			return true;
 
 		final IoSession ioSession = pick();
 		try
 		{
 			if (ioSession != null)
 			{
-				if (ioSession.isConnected() && !ioSession.isClosing())
-				{
-					final SoapEnvelope response = buildNotification(msg);
 
-					WriteFuture future = ioSession.write(response);
-
-					future.awaitUninterruptibly(100, TimeUnit.MILLISECONDS);
-					if (future.isWritten())
+//				if (ioSession.getScheduledWriteMessages() < MQ.MAX_PENDING_MESSAGES)
+//				{
+					if (ioSession.isConnected() && !ioSession.isClosing())
 					{
-						if (log.isDebugEnabled())
+						final SoapEnvelope response = buildNotification(msg);
+
+//						ioSession.write(response);
+//						return true;
+						WriteFuture future = ioSession.write(response);
+
+						//future.awaitUninterruptibly(2000, TimeUnit.MILLISECONDS);
+						future.awaitUninterruptibly();
+						if (future.isWritten())
 						{
-							log.debug("Delivered message: {}", msg.getMessageId());
+							if (log.isDebugEnabled())
+							{
+								log.debug("Delivered message: {}", msg.getMessageId());
+							}
+
+							return true;
 						}
-
-						if (_ackMode == AcknowledgeMode.AUTO)
-							Gcs.ackMessage(msg.getMessageId());
-
-						return;
 					}
 					else
 					{
-						QueueProcessorList.get(msg.getDestination()).wakeup();
+						removeConsumer(ioSession);
 					}
+
 				}
-				else
-				{
-					removeConsumer(ioSession);
-				}
-			}
+//				else
+//				{
+//					System.out.println("QueueSessionListener.onMessage():" + System.currentTimeMillis() + " # " + ioSession.getScheduledWriteMessages());
+//				}
+
+//			}
 		}
 		catch (Throwable e)
 		{
@@ -78,12 +83,14 @@ public class QueueSessionListener extends BrokerListener
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);
 				removeConsumer(ioSession);
+				//QueueProcessorList.get(msg.getDestination()).wakeup();
 			}
 			catch (Throwable t)
 			{
 				log.error(t.getMessage(), t);
 			}
 		}
+		return false;
 	}
 
 	private IoSession pick()
@@ -122,7 +129,7 @@ public class QueueSessionListener extends BrokerListener
 		{
 			_sessions.add(iosession);
 		}
-		log.info("Create message consumer for queue: " + _dname + ", address: " + iosession.getRemoteAddress());
+		log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 	}
 
 	public void removeConsumer(IoSession iosession)
@@ -130,7 +137,7 @@ public class QueueSessionListener extends BrokerListener
 		synchronized (_sessions)
 		{
 			if (_sessions.remove(iosession))
-				log.info("Remove message consumer for queue: " + _dname + ", address: " + iosession.getRemoteAddress());
+				log.info("Remove message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 
 			if (_sessions.size() == 0)
 			{

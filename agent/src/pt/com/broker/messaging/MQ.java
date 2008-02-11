@@ -11,7 +11,7 @@ public class MQ
 
 	public static final int MAX_MESSAGE_SIZE;
 
-	private static final int DEFAULT_MAX_PENDING_MESSAGES = 500;
+	private static final int DEFAULT_MAX_PENDING_MESSAGES = 50;
 
 	public static final int MAX_PENDING_MESSAGES;
 

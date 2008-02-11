@@ -4,12 +4,14 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.mina.common.IoSession;
+import org.apache.mina.common.WriteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.xml.SoapEnvelope;
-import pt.com.gcs.Gcs;
+import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
+import pt.com.gcs.net.IoSessionHelper;
 
 public class TopicSubscriber extends BrokerListener
 {
@@ -24,28 +26,58 @@ public class TopicSubscriber extends BrokerListener
 		_dname = destinationName;
 	}
 
-	public void onMessage(Message amsg)
+	public boolean onMessage(Message amsg)
 	{
 		if (amsg == null)
-			return;
+			return true;
 
 		try
 		{
 			for (IoSession ios : _sessions)
 			{
-				if (ios.getScheduledWriteMessages() < MQ.MAX_PENDING_MESSAGES)
+				if (ios.getScheduledWriteBytes() < (2048 * 1024))
 				{
 					try
 					{
 						if (ios.isConnected() && !ios.isClosing())
 						{
 							final SoapEnvelope response = buildNotification(amsg);
-							// amsg = null;
 							ios.write(response);
-							if (log.isDebugEnabled())
-							{
-								log.debug("Delivered message: {}", amsg.getMessageId());
-							}
+
+							// final SoapEnvelope response =
+							// buildNotification(amsg);
+							// long beginWrite = System.currentTimeMillis();
+							// WriteFuture wf = ios.write(response);
+							// wf.awaitUninterruptibly(2);
+							// long endWrite = System.currentTimeMillis();
+							// long duration = endWrite - beginWrite;
+							// if (duration > 10)
+							// {
+							// System.out.println("Time for write:" + duration +
+							// " ms");
+							// }
+
+							// if (wf.isWritten())
+							// {
+							// if (log.isDebugEnabled())
+							// {
+							// log.debug("Delivered message: {}",
+							// amsg.getMessageId());
+							// }
+							// //return true;
+							// }
+							// else
+							// {
+							// if (log.isDebugEnabled())
+							// {
+							// log.debug("Slow client: \"{}\". message will be
+							// discarded. Client Address: {}",
+							// amsg.getSourceApp(),
+							// IoSessionHelper.getRemoteAddress(ios));
+							// }
+							// //return false;
+							// }
+
 						}
 						else
 						{
@@ -68,15 +100,16 @@ public class TopicSubscriber extends BrokerListener
 				else
 				{
 					// Statistics.messageDropped(_appName);
-					// FIXME: Write dropped messages to disk
-					log.debug("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), ios.getRemoteAddress().toString());
+					log.debug("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
 				}
 			}
+			return true;
 		}
 		catch (Throwable e)
 		{
 			log.error("Error on message Listener: " + e.getMessage(), e);
 		}
+		return false;
 	}
 
 	public void removeConsumer(IoSession iosession)
@@ -90,7 +123,7 @@ public class TopicSubscriber extends BrokerListener
 				TopicSubscriberList.removeValue(this);
 			}
 		}
-		log.info("Remove message consumer for topic: " + _dname + ", address: " + iosession.getRemoteAddress());
+		log.info("Remove message consumer for topic: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 	}
 
 	public void addConsumer(IoSession iosession)
@@ -99,6 +132,6 @@ public class TopicSubscriber extends BrokerListener
 		{
 			_sessions.add(iosession);
 		}
-		log.info("Create message consumer for topic: " + _dname + ", address: " + iosession.getRemoteAddress());
+		log.info("Create message consumer for topic: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 	}
 }

@@ -9,7 +9,7 @@ import org.caudexorigo.ds.CacheFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.Gcs;
+import pt.com.gcs.messaging.Gcs;
 
 public class QueueSessionListenerList
 {

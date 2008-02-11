@@ -8,6 +8,7 @@ import org.apache.mina.filter.codec.http.HttpMethod;
 import org.apache.mina.filter.codec.http.HttpRequest;
 import org.apache.mina.filter.codec.http.HttpResponseStatus;
 import org.apache.mina.filter.codec.http.MutableHttpResponse;
+import org.caudexorigo.Shutdown;
 import org.caudexorigo.io.UnsynchByteArrayInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,6 @@ import pt.com.broker.messaging.BrokerProducer;
 import pt.com.broker.messaging.MQ;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.broker.xml.SoapSerializer;
-import pt.com.gcs.Shutdown;
 import pt.com.http.HttpAction;
 
 public class BrokerHttpAction extends HttpAction
