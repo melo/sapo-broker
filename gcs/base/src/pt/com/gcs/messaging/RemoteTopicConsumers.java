@@ -1,6 +1,6 @@
 package pt.com.gcs.messaging;
 
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,29 +46,31 @@ class RemoteTopicConsumers
 
 	public static void notify(Message message)
 	{
-		String topicName = message.getDestination();
-		Set<String> subscriptionNames = instance.remoteTopicConsumers.keySet();
-
-		List<String> matches = new CopyOnWriteArrayList<String>();
-		for (String sname : subscriptionNames)
+		if (instance.remoteTopicConsumers.size() > 0)
 		{
-			if (sname.equals(topicName))
+			String topicName = message.getDestination();
+			Set<String> subscriptionNames = instance.remoteTopicConsumers.keySet();
+
+			Set<String> matches = new HashSet<String>();
+			for (String sname : subscriptionNames)
 			{
-				matches.add(topicName);
+				if (sname.equals(topicName))
+				{
+					matches.add(topicName);
+				}
+				else
+				{
+					if (TopicMatcher.match(sname, topicName))
+						matches.add(sname);
+				}
 			}
-			else
+
+			for (String destination : matches)
 			{
-				if (TopicMatcher.match(sname, topicName))
-					matches.add(sname);
+				message.setDestination(destination);
+				instance.doNotify(message);
 			}
 		}
-
-		for (String destination : matches)
-		{
-			message.setDestination(destination);
-			instance.doNotify(message);
-		}
-
 	}
 
 	public synchronized static void remove(IoSession iosession)
@@ -143,11 +145,11 @@ class RemoteTopicConsumers
 				{
 					if (ioSession != null)
 					{
-						if (ioSession.getScheduledWriteBytes()<1048576)
+						if (ioSession.getScheduledWriteBytes() < 1048576)
 						{
 							ioSession.write(message);
 						}
-						
+
 					}
 
 				}

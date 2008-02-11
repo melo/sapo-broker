@@ -10,7 +10,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
-import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +34,7 @@ class LocalTopicConsumers
 		{
 			instance.broadCastNewTopicConsumer(topicName);
 			instance.broadCastableTopics.add(topicName);
-		}	
+		}
 	}
 
 	public static Set<String> getBroadcastableTopics()
@@ -45,31 +44,34 @@ class LocalTopicConsumers
 
 	public static void notify(Message message)
 	{
-		String topicName = message.getDestination();
-		// System.out.println("topicName:" + topicName);
 		if (instance.localTopicConsumers.size() > 0)
 		{
+			String topicName = message.getDestination();
 			Set<String> subscriptionNames = instance.localTopicConsumers.keySet();
 
 			Set<String> matches = new HashSet<String>();
 			for (String sname : subscriptionNames)
 			{
-				if (StringUtils.contains(topicName, StringUtils.remove(sname, "*")))
-					matches.add(sname);
-
 				if (sname.equals(topicName))
+				{
 					matches.add(topicName);
+				}
+				else
+				{
+					if (TopicMatcher.match(sname, topicName))
+						matches.add(sname);
+				}
 			}
 
 			for (String destination : matches)
 			{
-				// System.out.println("destination:" + destination);
-				instance.doNotify(message, destination);
+				message.setDestination(destination);
+				instance.doNotify(message);
 			}
 		}
 	}
 
-	public void doNotify(Message message, String destination)
+	public void doNotify(Message message)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(message.getDestination());
 		if (listeners != null)
@@ -90,7 +92,7 @@ class LocalTopicConsumers
 
 	public static void remove(MessageListener listener)
 	{
-		if (listener!=null)
+		if (listener != null)
 		{
 			Set<String> keys = instance.localTopicConsumers.keySet();
 			for (String topicName : keys)
@@ -107,7 +109,7 @@ class LocalTopicConsumers
 	}
 
 	private Map<String, CopyOnWriteArrayList<MessageListener>> localTopicConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener>>();
-	
+
 	private Set<String> broadCastableTopics = new CopyOnWriteArraySet<String>();
 
 	private LocalTopicConsumers()

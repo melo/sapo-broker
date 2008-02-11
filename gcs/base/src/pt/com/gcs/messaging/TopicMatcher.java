@@ -11,6 +11,22 @@ class TopicMatcher
 			return false;
 		}
 
+		if (recursiveMatch(subscriptionName, topicName))
+		{
+			return true;
+		}
+
+		if (wildcardMatch(subscriptionName, topicName))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	private static boolean wildcardMatch(String subscriptionName, String topicName)
+	{
+
 		if (!StringUtils.contains(subscriptionName, '#'))
 		{
 			return false;
@@ -44,14 +60,9 @@ class TopicMatcher
 
 		return false;
 	}
-	
-	public static boolean recursiveMatch(String subscriptionName, String topicName)
-	{
-		if (StringUtils.countMatches(subscriptionName, "/") < 2)
-		{
-			return false;
-		}
 
+	private static boolean recursiveMatch(String subscriptionName, String topicName)
+	{
 		if (!StringUtils.contains(subscriptionName, '>'))
 		{
 			return false;
@@ -81,8 +92,6 @@ class TopicMatcher
 			sb.append(topic_parts[i]);
 		}
 		sb.append("/>");
-
-		System.out.println(sb);
 
 		if (sb.toString().equals(subscriptionName))
 		{
