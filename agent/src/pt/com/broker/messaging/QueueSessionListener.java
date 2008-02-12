@@ -21,13 +21,10 @@ public class QueueSessionListener extends BrokerListener
 
 	private final List<IoSession> _sessions = new ArrayList<IoSession>();
 
-	private final AcknowledgeMode _ackMode;
-
 	private final String _dname;
 
-	public QueueSessionListener(String destinationName, AcknowledgeMode ackMode)
+	public QueueSessionListener(String destinationName)
 	{
-		_ackMode = ackMode;
 		_dname = destinationName;
 	}
 

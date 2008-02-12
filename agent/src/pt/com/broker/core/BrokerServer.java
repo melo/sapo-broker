@@ -2,19 +2,17 @@ package pt.com.broker.core;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.DefaultIoFilterChainBuilder;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
-import org.apache.mina.filter.executor.IoEventQueueThrottle;
-import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
 import org.apache.mina.filter.traffic.ReadThrottleFilter;
 import org.apache.mina.filter.traffic.ReadThrottlePolicy;
 import org.apache.mina.transport.socket.SocketAcceptor;
 import org.apache.mina.transport.socket.SocketSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.caudexorigo.Shutdown;
+import org.caudexorigo.concurrent.CustomExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,9 +54,9 @@ public class BrokerServer
 
 			
 			filterChainBuilder.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
-//			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));	
-//			filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
-			filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
+			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));	
+			filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
+//			filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
 			//filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
 			
 			

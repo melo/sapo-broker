@@ -24,7 +24,7 @@ public class BrokerConsumer
 	{
 		try
 		{
-			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName, sb.acknowledgeMode);
+			QueueSessionListener qsl = QueueSessionListenerList.get(sb.destinationName);
 			qsl.addConsumer(ios);
 		}
 		catch (Throwable e)
@@ -66,11 +66,8 @@ public class BrokerConsumer
 		}
 		else if (dtype.equals("QUEUE"))
 		{
-			QueueSessionListener qsl_a = QueueSessionListenerList.get(dname, AcknowledgeMode.AUTO);
-			qsl_a.removeConsumer(session);
-
-			QueueSessionListener qsl_c = QueueSessionListenerList.get(dname, AcknowledgeMode.CLIENT);
-			qsl_c.removeConsumer(session);
+			QueueSessionListener qsl = QueueSessionListenerList.get(dname);
+			qsl.removeConsumer(session);
 		}
 	}
 }

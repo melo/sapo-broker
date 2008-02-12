@@ -61,7 +61,6 @@
 	<mapping name="Notify" class="pt.com.broker.messaging.Notify" ns="http://services.sapo.pt/broker">
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationType" field="destinationType" usage="optional" ns="http://services.sapo.pt/broker" />
-		<value name="AcknowledgeMode" field="acknowledgeMode" usage="optional" default="AUTO" ns="http://services.sapo.pt/broker" />
 	</mapping>
 	
 	<mapping name="Unsubscribe" class="pt.com.broker.messaging.Unsubscribe" ns="http://services.sapo.pt/broker" ordered="false">
@@ -79,7 +78,6 @@
 	</mapping>
 
 	<mapping name="BrokerMessage" class="pt.com.broker.messaging.BrokerMessage" ns="http://services.sapo.pt/broker" ordered="false" flexible="true">
-		<value name="DeliveryMode" field="deliveryMode" usage="optional" default="TRANSIENT" ns="http://services.sapo.pt/broker" />
 		<value name="Priority" field="priority" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="CorrelationId" field="correlationId" usage="optional" ns="http://services.sapo.pt/broker" />

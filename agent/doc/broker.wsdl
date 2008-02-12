@@ -7,7 +7,6 @@
 
 			<xsd:complexType name="BrokerMessage">
 				<xsd:all>
-					<xsd:element name="DeliveryMode" type="tns:DeliveryMode" />
 					<xsd:element name="Priority" type="tns:Priority" />
 					<xsd:element name="MessageId" type="xsd:string" />
 					<xsd:element name="CorrelationId" type="xsd:string" />
@@ -56,7 +55,6 @@
 					<xsd:all>
 						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
 						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationType" type="tns:DestinationType" />
-						<xsd:element name="AcknowledgeMode" type="tns:AcknowledgeMode" />
 					</xsd:all>
 				</xsd:complexType>
 			</xsd:element>
@@ -95,27 +93,13 @@
 				</xsd:restriction>
 			</xsd:simpleType>
 
-			<xsd:simpleType name="DeliveryMode">
-				<xsd:restriction base="xsd:string">
-					<xsd:enumeration value="PERSISTENT" />
-					<xsd:enumeration value="TRANSIENT" />
-				</xsd:restriction>
-			</xsd:simpleType>
-
 			<xsd:simpleType name="Priority">
 				<xsd:restriction base="xsd:int">
 					<xsd:minInclusive value="0" />
 					<xsd:maxInclusive value="9" />
 				</xsd:restriction>
 			</xsd:simpleType>
-
-			<xsd:simpleType name="AcknowledgeMode">
-				<xsd:restriction base="xsd:string">
-					<xsd:enumeration value="AUTO" />
-					<xsd:enumeration value="CLIENT" />
-				</xsd:restriction>
-			</xsd:simpleType>
-
+			
 		</xsd:schema>
 
 	</types>
@@ -179,7 +163,7 @@
 		<wsaw:UsingAddressing required="false" />
 
 		<operation name="Enqueue">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/enqueue" />
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/enqueue" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>
@@ -187,35 +171,35 @@
 
 
 		<operation name="Publish">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/publish" />
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/publish" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
 
 		<operation name="Subscribe">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/subscribe" />
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/subscribe" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
 
 		<operation name="Listen">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/listen" />
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/listen" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
 
 		<operation name="Notify">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/notify" />
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/notify" />
 			<output>
 				<wsoap12:body use="literal" />
 			</output>
 		</operation>
 
 		<operation name="Acknowledge">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/acknowledge" />
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/acknowledge" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>

@@ -13,7 +13,6 @@
 
 			<xsd:complexType name="BrokerMessage">
 				<xsd:all>
-					<xsd:element name="DeliveryMode" type="tns:DeliveryMode" />
 					<xsd:element name="Priority" type="tns:Priority" />
 					<xsd:element name="MessageId" type="xsd:string" />
 					<xsd:element name="CorrelationId" type="xsd:string" />
@@ -39,13 +38,6 @@
 					</xsd:all>
 				</xsd:complexType>
 			</xsd:element>
-
-			<xsd:simpleType name="DeliveryMode">
-				<xsd:restriction base="xsd:string">
-					<xsd:enumeration value="PERSISTENT" />
-					<xsd:enumeration value="TRANSIENT" />
-				</xsd:restriction>
-			</xsd:simpleType>
 
 			<xsd:simpleType name="Priority">
 				<xsd:restriction base="xsd:int">

@@ -91,7 +91,7 @@ public class TopicSubscriber extends BrokerListener
 				TopicSubscriberList.removeValue(this);
 			}
 		}
-		log.info("Remove message consumer for topic: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+		log.info("Remove message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 	}
 
 	public void addConsumer(IoSession iosession)
@@ -100,6 +100,6 @@ public class TopicSubscriber extends BrokerListener
 		{
 			_sessions.add(iosession);
 		}
-		log.info("Create message consumer for topic: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+		log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 	}
 }

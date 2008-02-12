@@ -1,7 +1,6 @@
 package pt.com.broker.messaging;
 
 import java.util.Collection;
-import java.util.Iterator;
 
 import org.apache.mina.common.IoSession;
 import org.caudexorigo.ds.Cache;
@@ -25,15 +24,11 @@ public class QueueSessionListenerList
 
 	private static final CacheFiller<String, QueueSessionListener> queue_listeners_cf = new CacheFiller<String, QueueSessionListener>()
 	{
-		public QueueSessionListener populate(String key)
+		public QueueSessionListener populate(String destinationName)
 		{
 			try
-			{
-				String k[] = key.split("<#>");
-				String destinationName = k[0];
-				AcknowledgeMode ackMode = AcknowledgeMode.valueOf(k[1]);
-				
-				QueueSessionListener qsl = new QueueSessionListener(destinationName, ackMode);
+			{			
+				QueueSessionListener qsl = new QueueSessionListener(destinationName);
 				Gcs.addQueueConsumer(destinationName, qsl);
 				return qsl;
 			}
@@ -44,12 +39,11 @@ public class QueueSessionListenerList
 		}
 	};
 
-	public static QueueSessionListener get(String destinationName, AcknowledgeMode acknowledgeMode)
+	public static QueueSessionListener get(String destinationName)
 	{
 		try
 		{
-			String key = destinationName + "<#>" + acknowledgeMode;
-			return queueSessionListener.get(key, queue_listeners_cf);
+			return queueSessionListener.get(destinationName, queue_listeners_cf);
 		}
 		catch (InterruptedException ie)
 		{
