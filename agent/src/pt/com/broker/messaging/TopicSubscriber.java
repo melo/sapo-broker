@@ -2,8 +2,10 @@ package pt.com.broker.messaging;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
+import org.apache.mina.common.WriteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,8 +21,8 @@ public class TopicSubscriber extends BrokerListener
 	private final List<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
 
 	private final String _dname;
-
-	private static final int WRITE_BUFFER_SIZE = 4096 * 1024;
+	
+	private static final int MAX_WAIT_TIME = 500;
 
 	public TopicSubscriber(String destinationName)
 	{
@@ -36,14 +38,21 @@ public class TopicSubscriber extends BrokerListener
 		{
 			for (IoSession ios : _sessions)
 			{
-				if (ios.getScheduledWriteBytes() < WRITE_BUFFER_SIZE)
-				{
 					try
 					{
 						if (ios.isConnected() && !ios.isClosing())
 						{
 							final SoapEnvelope response = buildNotification(amsg);
-							ios.write(response);
+							WriteFuture wf = ios.write(response);
+							boolean isWriten = wf.awaitUninterruptibly(MAX_WAIT_TIME, TimeUnit.MILLISECONDS);
+							
+							if (log.isDebugEnabled())
+							{
+								if (!isWriten)
+								{
+									log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
+								}								
+							}							
 						}
 						else
 						{
@@ -59,23 +68,15 @@ public class TopicSubscriber extends BrokerListener
 						}
 						catch (Throwable t1)
 						{
-							log.error("Could not propagate error to the client session! Message:" + t1.getMessage());
+							log.error("Could not propagate error to the client session! Message: {}", t1.getMessage());
 						}
 					}
-				}
-				else
-				{
-					if (log.isDebugEnabled())
-					{
-						log.debug("Slow client: \"{}\". message will be discarded. Client Address: {}", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
-					}
-				}
 			}
 			return true;
 		}
 		catch (Throwable e)
 		{
-			log.error("Error on message Listener: " + e.getMessage(), e);
+			log.error("Error on message Listener: '{}'", e.getMessage(), e);
 		}
 		return false;
 	}
