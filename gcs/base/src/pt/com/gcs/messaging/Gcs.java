@@ -108,13 +108,13 @@ public class Gcs
 		acceptor.bind(new InetSocketAddress(portNumber));
 
 		String localAddr = acceptor.getLocalAddress().toString();
-		log.info("{} listening on:{}.", SERVICE_NAME, localAddr);
+		log.info("{} listening on: '{}'.", SERVICE_NAME, localAddr);
 	}
 
 	private void startConnector()
 	{
 		connector = new NioSocketConnector(IO_THREADS);
-
+		
 		DefaultIoFilterChainBuilder filterChainBuilder = connector.getFilterChain();
 
 		// Add CPU-bound job first,
@@ -165,20 +165,6 @@ public class Gcs
 		}
 	}
 	
-	public static void disconnect(SocketAddress address)
-	{
-		String message = "Disconnecting from '{}'.";
-		log.info(message, address.toString());
-
-//		Sleep.time(2000);
-//		while (!cf.isConnected())
-//		{
-//			log.info(message, address.toString());
-//			cf = instance.connector.connect(address).awaitUninterruptibly();
-//			Sleep.time(2000);
-//		}
-	}
-
 	public static void init()
 	{
 		instance.iinit();

@@ -86,7 +86,7 @@ class LocalTopicConsumers
 		}
 		else
 		{
-			log.debug("There are no local listeners for topic: {}", message.getDestination());
+			log.debug("There are no local listeners for topic: '{}'", message.getDestination());
 		}
 	}
 
@@ -130,11 +130,11 @@ class LocalTopicConsumers
 	{
 		if (action.equals("CREATE"))
 		{
-			log.info("Tell {} about new topic consumer for: {}", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell '{}' about new topic consumer for: '{}'", ioSession.getRemoteAddress().toString(), destinationName);
 		}
 		else if (action.equals("DELETE"))
 		{
-			log.info("Tell {} about deleted topic consumer of: {}", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell '{}' about deleted topic consumer of: '{}'", ioSession.getRemoteAddress().toString(), destinationName);
 		}
 
 		Message m = new Message();

@@ -1,7 +1,5 @@
 package pt.com.gcs.messaging;
 
-import java.net.SocketAddress;
-
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
@@ -10,6 +8,7 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.gcs.net.IoSessionHelper;
 import pt.com.gcs.net.Peer;
 
 class GcsAcceptorProtocolHandler extends IoHandlerAdapter
@@ -20,7 +19,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 	public void exceptionCaught(IoSession iosession, Throwable cause) throws Exception
 	{
 		Throwable rootCause = ErrorAnalyser.findRootCause(cause);
-		log.error("Exception Caught:{}, {}", getRemoteAddress(iosession), rootCause.getMessage());
+		log.error("Exception Caught:'{}', '{}'", IoSessionHelper.getRemoteAddress(iosession), rootCause.getMessage());
 		if (iosession.isConnected() && !iosession.isClosing())
 		{
 			log.error("STACKTRACE", rootCause);
@@ -34,8 +33,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 
 		if (log.isDebugEnabled())
 		{
-			log.debug("GcsAcceptorProtocolHandler.messageReceived() from: {}", getRemoteAddress(iosession));
-			log.debug("messageReceived.Type: " + msg.getType());
+			log.debug("Message Received from: '{}', Type: '{}'", IoSessionHelper.getRemoteAddress(iosession), msg.getType());
 		}
 
 		if (msg.getType() == MessageType.ACK)
@@ -65,11 +63,13 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 		else if ((msg.getType() == MessageType.SYSTEM_TOPIC) || (msg.getType() == MessageType.SYSTEM_QUEUE))
 		{
 			String payload = msg.getContent();
-			log.info(payload);
+			
 			final String action = extract(payload, "<action>", "</action>");
 //			final String src_name = extract(payload, "<source-name>", "</source-name>");
 //			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
 			final String destinationName = extract(payload, "<destination>", "</destination>");
+			
+			log.info("Action: '{}' Consumer. Destination: '{}'", action, destinationName);
 
 			if (msg.getType() == MessageType.SYSTEM_TOPIC)
 			{
@@ -112,14 +112,14 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 	{
 		if (log.isDebugEnabled())
 		{
-			log.debug("messageSent():{}, {}", getRemoteAddress(iosession), message.toString());
+			log.debug("Message Sent: '{}', '{}'", IoSessionHelper.getRemoteAddress(iosession), message.toString());
 		}
 	}
 
 	@Override
 	public void sessionClosed(IoSession iosession) throws Exception
 	{
-		log.debug("sessionClosed():{}", getRemoteAddress(iosession));
+		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 		RemoteTopicConsumers.remove(iosession);
 		RemoteQueueConsumers.remove(iosession);
 	}
@@ -127,20 +127,26 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionCreated(IoSession iosession) throws Exception
 	{
-		log.info("sessionCreated():{}", iosession.getRemoteAddress());
-		iosession.setAttribute("REMOTE_ADDRESS", iosession.getRemoteAddress());
+		IoSessionHelper.tagWithRemoteAddress(iosession);
+		if (log.isDebugEnabled())
+		{
+			log.debug("Session Created: '{}'", IoSessionHelper.getRemoteAddress(iosession));
+		}	
 	}
 
 	@Override
 	public void sessionIdle(IoSession iosession, IdleStatus status) throws Exception
 	{
-		log.debug("sessionIdle():{}", getRemoteAddress(iosession));
+		if (log.isDebugEnabled())
+		{
+			log.debug("Session Idle:'{}'", IoSessionHelper.getRemoteAddress(iosession));
+		}
 	}
 
 	@Override
 	public void sessionOpened(IoSession iosession) throws Exception
 	{
-		log.debug("sessionOpened():{}", getRemoteAddress(iosession));
+		log.info("Session Opened: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 	}
 
 	private void validatePeer(IoSession iosession, String helloMessage)
@@ -168,21 +174,8 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 		iosession.setAttribute("GcsAcceptorProtocolHandler.ISVALID", false);
 	}
 
-	private String getRemoteAddress(IoSession iosession)
-	{
-		String remoteServer;
-		try
-		{
-			remoteServer = ((SocketAddress) iosession.getAttribute("REMOTE_ADDRESS")).toString();
-		}
-		catch (Throwable e)
-		{
-			remoteServer = "Can't determine peer address";
-		}
-		return remoteServer;
-	}
 
-	private static String extract(String ins, String prefix, String sufix)
+	private String extract(String ins, String prefix, String sufix)
 	{
 		if (StringUtils.isBlank(ins))
 		{

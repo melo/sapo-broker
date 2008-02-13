@@ -31,30 +31,34 @@ public class ReceivedMessagesBuffer
 	{
 		synchronized (this)
 		{
-			int size0 = _store.size();
-			_store.put(msgId, msgId);
-			int size1 = _store.size();
-
-			if (size1 >= size0)
-			{
-				_entry++;
-				_index.put(_entry, msgId);
-
-				if (_entry > _bufferSize)
-				{
-					_lastRemovedEntry++;
-					String mid = _index.remove(_lastRemovedEntry);
-					if (mid != null)
-					{
-						_store.remove(mid);
-					}
-				}
-				return false;
-			}
-			else
+			if (_store.containsKey(msgId))
 			{
 				return true;
 			}
+			else
+			{
+				return false;
+			}
 		}
 	}
+
+	public void put(String msgId)
+	{
+		synchronized (this)
+		{
+			_store.put(msgId, msgId);
+			_entry++;
+			_index.put(_entry, msgId);
+			if (_entry > _bufferSize)
+			{
+				_lastRemovedEntry++;
+				String mid = _index.remove(_lastRemovedEntry);
+				if (mid != null)
+				{
+					_store.remove(mid);
+				}
+			}
+		}
+	}
+
 }

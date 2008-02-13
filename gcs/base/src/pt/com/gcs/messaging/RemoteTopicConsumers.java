@@ -26,7 +26,7 @@ class RemoteTopicConsumers
 
 	public synchronized static void add(String topicName, IoSession iosession)
 	{
-		log.info("Adding new remote topic consumer for topic:  {}", topicName);
+		log.info("Adding new remote topic consumer for topic:  '{}'", topicName);
 		try
 		{
 			CopyOnWriteArrayList<IoSession> sessions = instance.remoteTopicConsumers.get(topicName);
@@ -156,7 +156,7 @@ class RemoteTopicConsumers
 			}
 			else
 			{
-				log.info("There are no remote consumers for topic: {}", message.getDestination());
+				log.info("There are no remote consumers for topic: '{}'", message.getDestination());
 			}
 		}
 		catch (Throwable t)
