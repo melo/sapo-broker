@@ -2,14 +2,10 @@ package pt.com.broker.messaging;
 
 import org.apache.mina.common.IoSession;
 import org.caudexorigo.text.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class BrokerConsumer
 {
 	private static BrokerConsumer instance = new BrokerConsumer();
-
-	private static final Logger log = LoggerFactory.getLogger(BrokerConsumer.class);
 
 	public static BrokerConsumer getInstance()
 	{

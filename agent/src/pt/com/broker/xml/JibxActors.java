@@ -9,8 +9,6 @@ import org.jibx.runtime.JiBXException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.broker.Start;
-
 public class JibxActors
 {
 	private static final Logger log = LoggerFactory.getLogger(JibxActors.class);

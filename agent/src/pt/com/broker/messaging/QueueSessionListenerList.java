@@ -5,16 +5,11 @@ import java.util.Collection;
 import org.apache.mina.common.IoSession;
 import org.caudexorigo.ds.Cache;
 import org.caudexorigo.ds.CacheFiller;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.messaging.Gcs;
 
 public class QueueSessionListenerList
 {
-
-	private static final Logger log = LoggerFactory.getLogger(QueueSessionListenerList.class);
-
 	// key: destinationName
 	private static final Cache<String, QueueSessionListener> queueSessionListener = new Cache<String, QueueSessionListener>();
 
@@ -27,7 +22,7 @@ public class QueueSessionListenerList
 		public QueueSessionListener populate(String destinationName)
 		{
 			try
-			{			
+			{
 				QueueSessionListener qsl = new QueueSessionListener(destinationName);
 				Gcs.addQueueConsumer(destinationName, qsl);
 				return qsl;
@@ -63,7 +58,7 @@ public class QueueSessionListenerList
 			Thread.currentThread().interrupt();
 		}
 	}
-	
+
 	public static void removeSession(IoSession iosession)
 	{
 		try
@@ -73,7 +68,7 @@ public class QueueSessionListenerList
 			{
 				queueSessionListener.removeConsumer(iosession);
 			}
-			
+
 		}
 		catch (InterruptedException ie)
 		{

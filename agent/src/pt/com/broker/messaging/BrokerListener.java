@@ -4,8 +4,6 @@ import java.util.Date;
 
 import org.apache.mina.common.IoSession;
 import org.caudexorigo.text.DateUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import pt.com.broker.xml.EndPointReference;
 import pt.com.broker.xml.SoapEnvelope;
@@ -15,8 +13,6 @@ import pt.com.gcs.messaging.MessageListener;
 
 public abstract class BrokerListener implements MessageListener
 {
-	private static final Logger log = LoggerFactory.getLogger(BrokerListener.class);
-
 	public SoapEnvelope buildNotification(Message msg)
 	{
 		Notification nt = new Notification();

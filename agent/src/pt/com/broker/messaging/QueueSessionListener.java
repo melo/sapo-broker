@@ -39,18 +39,12 @@ public class QueueSessionListener extends BrokerListener
 			if (ioSession != null)
 			{
 
-//				if (ioSession.getScheduledWriteMessages() < MQ.MAX_PENDING_MESSAGES)
-//				{
 					if (ioSession.isConnected() && !ioSession.isClosing())
 					{
 						final SoapEnvelope response = buildNotification(msg);
-
-//						ioSession.write(response);
-//						return true;
 						WriteFuture future = ioSession.write(response);
-
-						//future.awaitUninterruptibly(2000, TimeUnit.MILLISECONDS);
 						future.awaitUninterruptibly();
+						
 						if (future.isWritten())
 						{
 							if (log.isDebugEnabled())

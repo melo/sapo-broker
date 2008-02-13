@@ -1,63 +1,27 @@
 package pt.com.broker.messaging;
 
-import static java.lang.System.out;
-
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.caudexorigo.text.DateUtil;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.broker.core.BrokerExecutor;
 import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.messaging.MessageType;
-import pt.com.gcs.tasks.GcsExecutor;
 
 public class BrokerProducer
 {
 	private static final Logger log = LoggerFactory.getLogger(BrokerProducer.class);
 
-	private static BrokerProducer instance = new BrokerProducer();
+	private static final BrokerProducer instance = new BrokerProducer();
 
 	public static BrokerProducer getInstance()
 	{
 		return instance;
-
 	}
-		
-//	private static final AtomicLong counter = new AtomicLong(0L);
-//	
-//	final long start = System.currentTimeMillis();
-//
-//	final Runnable speedcounter = new Runnable()
-//	{
-//		long t0 = 0L;
-//
-//		long t1 = 0L;
-//
-//		public void run()
-//		{
-//			long time = (System.currentTimeMillis() - start) / 1000;
-//			t1 = counter.get();
-//			out.print("Throughtput: " + ((t1 - t0) / 10L) + " msg/sec. ");
-//			out.print("Total: " + t1 + " messages. ");
-//			if (time > 0L)
-//				out.println("Avg: " + (t1 / time) + " msg/sec. ");
-//			else
-//				out.println("Avg: 0 msg/sec. ");
-//
-//			t0 = t1;
-//		}
-//	};
-	
+
 	private BrokerProducer()
 	{
-		//BrokerExecutor.scheduleAtFixedRate(speedcounter, 0L, 10L, TimeUnit.SECONDS);
 	}
 
 	private Message prepareForSending(BrokerMessage brkMessage, String messageSource)
@@ -107,35 +71,16 @@ public class BrokerProducer
 		Message msg = prepareForSending(brkm, messageSource);
 		msg.setType(MessageType.COM_QUEUE);
 
-		 Gcs.enqueue(msg);
-		 //counter.getAndIncrement();
-		// Statistics.messageProduced(messageSource);
+		Gcs.enqueue(msg);
 	}
 
 	public void publishMessage(final Publish pubreq, final String messageSource)
 	{
 		final BrokerMessage brkm = pubreq.brokerMessage;
 
-//		Runnable publisher = new Runnable()
-//		{
-//			public void run()
-//			{
-//				Message msg = prepareForSending(brkm, messageSource);
-//				msg.setType(MessageType.COM_TOPIC);
-//				Gcs.publish(msg);
-//				counter.getAndIncrement();
-//				// Statistics.messageProduced(messageSource);
-//			}
-//		};
-//		BrokerExecutor.execute(publisher);
-		
-		
 		Message msg = prepareForSending(brkm, messageSource);
 		msg.setType(MessageType.COM_TOPIC);
 		Gcs.publish(msg);
-		//counter.getAndIncrement();
-		// Statistics.messageProduced(messageSource);
-
 	}
 
 	public void acknowledge(Acknowledge ackReq)
