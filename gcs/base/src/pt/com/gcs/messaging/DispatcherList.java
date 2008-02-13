@@ -64,7 +64,7 @@ public class DispatcherList
 			_dCache.remove(queueName);
 			Gcs.removeTopicConsumer(listener);
 			DbStorage.deleteVirtualQueue(queueName);
-			QueueProcessorList.remove(queueName);
+			//QueueProcessorList.remove(queueName);
 		}
 		catch (InterruptedException ie)
 		{
