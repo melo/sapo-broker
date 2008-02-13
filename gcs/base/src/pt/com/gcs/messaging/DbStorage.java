@@ -39,6 +39,8 @@ class DbStorage
 	private static final String insert_virtual_queue_sql = "MERGE INTO VirtualQueue KEY(queue_name) VALUES(?);";
 
 	private static final String delete_virtual_queue_sql = "DELETE FROM VirtualQueue WHERE queue_name = ?";
+	
+	private static final String delete_queue_sql = "DELETE FROM Message WHERE destination = ?";
 
 	private Connection conn;
 
@@ -65,6 +67,8 @@ class DbStorage
 	private PreparedStatement insert_virtual_queue_prep_stmt;
 
 	private PreparedStatement delete_virtual_queue_prep_stmt;
+	
+	private PreparedStatement delete_queue_prep_stmt;
 
 	private static final int MAX_DELIVERY_COUNT = 25;
 
@@ -152,6 +156,7 @@ class DbStorage
 			count_msg_prep_stmt = conn.prepareStatement(count_msg_sql);
 			insert_virtual_queue_prep_stmt = conn.prepareStatement(insert_virtual_queue_sql);
 			delete_virtual_queue_prep_stmt = conn.prepareStatement(delete_virtual_queue_sql);
+			delete_queue_prep_stmt = conn.prepareStatement(delete_queue_sql);
 		}
 		catch (Throwable t)
 		{
@@ -394,6 +399,27 @@ class DbStorage
 			{
 				delete_virtual_queue_prep_stmt.setString(1, queueName);
 				delete_virtual_queue_prep_stmt.executeUpdate();
+			}
+			catch (Throwable t)
+			{
+				dealWithError(t, false);
+			}
+		}
+	}
+	
+	public static void deleteQueue(String queueName)
+	{
+		instance.i_deleteQueue(queueName);
+	}
+
+	private void i_deleteQueue(String queueName)
+	{
+		synchronized (delete_queue_prep_stmt)
+		{
+			try
+			{
+				delete_queue_prep_stmt.setString(1, queueName);
+				delete_queue_prep_stmt.executeUpdate();
 			}
 			catch (Throwable t)
 			{

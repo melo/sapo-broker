@@ -70,6 +70,10 @@ public class QueueProcessorList
 		try
 		{
 			qpCache.remove(queueName);
+			LocalQueueConsumers.delete(queueName);
+			RemoteQueueConsumers.delete(queueName);			
+			DbStorage.deleteQueue(queueName);
+			DispatcherList.removeDispatcher(queueName);
 		}
 		catch (InterruptedException ie)
 		{

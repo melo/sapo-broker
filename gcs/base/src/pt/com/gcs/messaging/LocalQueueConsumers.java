@@ -69,7 +69,7 @@ class LocalQueueConsumers
 	
 	public synchronized static void delete(String queueName)
 	{
-		// TODO: delete consumer
+		instance.localQueueConsumers.remove(queueName);
 	}
 
 	public static Set<String> getBroadcastableQueues()

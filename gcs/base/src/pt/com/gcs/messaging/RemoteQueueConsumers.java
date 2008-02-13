@@ -32,7 +32,7 @@ class RemoteQueueConsumers
 
 	public synchronized static void delete(String queueName)
 	{
-		// TODO: delete consumer
+		instance.remoteQueueConsumers.remove(queueName);
 	}
 
 	public static boolean notify(Message message)
