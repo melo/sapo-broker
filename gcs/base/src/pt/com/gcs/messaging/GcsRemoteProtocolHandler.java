@@ -51,6 +51,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 			{
 				QueueProcessorList.get(msg.getDestination()).store(msg, true);
 				LocalQueueConsumers.acknowledgeMessage(msg, iosession);
+				receivedMessages.put(msg.getMessageId());
 			}
 
 		}
