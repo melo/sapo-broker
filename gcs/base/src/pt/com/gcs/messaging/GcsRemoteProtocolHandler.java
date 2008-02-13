@@ -35,8 +35,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 
 		if (log.isDebugEnabled())
 		{
-			log.debug("messageReceived() from: {}", IoSessionHelper.getRemoteAddress(iosession));
-			log.debug("messageReceived.Type: " + msg.getType());
+			log.debug("Message Received from: '{}', Type: '{}'", IoSessionHelper.getRemoteAddress(iosession), msg.getType());
 		}
 
 		if (msg.getType() == (MessageType.COM_TOPIC))
@@ -66,14 +65,14 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	{
 		if (log.isDebugEnabled())
 		{
-			log.debug("messageSent():{}, {}", IoSessionHelper.getRemoteAddress(iosession), message.toString());
+			log.debug("Message Sent: '{}', '{}'", IoSessionHelper.getRemoteAddress(iosession), message.toString());
 		}
 	}
 
 	@Override
 	public void sessionClosed(final IoSession iosession) throws Exception
 	{
-		log.info("Session closed: {}", IoSessionHelper.getRemoteAddress(iosession));
+		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 		Gcs.connect((SocketAddress) IoSessionHelper.getRemoteInetAddress(iosession));
 	}
 
@@ -83,7 +82,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		IoSessionHelper.tagWithRemoteAddress(iosession);
 		if (log.isDebugEnabled())
 		{
-			log.debug("sessionCreated(): {}", IoSessionHelper.getRemoteAddress(iosession));
+			log.debug("Session Created: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 		}		
 	}
 
@@ -92,14 +91,14 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	{
 		if (log.isDebugEnabled())
 		{
-			log.debug("sessionIdle():{}", IoSessionHelper.getRemoteAddress(iosession));
+			log.debug("Session Idle:'{}'", IoSessionHelper.getRemoteAddress(iosession));
 		}
 	}
 
 	@Override
 	public void sessionOpened(IoSession iosession) throws Exception
 	{
-		log.info("Session opened: {}", IoSessionHelper.getRemoteAddress(iosession));
+		log.info("Session Opened: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 		sayHello(iosession);
 	}
 
@@ -107,7 +106,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	{
 		if (log.isDebugEnabled())
 		{
-			log.debug("sayHello():{}", IoSessionHelper.getRemoteAddress(iosession));
+			log.debug("Say Hello: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 		}
 
 		Message m = new Message();
@@ -116,7 +115,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		m.setDestination("HELLO");
 		m.setContent(agentId);
 
-		log.info("Send agentId: " + agentId);
+		log.info("Send agentId: '{}'", agentId);
 
 		// iosession.write(m).awaitUninterruptibly();
 		iosession.write(m);
