@@ -38,35 +38,27 @@ public class QueueSessionListener extends BrokerListener
 		{
 			if (ioSession != null)
 			{
+				if (ioSession.isConnected() && !ioSession.isClosing())
+				{
+					final SoapEnvelope response = buildNotification(msg);
+					WriteFuture future = ioSession.write(response);
+					future.awaitUninterruptibly();
 
-					if (ioSession.isConnected() && !ioSession.isClosing())
+					if (future.isWritten())
 					{
-						final SoapEnvelope response = buildNotification(msg);
-						WriteFuture future = ioSession.write(response);
-						future.awaitUninterruptibly();
-						
-						if (future.isWritten())
+						if (log.isDebugEnabled())
 						{
-							if (log.isDebugEnabled())
-							{
-								log.debug("Delivered message: {}", msg.getMessageId());
-							}
-
-							return true;
+							log.debug("Delivered message: {}", msg.getMessageId());
 						}
-					}
-					else
-					{
-						removeConsumer(ioSession);
-					}
 
+						return true;
+					}
 				}
-//				else
-//				{
-//					System.out.println("QueueSessionListener.onMessage():" + System.currentTimeMillis() + " # " + ioSession.getScheduledWriteMessages());
-//				}
-
-//			}
+				else
+				{
+					removeConsumer(ioSession);
+				}
+			}
 		}
 		catch (Throwable e)
 		{
@@ -74,7 +66,6 @@ public class QueueSessionListener extends BrokerListener
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);
 				removeConsumer(ioSession);
-				//QueueProcessorList.get(msg.getDestination()).wakeup();
 			}
 			catch (Throwable t)
 			{
@@ -111,7 +102,6 @@ public class QueueSessionListener extends BrokerListener
 				return _sessions.get(currentQEP);
 			}
 		}
-
 	}
 
 	public void addConsumer(IoSession iosession)
