@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
+import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,11 @@ class LocalQueueConsumers
 
 	public static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
 	{
+		if (StringUtils.isBlank(destinationName))
+		{
+			return;
+		}
+		
 		if (action.equals("CREATE"))
 		{
 			log.info("Tell {} about new queue consumer for: {}.", ioSession.getRemoteAddress().toString(), destinationName);

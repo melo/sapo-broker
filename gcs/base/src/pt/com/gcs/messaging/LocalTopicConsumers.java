@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
+import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +129,11 @@ class LocalTopicConsumers
 
 	public static void broadCastTopicInfo(String destinationName, String action, IoSession ioSession)
 	{
+		if (StringUtils.isBlank(destinationName))
+		{
+			return;
+		}
+		
 		if (action.equals("CREATE"))
 		{
 			log.info("Tell '{}' about new topic consumer for: '{}'", ioSession.getRemoteAddress().toString(), destinationName);

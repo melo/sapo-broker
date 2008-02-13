@@ -74,6 +74,7 @@ public class QueueProcessorList
 			RemoteQueueConsumers.delete(queueName);			
 			DbStorage.deleteQueue(queueName);
 			DispatcherList.removeDispatcher(queueName);
+			log.info("Destination '{}' was deleted", queueName);
 		}
 		catch (InterruptedException ie)
 		{
