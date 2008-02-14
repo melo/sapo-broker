@@ -1,6 +1,6 @@
 <config>
 	<name>broker1</name>
-	<config-version>0.9</config-version>
+	<config-version>1.0</config-version>
 	<net>
 		<ip>127.0.0.1</ip>
 		<port>6615</port>
@@ -12,8 +12,8 @@
 		-->
 		<discovery_delay>100</discovery_delay>
 		<file_ref>./conf/world_map.xml</file_ref>
-		<broker-port>2222</broker-port>
-		<broker-http-port>2280</broker-http-port>
+		<broker-port>3315</broker-port>
+		<broker-http-port>3380</broker-http-port>
 	</net>
 
 	<!-- Persistent storage configuration -->
@@ -25,34 +25,9 @@
 		value: ./persistent
 		-->
 		<directory>./persistent</directory>
-		<segment-size>500</segment-size>
 	</persistency>
 
 	<messaging>
-		<!--
-		The size in bytes for the maximum allowed message size
-		Valid values: Positive long value.
-		Default value: 262144  = 256KB
-		-->
-		<maximum_message_size>262144</maximum_message_size>
-
-		<!--
-		The maximum number of pending messages that a TOPIC consumer is allowed to hold,
-		after that messages will be dropped.
-		Valid values: Positive int value.
-		Default value: 100
-			-->
-		<maximum_pending_messages>100</maximum_pending_messages>
-
-		<!--
-		The maximum number of Message Consumers/Producers per agent.
-		This is not the maximum number of clients. A Message Consumer/Producer can have several clients.
-		The purpose of this setting is to prevent misbehaved clients from DOS'ing the agent.
-		Valid values: Positive int value.
-		Default value: 250
-		-->
-		<maximum_message_consumers>250</maximum_message_consumers>
-		<maximum_message_producers>250</maximum_message_producers>
 
 		<!--
 		DropBox functionality.
@@ -85,13 +60,12 @@
 	</messaging>
 
 	<statistics>
-
 		<!--
 		Enable/Disable the statistics accumulation.
 		Valid values: true, false.
-		Default value: true
+		Default value: false
 		-->
-		<collect_stats>true</collect_stats>
+		<collect_stats>false</collect_stats>
 
 		<!--
 		Enable/Disable sending the statistics to the designated subscriber peers.
@@ -110,7 +84,7 @@
 		<!--
 		The interval in seconds in which statistics information is sent.
 		Valid values: Positive long value.
-		Default value: 3600
+		Default value: 20
 		-->
 		<update_interval>20</update_interval>
 	</statistics>
