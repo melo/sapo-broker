@@ -2,8 +2,8 @@
 	<name>broker1</name>
 	<config-version>1.0</config-version>
 	<net>
-		<ip>127.0.0.1</ip>
-		<port>6615</port>
+		<ip>@PEER_IP@</ip>
+		<port>@PEER_PORT@</port>
 		<setTcpNoDelay>false</setTcpNoDelay>
 		<!--
 		A delay time (in milliseconds) that allows MantaRay peers to detect
@@ -11,9 +11,9 @@
 		Valid values: Positive integer Default value: 100
 		-->
 		<discovery_delay>100</discovery_delay>
-		<file_ref>./conf/world_map.xml</file_ref>
-		<broker-port>3315</broker-port>
-		<broker-http-port>3380</broker-http-port>
+		<file_ref>@PATH_TO_WORLDMAP@</file_ref>
+		<broker-port>@BROKER_PORT@</broker-port>
+		<broker-http-port>@HTTP_PORT@</broker-http-port>
 	</net>
 
 	<!-- Persistent storage configuration -->
@@ -52,7 +52,7 @@
 			<!--
 			The interval in seconds in which the directory is checked for new files.
 			Valid values: Positive long value.
-			Default value: 60
+			Default value: 5
 			-->
 			<check_interval>@DROP_BOX_POLLING_INTERVAL@</check_interval>
 		</dropbox>
@@ -84,9 +84,9 @@
 		<!--
 		The interval in seconds in which statistics information is sent.
 		Valid values: Positive long value.
-		Default value: 20
+		Default value: 60
 		-->
-		<update_interval>20</update_interval>
+		<update_interval>60</update_interval>
 	</statistics>
 
 </config>
