@@ -54,17 +54,22 @@ public class DispatcherList
 			throw new RuntimeException(ie);
 		}
 	}
+	
+	
+	
 
 
 	public static void removeDispatcher(String queueName)
 	{
 		try
-		{
-			TopicToQueueDispatcher listener = _dCache.get(queueName, qp_cf);
-			_dCache.remove(queueName);
-			Gcs.removeTopicConsumer(listener);
+		{			
+			if (_dCache.containsKey(queueName))
+			{
+				TopicToQueueDispatcher listener = _dCache.get(queueName, qp_cf);
+				_dCache.remove(queueName);
+				Gcs.removeTopicConsumer(listener);
+			}
 			DbStorage.deleteVirtualQueue(queueName);
-			//QueueProcessorList.remove(queueName);
 		}
 		catch (InterruptedException ie)
 		{

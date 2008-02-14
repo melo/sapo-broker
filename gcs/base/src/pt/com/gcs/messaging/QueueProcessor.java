@@ -38,7 +38,7 @@ public class QueueProcessor
 		}
 
 		msgsAwaitingAck.remove(msgId);
-		DbStorage.deleteMessage(msgId);
+		DbStorage.deleteMessage(msgId, _destinationName);
 
 	}
 

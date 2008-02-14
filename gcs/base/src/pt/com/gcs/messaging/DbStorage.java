@@ -28,7 +28,7 @@ class DbStorage
 
 	private static final String update_state_sql = "UPDATE Message SET delivery_count=delivery_count+1 WHERE msg_id = ?";
 
-	private static final String ack_sql = "DELETE FROM Message WHERE msg_id = ?";
+	private static final String ack_sql = "DELETE FROM Message WHERE msg_id = ? AND destination = ?";
 
 	private static final String fetch_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message  WHERE destination=? ORDER BY priority DESC, sequence_nr ASC";
 
@@ -103,18 +103,19 @@ class DbStorage
 		}
 	}
 
-	public static void deleteMessage(String msgId)
+	public static void deleteMessage(String msgId, String queueName)
 	{
-		instance.i_deleteMessage(msgId);
+		instance.i_deleteMessage(msgId, queueName);
 	}
 
-	private void i_deleteMessage(String msgId)
+	private void i_deleteMessage(String msgId, String queueName)
 	{
 		synchronized (ack_state_prep_stmt)
 		{
 			try
 			{
 				ack_state_prep_stmt.setString(1, msgId);
+				ack_state_prep_stmt.setString(2, queueName);
 				ack_state_prep_stmt.executeUpdate();
 			}
 			catch (Throwable t)
@@ -307,7 +308,7 @@ class DbStorage
 				else
 				{
 					log.warn("Expired or overdelivered message: {}", msg_id);
-					deleteMessage(msg_id);
+					deleteMessage(msg_id, processor.getDestinationName());
 				}
 			}
 			batchUpdateState(processor);
