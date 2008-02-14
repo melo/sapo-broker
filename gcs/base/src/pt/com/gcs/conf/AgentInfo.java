@@ -128,5 +128,20 @@ public class AgentInfo
 		int iprop = instance.conf.getNet().getBrokerPort();
 		return iprop;
 	}
+	
+	public static boolean isDropboxEnabled()
+	{
+		return instance.conf.getMessaging().getDropbox().isEnabled();
+	}
+	
+	public static String getDropBoxDir()
+	{
+		return instance.conf.getMessaging().getDropbox().getDir();
+	}
+	
+	public static int getDropBoxCheckInterval()
+	{
+		return instance.conf.getMessaging().getDropbox().getCheckInterval();
+	}
 
 }

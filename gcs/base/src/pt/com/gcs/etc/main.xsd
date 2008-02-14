@@ -5,6 +5,7 @@
 			<xs:sequence>
 				<xs:element name="name" type="xs:string" />
 				<xs:element name="config-version" type="xs:string" />
+				
 				<xs:element name="net">
 					<xs:complexType>
 						<xs:sequence>
@@ -18,33 +19,31 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
+				
 				<xs:element name="persistency">
 					<xs:complexType>
 						<xs:sequence>
 							<xs:element name="directory" type="xs:string" />
-							<xs:element name="segment-size" type="xs:int" />
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
+				
 				<xs:element name="messaging">
-					<xs:complexType>
-						<xs:sequence>
-							<xs:element name="maximum_message_size" type="xs:int" />
-							<xs:element name="maximum_pending_messages" type="xs:int" />
-							<xs:element name="maximum_message_consumers" type="xs:int" />
-							<xs:element name="maximum_message_producers" type="xs:int" />
-							<xs:element name="dropbox">
-								<xs:complexType>
-									<xs:sequence>
-										<xs:element name="enabled" type="xs:boolean" />
-										<xs:element name="dir" type="xs:string" />
-										<xs:element name="check_interval" type="xs:int" />
-									</xs:sequence>
-								</xs:complexType>
-							</xs:element>
-						</xs:sequence>
-					</xs:complexType>
-				</xs:element>
+		          <xs:complexType>
+		            <xs:sequence>
+		              <xs:element name="dropbox">
+		                <xs:complexType>
+		                  <xs:sequence>
+		                    <xs:element name="enabled" type="xs:boolean" />
+		                    <xs:element name="dir" type="xs:string" />
+		                    <xs:element name="check_interval" type="xs:int" />
+		                  </xs:sequence>
+		                </xs:complexType>
+		              </xs:element>
+		            </xs:sequence>
+		          </xs:complexType>
+		        </xs:element>
+		        
 				<xs:element name="statistics">
 					<xs:complexType>
 						<xs:sequence>
@@ -55,7 +54,9 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
+				
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
+	
 </xs:schema>
