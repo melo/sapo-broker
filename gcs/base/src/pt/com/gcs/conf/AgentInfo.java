@@ -17,7 +17,7 @@ public class AgentInfo
 {
 	private static Logger log = LoggerFactory.getLogger(AgentInfo.class);
 
-	public static final String AGENT_VERSION = "2.0";
+	public static final String AGENT_VERSION = "1.0";
 
 	private static final AgentInfo instance = new AgentInfo();
 
