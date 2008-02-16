@@ -1,5 +1,5 @@
 <config>
-	<name>broker1</name>
+	<name>broker-@PEER_IP@-@PEER_PORT@</name>
 	<config-version>1.0</config-version>
 	<net>
 		<ip>@PEER_IP@</ip>
@@ -24,7 +24,7 @@
 		Valid values: A Valid path (relative/full) to the directory Default 
 		value: ./persistent
 		-->
-		<directory>./persistent</directory>
+		<directory>@PATH_TO_PERSISTENT_STORAGE@</directory>
 	</persistency>
 
 	<messaging>
