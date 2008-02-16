@@ -6,7 +6,7 @@
 			<level>info</level>
 		</filter>
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<pattern>%5p #%C# [%t] %d{dd MMM yyyy HH:mm:ss} - %m%n</pattern>
+			<pattern>%5p #%C# [%t] - %m%n</pattern>
 		</layout>
 	</appender>
 
@@ -15,7 +15,7 @@
 			<level>info</level>
 		</filter>
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<pattern>%5p #BROKER#%C# [%t] %d{dd MMM yyyy HH:mm:ss} - %m%n</pattern>
+			<pattern>%5p #BROKER#%C# [%t] - %m%n</pattern>
 		</layout>
 	</appender>
 
@@ -24,9 +24,14 @@
 			<level>info</level>
 		</filter>
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<pattern>%5p #GCS#%C# [%t] %d{dd MMM yyyy HH:mm:ss} - %m%n</pattern>
+			<pattern>%5p #GCS#%C# [%t] - %m%n</pattern>
 		</layout>
 	</appender>
+	
+	<logger additivity="false" name="org.apache">
+		<level value="error" />
+		<appender-ref ref="ConsoleAppender" />
+	</logger>
 
 	<logger additivity="false" name="org.caudexorigo">
 		<level value="info" />
