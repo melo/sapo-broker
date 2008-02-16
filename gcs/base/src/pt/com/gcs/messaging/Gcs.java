@@ -234,6 +234,8 @@ public class Gcs
 
 	private void iaddQueueConsumer(String queueName, MessageListener listener)
 	{	
+		QueueProcessorList.get(queueName);
+		
 		if (StringUtils.contains(queueName, "@"))
 		{
 			DispatcherList.create(queueName);
