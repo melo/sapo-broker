@@ -33,23 +33,6 @@
 				</xsd:complexType>
 			</xsd:element>
 
-			<xsd:element name="Denqueue">
-				<xsd:complexType>
-					<xsd:all>
-						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
-						<xsd:element name="TimeOut" type="xsd:long" />
-					</xsd:all>
-				</xsd:complexType>
-			</xsd:element>
-
-			<xsd:element name="DenqueueResponse">
-				<xsd:complexType>
-					<xsd:all>
-						<xsd:element name="BrokerMessage" type="tns:BrokerMessage" />
-					</xsd:all>
-				</xsd:complexType>
-			</xsd:element>
-
 			<xsd:element name="Notify">
 				<xsd:complexType>
 					<xsd:all>
