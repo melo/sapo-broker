@@ -103,4 +103,9 @@ public class TopicSubscriber extends BrokerListener
 		}
 		log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 	}
+	
+	public String getDestinationName()
+	{
+		return _dname;
+	}
 }

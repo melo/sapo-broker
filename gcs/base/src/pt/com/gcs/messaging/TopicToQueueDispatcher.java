@@ -17,8 +17,8 @@ class TopicToQueueDispatcher implements MessageListener
 		Gcs.enqueue(message);
 		return true;
 	}
-
-	public String getQueueName()
+	
+	public String getDestinationName()
 	{
 		return _queueName;
 	}

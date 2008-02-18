@@ -135,4 +135,9 @@ public class QueueSessionListener extends BrokerListener
 			return _sessions.size();
 		}
 	}
+	
+	public String getDestinationName()
+	{
+		return _dname;
+	}
 }

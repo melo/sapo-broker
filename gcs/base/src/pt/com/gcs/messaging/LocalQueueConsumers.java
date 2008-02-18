@@ -92,17 +92,13 @@ class LocalQueueConsumers
 	{
 		if (listener != null)
 		{
-			Set<String> keys = instance.localQueueConsumers.keySet();
-			for (String queueName : keys)
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(listener.getDestinationName());
+			if (listeners != null)
 			{
-				CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
-				if (listeners != null)
-				{
-					listeners.remove(listener);
-				}
-				instance.localQueueConsumers.remove(listeners);
-				instance.broadCastRemovedQueueConsumer(queueName);
+				listeners.remove(listener);
 			}
+			instance.localQueueConsumers.remove(listeners);
+			instance.broadCastRemovedQueueConsumer(listener.getDestinationName());
 		}
 	}
 

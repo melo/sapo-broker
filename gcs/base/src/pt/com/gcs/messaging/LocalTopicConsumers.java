@@ -95,17 +95,13 @@ class LocalTopicConsumers
 	{
 		if (listener != null)
 		{
-			Set<String> keys = instance.localTopicConsumers.keySet();
-			for (String topicName : keys)
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(listener.getDestinationName());
+			if (listeners != null)
 			{
-				CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
-				if (listeners != null)
-				{
-					listeners.remove(listener);
-				}
-				instance.localTopicConsumers.remove(listeners);
-				instance.broadCastRemovedTopicConsumer(topicName);
+				listeners.remove(listener);
 			}
+			instance.localTopicConsumers.remove(listeners);
+			instance.broadCastRemovedTopicConsumer(listener.getDestinationName());
 		}
 	}
 
