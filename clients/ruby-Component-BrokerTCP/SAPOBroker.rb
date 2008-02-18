@@ -66,7 +66,12 @@ module SAPOBroker
     end
     
     def from_xml(xml)
-      doc = REXML::Document.new(xml)
+      begin
+        doc = REXML::Document.new(xml)
+      rescue REXML::ParseException
+        raise ArgumentError
+      end
+      
       REXML::XPath.each(doc, "//mq:BrokerMessage/*", {'mq' => 'http://services.sapo.pt/broker'}) do |elem|
         case elem.name
         when 'Priority' then self.priority = elem.text
@@ -152,27 +157,43 @@ END_ACK
       @sub_map = {}
 
       @server_list = server_list
+      @sock = nil
       reconnect()
 
     end
 
     def _receive
-      catch(:retry) do
+      begin
         msg_len = @sock.recv(4).unpack('N')[0]
-        throw(:retry) if sick_socket?(msg_len)
+        sick_socket?(msg_len)
         @logger.debug("Will receive message of %i bytes" % msg_len)
-        
+
         xml = @sock.recv(msg_len)
+        if xml.length != msg_len then
+          msg = "Couldn't receive all of the message bytes... Reconnecting..."
+          @logger.error(msg)
+          raise Errno::EAGAIN, msg
+        end
+        
         @logger.debug("Got message %s" % xml)
         message = Message.new.from_xml(xml)
         ack(message) if @sub_map.has_key?(message.destination) && 
           @sub_map[message.destination][:type] == 'QUEUE' &&
           @sub_map[message.destination][:ack_mode] == 'AUTO'
         message
+      rescue SystemCallError => ex
+        @logger.error("Problems receiving event: #{ex.message}")
+        reconnect
+        retry
+      rescue ArgumentError
+        @logger.error('Problems parsing message')
+        reconnect
+        retry
       end
     end
 
     def reconnect
+      @sock.close unless @sock.nil? || @sock.closed?
       @server_list.sort_by {rand}.each do |server|
         host, port = server.split(/:/)
         begin
@@ -186,7 +207,7 @@ END_ACK
           end
           return
         rescue Errno::ECONNREFUSED => ex
-          @logger.warn("Problems (#{server}): " + ex.message)
+          @logger.warn("Problems (#{server}): #{ex.message}")
         end
       end
 
@@ -203,15 +224,18 @@ END_ACK
 END_EVT
       
       evt_msg = [evt_msg.length].pack('N') + evt_msg
-      @sock.write(evt_msg)
+      begin
+        @sock.write(evt_msg)
+      rescue SystemCallError => ex
+        @logger.error("Problems sending event: #{ex.message}")
+        reconnect
+        retry
+      end
     end
 
     def sick_socket?(len)
-      if len == 0 && (@sock.closed? || @sock.eof?) then
-        reconnect
-        true
-      else
-        false
+      if len.nil? || (len == 0 && (@sock.closed? || @sock.eof?)) then
+        raise Errno::EAGAIN, "Problems with the socket. Reconnect and try again."
       end
     end
     
