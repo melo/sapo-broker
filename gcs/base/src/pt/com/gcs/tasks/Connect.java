@@ -1,19 +1,20 @@
 package pt.com.gcs.tasks;
 
+import java.net.SocketAddress;
+
 import pt.com.gcs.messaging.Gcs;
-import pt.com.gcs.net.Peer;
 
 public class Connect implements Runnable
 {
-	private Peer _peer;
+	private SocketAddress _address;
 
-	public Connect(Peer peer)
+	public Connect(SocketAddress address)
 	{
-		_peer = peer;
+		_address = address;
 	}
 
 	public void run()
 	{
-		Gcs.connect(_peer.getHost(), _peer.getPort());
+		Gcs.connect(_address);
 	}
 }

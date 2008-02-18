@@ -61,11 +61,10 @@ public class Gcs
 		log.info("{} starting.", SERVICE_NAME);
 		try
 		{
-		
+
 			startAcceptor(AgentInfo.getAgentPort());
 			startConnector();
-			connectToAllPeers();
-			
+
 			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 5, 5, TimeUnit.SECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new QueueCounter(), 20, 20, TimeUnit.SECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 120, 120, TimeUnit.SECONDS);
@@ -114,7 +113,7 @@ public class Gcs
 	private void startConnector()
 	{
 		connector = new NioSocketConnector(IO_THREADS);
-		
+
 		DefaultIoFilterChainBuilder filterChainBuilder = connector.getFilterChain();
 
 		// Add CPU-bound job first,
@@ -130,41 +129,32 @@ public class Gcs
 		// IoEventQueueThrottle(2 * 65536))));
 
 		connector.setHandler(new GcsRemoteProtocolHandler());
-		// connector.setConnectTimeout(2);
+		connector.setConnectTimeout(5); // 5 seconds timeout
 	}
-	
+
 	private void connectToAllPeers()
 	{
 		List<Peer> peerList = WorldMap.getPeerList();
 		for (Peer peer : peerList)
 		{
-			GcsExecutor.execute(new Connect(peer));
+			SocketAddress addr = new InetSocketAddress(peer.getHost(), peer.getPort());
+			connect(addr);
 		}
-	}
-
-
-
-	public static void connect(String host, int port)
-	{
-		SocketAddress addr = new InetSocketAddress(host, port);
-		connect(addr);
 	}
 
 	public static void connect(SocketAddress address)
 	{
 		String message = "Connecting to '{}'.";
 		log.info(message, address.toString());
-
+		
 		ConnectFuture cf = instance.connector.connect(address).awaitUninterruptibly();
-		Sleep.time(2000);
-		while (!cf.isConnected())
+
+		if (!cf.isConnected())
 		{
-			log.info(message, address.toString());
-			cf = instance.connector.connect(address).awaitUninterruptibly();
-			Sleep.time(2000);
+			GcsExecutor.schedule(new Connect(address), 5000, TimeUnit.MILLISECONDS);
 		}
 	}
-	
+
 	public static void init()
 	{
 		instance.iinit();
@@ -172,13 +162,15 @@ public class Gcs
 
 	private void iinit()
 	{
+		connectToAllPeers();
+		
 		String[] virtual_queues = DbStorage.getVirtualQueuesNames();
 
 		for (String vqueue : virtual_queues)
 		{
 			System.out.println(vqueue);
 			iaddQueueConsumer(vqueue, null);
-		}	
+		}
 		log.info("{} initialized.", SERVICE_NAME);
 	}
 
@@ -233,16 +225,16 @@ public class Gcs
 	}
 
 	private void iaddQueueConsumer(String queueName, MessageListener listener)
-	{	
+	{
 		QueueProcessorList.get(queueName);
-		
+
 		if (StringUtils.contains(queueName, "@"))
 		{
 			DispatcherList.create(queueName);
 		}
 
 		if (listener != null)
-		{			
+		{
 			LocalQueueConsumers.add(queueName, listener);
 		}
 	}
