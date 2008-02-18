@@ -225,6 +225,43 @@ class SAPO_Broker {
         array_push($this->net->subscriptions,array('topic'=>$topic,'args'=>$args,'callback'=>$callback));
     }
 
+    function unsubscribe($topic)
+    {
+      $unsub_item=false;
+      $subscriptions=array();
+      foreach($this->net->subscriptions as $subscription) {
+        if($subscription['topic']!=$topic) {
+          array_push($subscriptions,$subscription);
+          }
+          else
+          {
+          $unsub_item=$subscription;
+          }
+        }
+      $this->net->subscriptions=$subscriptions;
+      if($unsub_item) {  
+        SAPO_Broker::dodebug("unsubscribe() unsubscribing ".$subscription['topic']);
+        $msg = '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:mq="http://services.sapo.pt/broker">';
+        $msg .= '<soap:Body>';
+        $msg .= '<mq:Unsubscribe>';
+        $msg .= '<mq:DestinationName>'.$unsub_item['topic'].'</mq:DestinationName>';    
+        if($subscription['args']['destination_type']) {
+          $msg.='<mq:DestinationType>'.strtoupper($unsub_item['args']['destination_type']).'</mq:DestinationType>';
+          } else {
+          $msg.='<mq:DestinationType>TOPIC</mq:DestinationType>';
+          }
+        $msg .= '</mq:Unsubscribe>';
+        $msg .= '</soap:Body>';
+        $msg .= '</soap:Envelope>';
+        return $this->net->put($msg);
+        }
+        else
+        {
+        SAPO_Broker::dodebug("unsubscribe() no such topic is subscribed ".$topic);
+        }
+    return(false);
+    }
+
     function add_callback($args,$callback)
     {
         $period_float=0;
