@@ -1,24 +1,24 @@
 <?php
 /**
- * Mantaray access abstraction class.
+ * SAPO Broker access abstraction class.
  *
- * The Manta class abstracts all the low-level complexity of the MantaTCP and
+ * The Broker class abstracts all the low-level complexity and
  * Mataray agents and gives the developers a simple to use high-level API
  * to build consumers and producers.
  *
- * @package Manta
+ * @package Broker
  * @version 0.1.0
  * @author Celso Martinho <celso@co.sapo.pt>
  * @author Bruno Pedro <bpedro@co.sapo.pt>
  **/
-class SAPO_Manta {
+class SAPO_Broker {
     
     var $parser;
     var $net;
 
     var $debug;
 
-    function SAPO_Manta ($args=array())
+    function SAPO_Broker ($args=array())
     {
         // args defaults 
         $args=array_merge(array('port'=>2222,
@@ -35,70 +35,70 @@ class SAPO_Manta {
         // Check for supported PHP version.
         //
         if (version_compare(phpversion(), '4.3.0', '<')) {
-            die ("SAPO_Manta needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
+            die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
         }
         
         //
         // Look for sockets support.
         //
         if ( (extension_loaded('sockets') || $args['force_sockets']) && $args['force_streams']==FALSE) {
-            SAPO_Manta::dodebug("Using SAPO_Manta_Net_Sockets()");
-            $this->net =& new SAPO_Manta_Net_Sockets($this->debug);
+            SAPO_Broker::dodebug("Using SAPO_Broker_Net_Sockets()");
+            $this->net =& new SAPO_Broker_Net_Sockets($this->debug);
         } else {
-            SAPO_Manta::dodebug("Using SAPO_Manta_Net() aka Streams");
-            $this->net =& new SAPO_Manta_Net($this->debug);
+            SAPO_Broker::dodebug("Using SAPO_Broker_Net() aka Streams");
+            $this->net =& new SAPO_Broker_Net($this->debug);
         }
 
         //
         // Look for DOM support and use appropriate Parser.
         //
         if ((!extension_loaded('dom') || $args['force_expat']) && $args['force_dom']==FALSE) {
-            SAPO_Manta::dodebug("Using SAPO_Manta_Parser() aka expat");
-            $this->parser =& new SAPO_Manta_Parser($this->debug);
+            SAPO_Broker::dodebug("Using SAPO_Broker_Parser() aka expat");
+            $this->parser =& new SAPO_Broker_Parser($this->debug);
         } else {
-            SAPO_Manta::dodebug("Using SAPO_Manta_Parser_DOM() aka native DOM support");
-            $this->parser =& new SAPO_Manta_Parser_DOM($this->debug);
+            SAPO_Broker::dodebug("Using SAPO_Broker_Parser_DOM() aka native DOM support");
+            $this->parser =& new SAPO_Broker_Parser_DOM($this->debug);
         }
 
         // post init()
 
         if(!$args['server']) {
-          SAPO_Manta::dodebug("No server defined. Doing auto-discovery.");
+          SAPO_Broker::dodebug("No server defined. Doing auto-discovery.");
           if(getenv('SAPO_BROKER_SERVER')) {
-            SAPO_Manta::dodebug("Trying to use SAPO_BROKER_SERVER");
+            SAPO_Broker::dodebug("Trying to use SAPO_BROKER_SERVER");
             if($this->net->tryConnect(getenv('SAPO_BROKER_SERVER'),$args['port'])) {
               $args['server']=getenv('SAPO_BROKER_SERVER');
               }
               else
               {
-              SAPO_Manta::dodebug("Couldn't connect to SAPO_BROKER_SERVER: ".getenv('SAPO_BROKER_SERVER'));
+              SAPO_Broker::dodebug("Couldn't connect to SAPO_BROKER_SERVER: ".getenv('SAPO_BROKER_SERVER'));
               }
             }
           if(!$args['server'] && $this->net->tryConnect('127.0.0.1',$args['port'])) {
-            SAPO_Manta::dodebug("Using 127.0.0.1. Local agent seems present.");
+            SAPO_Broker::dodebug("Using 127.0.0.1. Local agent seems present.");
             $args['server']='127.0.0.1';
             }
           if(!$args['server'] && @file_exists('/etc/world_map.xml')) {
-            SAPO_Manta::dodebug("Picking random agent from /etc/world_map.xml.");
+            SAPO_Broker::dodebug("Picking random agent from /etc/world_map.xml.");
             $i=0;
             while($i<3) {
               $server=$this->parser->worldmapPush('/etc/world_map.xml');
-              SAPO_Manta::dodebug("Picked ".$server." (".($i+1)."). Testing connection.");
+              SAPO_Broker::dodebug("Picked ".$server." (".($i+1)."). Testing connection.");
               if($this->net->tryConnect($server,$args['port'])) {
                 $args['server']=$server;
                 break;
                 }
               $i++;
               }
-            if($args['server']) SAPO_Manta::dodebug("Will use ".$args['server']);
+            if($args['server']) SAPO_Broker::dodebug("Will use ".$args['server']);
             }
           if(!$args['server']) {
-            SAPO_Manta::dodebug("Usign last resort round-robin DNS broker.bk.sapo.pt");
+            SAPO_Broker::dodebug("Usign last resort round-robin DNS broker.bk.sapo.pt");
             $args['server']='broker.bk.sapo.pt';
             }
           }
 
-        SAPO_Manta::dodebug("Initializing network.");
+        SAPO_Broker::dodebug("Initializing network.");
         $this->net->init($args['server'], $args['port']);
 
     }
@@ -110,19 +110,19 @@ class SAPO_Manta {
       }
 
     /**
-     * This is a facade to SAPO_Manta_Tools::xmlentities()
+     * This is a facade to SAPO_Broker_Tools::xmlentities()
      *
      * @return string
      * @author Bruno Pedro
      **/
     function xmlentities ($string, $quote_style = ENT_QUOTES, $charset = 'UTF-8')
     {
-        return SAPO_Manta_Tools::xmlentities($string, $quote_style, $charset);
+        return SAPO_Broker_Tools::xmlentities($string, $quote_style, $charset);
 
     }
 
     /**
-     * This is a facade to SAPO_Manta_Net::init()
+     * This is a facade to SAPO_Broker_Net::init()
      *
      * @return void
      * @author Bruno Pedro
@@ -204,11 +204,11 @@ class SAPO_Manta {
 
         $msg .= '</soap:Body>';
         $msg .= '</soap:Envelope>';
-        SAPO_Manta::dodebug("Publishing $msg");
+        SAPO_Broker::dodebug("Publishing $msg");
 	if($this->net->server=='127.0.0.1') {
-          SAPO_Manta::dodebug("Using local dropbox");
+          SAPO_Broker::dodebug("Using local dropbox");
           umask(0);
-          $filename = '/servers/mantaray/dropbox/' . md5(microtime() . mt_rand() . getmypid());
+          $filename = '/servers/broker/dropbox/' . md5(microtime() . mt_rand() . getmypid());
           $fd = fopen($filename, 'x');
           if($fd) {
             fwrite($fd, $msg);
@@ -240,7 +240,7 @@ class SAPO_Manta {
 
         $this->net->callbacks_count++;
 
-        SAPO_Manta::dodebug("Adding Callback function #".$this->net->callbacks_count." '".$callback."' periodicity ".$period);
+        SAPO_Broker::dodebug("Adding Callback function #".$this->net->callbacks_count." '".$callback."' periodicity ".$period);
 
         array_push($this->net->callbacks,array('id'=>$this->net->callbacks_count,'period'=>(float)$period/1000000,'name'=>$callback));
         if(($period<$this->rcv_to || $period<$this->snd_to) && $period>0) {
@@ -248,7 +248,7 @@ class SAPO_Manta {
             $this->snd_to=$period;
             $this->timeouts();
         }
-        $this->net->callbacks_ts[$this->net->callbacks_count]=SAPO_Manta_Tools::utime();
+        $this->net->callbacks_ts[$this->net->callbacks_count]=SAPO_Broker_Tools::utime();
     }
 
     function consumer()
@@ -257,13 +257,13 @@ class SAPO_Manta {
             $tmp=$this->net->netread(4);
             $len=(double)(ord($tmp[3])+(ord($tmp[2])<<8)+(ord($tmp[1])<<16)+(ord($tmp[0])<<24)); // unpack("N");
             if($len==0) {
-              SAPO_Manta::dodebug("consumer() WARNING: packet length is 0!");
+              SAPO_Broker::dodebug("consumer() WARNING: packet length is 0!");
 	      }
 	      else
 	      {
-              SAPO_Manta::dodebug("consumer() I'm about to read ".$len." bytes");
+              SAPO_Broker::dodebug("consumer() I'm about to read ".$len." bytes");
               $tmp=$this->net->netread($len);
-              SAPO_Manta::dodebug("consumer() got this xml: ".$tmp."");
+              SAPO_Broker::dodebug("consumer() got this xml: ".$tmp."");
               $this->parser->handleSubscriptions($tmp, $this->net->subscriptions);
 	      }
         } while ($this->net->con_retry_count<10);
@@ -271,7 +271,7 @@ class SAPO_Manta {
 
 }
 
-class SAPO_Manta_Net {
+class SAPO_Broker_Net {
 
     var $server = '127.0.0.1';
     var $port = 2222;
@@ -296,7 +296,7 @@ class SAPO_Manta_Net {
     var $subscriptions = array();
 
 
-    function SAPO_Manta_Net ($debug = false)
+    function SAPO_Broker_Net ($debug = false)
     {
         $this->debug = $debug;
     }
@@ -314,13 +314,13 @@ class SAPO_Manta_Net {
     {
         list($this->rcv_to_sec, $this->rcv_to_usec, $this->rcv_to_float) = $this->timesplit($this->rcv_to);
         list($this->snd_to_sec, $this->snd_to_usec, $this->snd_to_float) = $this->timesplit($this->snd_to);
-        SAPO_Manta::dodebug("Adjusting timmers because of lower periodic Callback. New timers:");
-        SAPO_Manta::dodebug("  rcv_to_sec: ".$this->rcv_to_sec."");
-        SAPO_Manta::dodebug("  rcv_to_usec: ".$this->rcv_to_usec."");
-        SAPO_Manta::dodebug("  rcv_to_float: ".$this->rcv_to_float."");
-        SAPO_Manta::dodebug("  snd_to_sec: ".$this->snd_to_sec."");
-        SAPO_Manta::dodebug("  snd_to_usec: ".$this->snd_to_usec."");
-        SAPO_Manta::dodebug("  snd_to_float: ".$this->snd_to_float."");
+        SAPO_Broker::dodebug("Adjusting timmers because of lower periodic Callback. New timers:");
+        SAPO_Broker::dodebug("  rcv_to_sec: ".$this->rcv_to_sec."");
+        SAPO_Broker::dodebug("  rcv_to_usec: ".$this->rcv_to_usec."");
+        SAPO_Broker::dodebug("  rcv_to_float: ".$this->rcv_to_float."");
+        SAPO_Broker::dodebug("  snd_to_sec: ".$this->snd_to_sec."");
+        SAPO_Broker::dodebug("  snd_to_usec: ".$this->snd_to_usec."");
+        SAPO_Broker::dodebug("  snd_to_float: ".$this->snd_to_float."");
     }
 
     function timesplit($microseconds)
@@ -331,10 +331,10 @@ class SAPO_Manta_Net {
     }
 
     function sendSubscriptions() {
-        SAPO_Manta::dodebug("entering sendSubscriptions()");
+        SAPO_Broker::dodebug("entering sendSubscriptions()");
         foreach($this->subscriptions as $subscription)
         {
-            SAPO_Manta::dodebug("sendSubscriptions() subscribing ".$subscription['topic']);
+            SAPO_Broker::dodebug("sendSubscriptions() subscribing ".$subscription['topic']);
             $msg = '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:mq="http://services.sapo.pt/broker">';
             $msg .= '<soap:Body>';
             $msg .= '<mq:Notify>';
@@ -374,14 +374,14 @@ class SAPO_Manta_Net {
             $this->init();
         }
         $this->con_retry_count++;
-        SAPO_Manta::dodebug("Entering connect() ".$this->con_retry_count."");
+        SAPO_Broker::dodebug("Entering connect() ".$this->con_retry_count."");
         
         $address = gethostbyname($this->server);
         $this->socket = fsockopen($address, $this->port, $errno, $errstr);
         
         
         if (!$this->socket) {
-            SAPO_Manta::dodebug($errstr);
+            SAPO_Broker::dodebug($errstr);
             $this->last_err = $errstr;
             $this->connected = false;
             
@@ -394,7 +394,7 @@ class SAPO_Manta_Net {
             //
             stream_set_blocking($this->socket, 1);
             
-            SAPO_Manta::dodebug("Connected to server");
+            SAPO_Broker::dodebug("Connected to server");
             $this->connected=true;
             $this->con_retry_count=0;
             $this->sendSubscriptions();
@@ -405,13 +405,13 @@ class SAPO_Manta_Net {
     function put($msg)
     {
         if($this->connected==false) {
-            SAPO_Manta::dodebug("put() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("put() ups, we're not connected, let's go for ir");
 
             if($this->connect()==false) {
                 return(false);
             }
         }
-        SAPO_Manta::dodebug("put() socket_writing: ".$msg."\n");
+        SAPO_Broker::dodebug("put() socket_writing: ".$msg."\n");
         if(fwrite($this->socket, pack('N',strlen($msg)).$msg, strlen($msg) + 4)===false) {
             $this->connected = false;
             return(false);
@@ -420,9 +420,9 @@ class SAPO_Manta_Net {
     }
 
     function netread($len) {
-        SAPO_Manta::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
+        SAPO_Broker::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
         if($this->connected==false) {
-            SAPO_Manta::dodebug("netread() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("netread() ups, we're not connected, let's go for ir");
             if($this->connect()==false) {
                return('');
             }
@@ -446,17 +446,17 @@ class SAPO_Manta_Net {
             }
         } // end this->debug
         while($i<$len) { // read just about enough. do i hate sockets...
-            $start=SAPO_Manta_Tools::utime();
+            $start=SAPO_Broker_Tools::utime();
             $tmp=fread($this->socket, 1024); // block read with timeout
             foreach($this->callbacks as $callback) { // periodic callbacks here, if any
-                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Manta_Tools::utime()) {
-		    SAPO_Manta::dodebug("Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
-                    $this->callbacks_ts[$callback['id']]=SAPO_Manta_Tools::utime();
+                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Broker_Tools::utime()) {
+		    SAPO_Broker::dodebug("Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
+                    $this->callbacks_ts[$callback['id']]=SAPO_Broker_Tools::utime();
                     call_user_func($callback['name']);
                 }
             } // end callbacks
-            SAPO_Manta::dodebug("Doing socket_read() inside netread()");
-            $end=SAPO_Manta_Tools::utime();
+            SAPO_Broker::dodebug("Doing socket_read() inside netread()");
+            $end=SAPO_Broker_Tools::utime();
             $l=strlen($tmp);
             if((($end-$start)<((float)($this->rcv_to_float)))&&$l==0) {
                 $this->connected=false; return('');
@@ -468,7 +468,7 @@ class SAPO_Manta_Net {
         $this->sokbuflen-=$len;
         $r=substr($this->sokbuf,0,$len);
         $this->sokbuf=substr($this->sokbuf,$len); // cut
-        SAPO_Manta::dodebug("netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
+        SAPO_Broker::dodebug("netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
         return($r);
     }
 
@@ -482,9 +482,9 @@ class SAPO_Manta_Net {
  * Sockets mode subclass
  */
 
-class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
+class SAPO_Broker_Net_Sockets extends SAPO_Broker_Net {
 
-    function SAPO_Manta_Net_Sockets ($debug = false)
+    function SAPO_Broker_Net_Sockets ($debug = false)
     {
         $this->debug = $debug;
     }
@@ -510,11 +510,11 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
             $this->init();
         }
         $this->con_retry_count++;
-        SAPO_Manta::dodebug("Entering connect() ".$this->con_retry_count."");
+        SAPO_Broker::dodebug("Entering connect() ".$this->con_retry_count."");
         $address = gethostbyname($this->server);
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if ($this->socket < 0) {
-            SAPO_Manta::dodebug("socket_create() failed");
+            SAPO_Broker::dodebug("socket_create() failed");
             $this->last_err = 'socket_create() failed';
             $this->connected = false;
         } else {
@@ -523,17 +523,17 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
             socket_set_option($this->socket,SOL_SOCKET, SO_KEEPALIVE, 1);
             socket_set_block($this->socket);
             if (socket_connect($this->socket, $address, $this->port)) {
-                SAPO_Manta::dodebug("Connected to server");
+                SAPO_Broker::dodebug("Connected to server");
                 $this->connected=true;
                 $this->con_retry_count=0;
                 $this->sendSubscriptions();
             } else {
-                SAPO_Manta::dodebug("socket_connect() failed.");
+                SAPO_Broker::dodebug("socket_connect() failed.");
                 $this->last_err = 'socket_connect() failed';
                 $this->connected = false;
             }
         }
-        if($this->connected==false) SAPO_Manta::dodebug("socket_connect() failed.");
+        if($this->connected==false) SAPO_Broker::dodebug("socket_connect() failed.");
         return $this->connected;
     }
 
@@ -544,7 +544,7 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
                 return(false);
             }
         }
-        SAPO_Manta::dodebug("put() socket_writing: ".$msg."\n");
+        SAPO_Broker::dodebug("put() socket_writing: ".$msg."\n");
         if(socket_write($this->socket, pack('N',strlen($msg)).$msg, strlen($msg) + 4)===false) {
             $this->connected = false;
             return(false);
@@ -553,9 +553,9 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
     }
     
     function netread($len) {
-        SAPO_Manta::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
+        SAPO_Broker::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
         if($this->connected==false) {
-            SAPO_Manta::dodebug("netread() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("netread() ups, we're not connected, let's go for ir");
             if($this->connect()==false) {
                 return('');
             }
@@ -579,23 +579,23 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
             }
         } // end this->debug
         while($i<$len) { // read just about enough. do i hate sockets...
-            $start=SAPO_Manta_Tools::utime();
+            $start=SAPO_Broker_Tools::utime();
             $tmp=socket_read($this->socket, 1024,PHP_BINARY_READ); // block read with timeout
             foreach($this->callbacks as $callback) { // periodic callbacks here, if any
-                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Manta_Tools::utime()) {
-		    SAPO_Manta::dodebug("Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
-                    $this->callbacks_ts[$callback['id']]=SAPO_Manta_Tools::utime();
+                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Broker_Tools::utime()) {
+		    SAPO_Broker::dodebug("Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
+                    $this->callbacks_ts[$callback['id']]=SAPO_Broker_Tools::utime();
                     call_user_func($callback['name']);
                 }
             } // end callbacks
-            SAPO_Manta::dodebug("Doing socket_read() inside netread()");
-            $end=SAPO_Manta_Tools::utime();
+            SAPO_Broker::dodebug("Doing socket_read() inside netread()");
+            $end=SAPO_Broker_Tools::utime();
             $l=strlen($tmp);
 
-            SAPO_Manta::dodebug("end-start: ".($end-$start)."\nthis->rcv_to_float: ".$this->rcv_to_float."\nl: ".$l."\n");
+            SAPO_Broker::dodebug("end-start: ".($end-$start)."\nthis->rcv_to_float: ".$this->rcv_to_float."\nl: ".$l."\n");
 
             if((($end-$start+$this->php4_utime_bug_add)<((float)($this->rcv_to_float)))&&$l==0) {
-                SAPO_Manta::dodebug("netread() disconnecting socket....");
+                SAPO_Broker::dodebug("netread() disconnecting socket....");
                 $this->connected=false; return('');
             }
             $this->sokbuf.=$tmp;
@@ -605,7 +605,7 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
         $this->sokbuflen-=$len;
         $r=substr($this->sokbuf,0,$len);
         $this->sokbuf=substr($this->sokbuf,$len); // cut
-        SAPO_Manta::dodebug("netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
+        SAPO_Broker::dodebug("netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
         return($r);
     }
         
@@ -614,11 +614,11 @@ class SAPO_Manta_Net_Sockets extends SAPO_Manta_Net {
     }    
 }
 
-class SAPO_Manta_Parser {
+class SAPO_Broker_Parser {
     
     var $debug;
     
-    function SAPO_Manta_Parser ($debug = false)
+    function SAPO_Broker_Parser ($debug = false)
     {
         $this->debug = $debug;
     }
@@ -695,11 +695,11 @@ class SAPO_Manta_Parser {
     }
 }
 
-class SAPO_Manta_Parser_DOM extends SAPO_Manta_Parser {
+class SAPO_Broker_Parser_DOM extends SAPO_Broker_Parser {
 
     var $debug;
     
-    function SAPO_Manta_Parser_DOM ($debug = false)
+    function SAPO_Broker_Parser_DOM ($debug = false)
     {
         $this->debug = $debug;
     }
@@ -751,7 +751,7 @@ class SAPO_Manta_Parser_DOM extends SAPO_Manta_Parser {
     }
 }
 
-class SAPO_Manta_Tools {
+class SAPO_Broker_Tools {
 
     function utime()
     {

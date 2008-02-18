@@ -1,6 +1,6 @@
 #!/usr/bin/php -q
 <?php
-include('../classes/manta.php');
+include('../classes/broker.php');
 set_time_limit(0);
 error_reporting(1);
 
@@ -9,8 +9,8 @@ if(!$argv[1]) {
   exit;
   }
 
-#$broker=new SAPO_Manta(array('debug'=>TRUE));
-$broker=new SAPO_Manta;
+#$broker=new SAPO_Broker(array('debug'=>TRUE));
+$broker=new SAPO_Broker;
 
 // consumer example
 if(strtoupper(strtoupper($argv[2]))=='QUEUE') {

@@ -1,11 +1,11 @@
 #!/usr/bin/php -q
 <?php
-include('../classes/manta.php');
+include('../classes/broker.php');
 set_time_limit(0);
 error_reporting(1);
 
-#$broker=new SAPO_Manta(array('debug'=>TRUE));
-$broker=new SAPO_Manta;
+#$broker=new SAPO_Broker(array('debug'=>TRUE));
+$broker=new SAPO_Broker;
 
 // publish example
 

@@ -1,17 +1,17 @@
 <?php
 
 
-class SAPO_Manta_Tail extends SAPO_Manta {
+class SAPO_Broker_Tail extends SAPO_Broker {
   var $tailfile;
   var $max_lines_before_quit;
   var $publish_count;
   var $initted=FALSE;
 
-  function SAPO_Manta_Tail ($args=array()) {
+  function SAPO_Broker_Tail ($args=array()) {
     $args=array_merge(array('max_lines_before_quit'=>0),$args);
     $this->debug=$args['debug'];
     $this->tailfile=$args['file'];
-    SAPO_Manta::dodebug("SAPO_Manta_Tail innited with file ".$args['file']);
+    SAPO_Broker::dodebug("SAPO_Broker_Tail innited with file ".$args['file']);
     $this->max_lines_before_quit=$args['max_lines_before_quit'];
     $this->publish_count=0;
     $this->initted=TRUE;

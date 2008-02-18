@@ -1,14 +1,14 @@
 #!/usr/bin/php -q
 <?php
-include('../classes/manta.php');
-include('../classes/manta_tail.php');
+include('../classes/broker.php');
+include('../classes/broker_tail.php');
 
 set_time_limit(0);
 error_reporting(1);
 
-$broker=new SAPO_Manta(array('debug'=>TRUE));
+$broker=new SAPO_Broker(array('debug'=>TRUE));
 
-$tailer=new SAPO_Manta_Tail(array('debug'=>TRUE,'file'=>'/var/log/system.log','max_lines_before_quit'=>10000));
+$tailer=new SAPO_Broker_Tail(array('debug'=>TRUE,'file'=>'/var/log/system.log','max_lines_before_quit'=>10000));
 
 $args['topic']='/sapo/developer/tests';
 
