@@ -103,8 +103,6 @@
 		<part name="parameters" element="tns:Unsubscribe" />
 	</message>
 
-
-
 	<message name="AcknowledgeSoapIn">
 		<part name="parameters" element="tns:Acknowledge" />
 	</message>
@@ -152,7 +150,6 @@
 			</input>
 		</operation>
 
-
 		<operation name="Publish">
 			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/publish" />
 			<input>
@@ -187,7 +184,6 @@
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
-
 
 		<operation name="Unsubscribe">
 			<wsoap12:operation soapAction="http://services.sapo.pt/broker/unsubscribe" />
