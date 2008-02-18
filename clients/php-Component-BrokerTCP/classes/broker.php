@@ -21,7 +21,7 @@ class SAPO_Broker {
     function SAPO_Broker ($args=array())
     {
         // args defaults 
-        $args=array_merge(array('port'=>2222,
+        $args=array_merge(array('port'=>3322,
                                 'debug'=>FALSE,
                                 'force_sockets'=>FALSE,
                                 'force_streams'=>FALSE,
@@ -127,7 +127,7 @@ class SAPO_Broker {
      * @return void
      * @author Bruno Pedro
      **/
-    function init ($server = '127.0.0.1', $port = 2222)
+    function init ($server = '127.0.0.1', $port = 3322)
     {
         //
         // Initialize network access.
@@ -274,7 +274,7 @@ class SAPO_Broker {
 class SAPO_Broker_Net {
 
     var $server = '127.0.0.1';
-    var $port = 2222;
+    var $port = 3322;
     var $connected = false;
     var $socket;
     var $sokbuf = '';
@@ -301,7 +301,7 @@ class SAPO_Broker_Net {
         $this->debug = $debug;
     }
     
-    function init($server = '127.0.0.1', $port = 2222)
+    function init($server = '127.0.0.1', $port = 3322)
     {
         $this->server = $server;
         $this->port = $port;
