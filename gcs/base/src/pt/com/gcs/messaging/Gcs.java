@@ -162,8 +162,6 @@ public class Gcs
 
 	private void iinit()
 	{
-		connectToAllPeers();
-		
 		String[] virtual_queues = DbStorage.getVirtualQueuesNames();
 
 		for (String vqueue : virtual_queues)
@@ -171,6 +169,9 @@ public class Gcs
 			System.out.println(vqueue);
 			iaddQueueConsumer(vqueue, null);
 		}
+		
+		connectToAllPeers();
+		
 		log.info("{} initialized.", SERVICE_NAME);
 	}
 
