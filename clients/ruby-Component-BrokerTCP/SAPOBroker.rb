@@ -195,7 +195,7 @@ END_ACK
         @logger.debug("Got message %s" % xml)
         message = Message.new.from_xml(xml)
         ack(message) if @sub_map.has_key?(message.destination) && 
-          @sub_map[message.destination][:type] == 'QUEUE' &&
+          @sub_map[message.destination][:type] != 'TOPIC' &&
           @sub_map[message.destination][:ack_mode] == 'AUTO'
         message
       rescue SystemCallError => ex
