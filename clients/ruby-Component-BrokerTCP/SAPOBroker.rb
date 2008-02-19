@@ -94,6 +94,23 @@ module SAPOBroker
       @sock.close
     end
 
+    def unsubscribe(dest_name)
+      return unless @sub_map.has_key?(dest_name)
+
+      sub_msg = <<END_SUB
+<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'><soapenv:Body>
+<Unsubscribe xmlns='http://services.sapo.pt/broker'>
+<DestinationName>#{dest_name}</DestinationName>
+<DestinationType>#{@sub_map[dest_name][:type]}</DestinationType>
+</Unsubscribe>
+</soapenv:Body></soapenv:Envelope>
+END_SUB
+
+    sub_msg = [sub_msg.length].pack('N') + sub_msg
+    @sock.write(sub_msg)
+    @sub_map.delete(dest_name)
+    end
+
     def subscribe(dest_name, type = 'QUEUE', ack_mode = 'AUTO')
       sub_msg = <<END_SUB
 <soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'><soapenv:Body>
@@ -196,6 +213,8 @@ END_ACK
       @sock.close unless @sock.nil? || @sock.closed?
       @server_list.sort_by {rand}.each do |server|
         host, port = server.split(/:/)
+        port = 3322 if port.nil?
+
         begin
           @logger.debug("Trying #{host} on port #{port}")
           @sock = TCPSocket.new(host, port)
