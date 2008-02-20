@@ -131,15 +131,11 @@ def build_msg(name, payload):
     (otag, ctag) = tags[name]
     return otag+'\n'+payload+'\n'+ctag
 
-def subscribe_msg(destination, kind, ack=False):
+def subscribe_msg(destination, kind):
     check_kind(kind)
-    if ack is None:
-        #client managed acknowledgement
-        ack = True
-    return """<DestinationName>%s</DestinationName>\n<DestinationType>%s</DestinationType>\n<AcknowledgeMode>%s</AcknowledgeMode>""" % (
+    return """<DestinationName>%s</DestinationName>\n<DestinationType>%s</DestinationType>""" % (
     escape_xml(destination),
-    escape_xml(kind),
-    ack and 'CLIENT' or 'AUTO'
+    escape_xml(kind)
     )
 
 #aux function for debugging
@@ -459,14 +455,13 @@ class Client:
         else:
             self.close()
 
-    def subscribe(self, destination, kind=DEFAULT_KIND, acknowledge=None):
+    def subscribe(self, destination, kind=DEFAULT_KIND, auto_acknowledge=True):
         """
         Subscribes for notification for destination with kind either TOPIC or QUEUE.
 
-        acknowledge determines whether the client needs to acknowledge the messages it receives.
-            By default acknowledgement is None meaning it's done automatically each time a message is consumed.
-            A True value requires the user to call acknowledge explicitelly when he sees fit.
-            A False value means there is no acknowledgement involved. The broker considers every sent message has delivered.
+        auto_acknowledge determines whether the client needs to acknowledge the received messages.
+            By default auto_acknowledge is True meaning acknowledge is done automatically each time a message is consumed.
+            A False value requires the user to call acknowledge for the received message explicitelly when he sees fit.
         """
         log.info("Client.subscribe (%s, %s)", destination, kind)
 
@@ -474,12 +469,12 @@ class Client:
             log.warn("destination (%s, %s) already subscribed" %(destination, kind))
         else:
             #send the message 
-            self.__write_raw(build_msg('subscribe', subscribe_msg(destination, kind, acknowledge)))
+            self.__write_raw(build_msg('subscribe', subscribe_msg(destination, kind)))
             #append into subscribed endpoints
             self.subscribed.add( (destination, kind) )
             log.debug('Currently subscribed to %s', self.subscribed)
 
-        if acknowledge is None:
+        if auto_acknowledge:
             log.debug('Using client auto-acknowledgement on consume')
             self.__auto_ack.add(destination)
 
@@ -515,18 +510,13 @@ class Client:
     def acknowledge(self, message):
         """
         Acknowledge that the client did receive/process a message.
-        message must either be a Message object or an id that one wishes to acknowledge.
+        message must either be a Message object.
         Blocking call (no timeout).
         """
         log.info("Client.acknowledge(%s)", repr(message))
-        id = None
-        if isinstance(message, basestring):
-            id = message
-        else:
-            check_msg(message)
-            id = message.id
+        check_msg(message)
 
-        msg_xml = """<MessageId>%s</MessageId>""" % escape_xml(id)
+        msg_xml = """<MessageId>%s</MessageId><DestinationName>%s</DestinationName>""" % (escape_xml(message.id), escape_xml(message.destination))
         self.__write_raw(build_msg('acknowledge', msg_xml))
 
     def __iter__(self):
@@ -543,15 +533,13 @@ class Client:
 
 class Message:
     __all__ = ['__init__', 'toXML', 'fromXML']
-    def __init__(self, payload, destination, id=None, correlationId=None, timestamp=None, expiration=None, priority=None, deliveryMode=None):
+    def __init__(self, payload, destination, id=None, correlationId=None, timestamp=None, expiration=None, priority=None):
         """
         Creates a Broker message given the mandatory payload and destination.
         All other fields are optional.
 
         This object has as fields all the parameters used in this construtor.
         
-        deliveryMode can either be PERSISTENT or TRANSIENT.
-
         timestamp and expiration are supposed to be datetime objects and default to None and are thus optional.
         If these fields don't have timezone information, they are assumed to be in UTC.
         You can also pass seconds since the epoch or a string in ISO8601 (use at your own risk).
@@ -574,7 +562,6 @@ class Message:
 
         self.payload       = payload
         self.destination   = destination
-        self.deliveryMode  = deliveryMode
         self.id            = id
         self.__timestamp   = timestamp
         self.__expiration  = expiration
