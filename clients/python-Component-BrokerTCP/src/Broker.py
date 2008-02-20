@@ -123,6 +123,7 @@ taglist = (
     ('publish', 'Publish'),
     ('enqueue', 'Enqueue'),
     ('subscribe', 'Notify'),
+    ('unsubscribe', 'Unsubscribe'),
     ('acknowledge', 'Acknowledge'))
 
 #pre-built tags
@@ -478,6 +479,17 @@ class Client:
         if auto_acknowledge:
             log.debug('Using client auto-acknowledgement on consume')
             self.__auto_ack.add(destination)
+
+    def unsubscribe(self, destination, kind=DEFAULT_KIND):
+        """
+        Unsubscribes notifications for destination and kind
+        """
+        log.info("Client.unsubscribe (%s, %s)", destination, kind)
+        if (destination, kind) in self.subscribed:
+            self.__write_raw(build_msg('unsubscribe', subscribe_msg(destination, kind)))
+            self.subscribed.remove( (destination, kind) )
+        else:
+            log.warn("destination (%s, %s) not subscribed. Can't unsubscribe." %(destination, kind))
 
     def consume(self):
         """
