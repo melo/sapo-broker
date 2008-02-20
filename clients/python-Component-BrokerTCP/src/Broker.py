@@ -90,6 +90,7 @@ NS = {
 escape_xml = xml.sax.saxutils.escape
 
 DEFAULT_KIND  = 'TOPIC'
+DEFAULT_PORT  = 3322
 #XXX no support for TOPIC_AS_QUEUE (yet)
 ALLOWED_KINDS = ('TOPIC', 'QUEUE')
 
@@ -319,7 +320,7 @@ class Client:
         def __init__(self, message):
             EOFError.__init__(self, message)
 
-    def __init__ (self, host, port):
+    def __init__ (self, host, port=DEFAULT_PORT):
         """
         Constructs a client object to connect to a broker at host:port using the binary TCP protocol.
         """
