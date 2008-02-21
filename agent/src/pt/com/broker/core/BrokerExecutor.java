@@ -17,7 +17,7 @@ public class BrokerExecutor
 
 	private BrokerExecutor()
 	{
-		exec_srv = CustomExecutors.newThreadPool(10);
+		exec_srv = CustomExecutors.newThreadPool(10, "BrokerAsync");
 
 		shed_exec_srv = new ScheduledThreadPoolExecutor(3);
 	}

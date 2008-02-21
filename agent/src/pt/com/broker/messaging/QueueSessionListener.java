@@ -40,7 +40,7 @@ public class QueueSessionListener extends BrokerListener
 			{
 				if (ioSession.isConnected() && !ioSession.isClosing())
 				{
-					final SoapEnvelope response = buildNotification(msg);
+					final SoapEnvelope response = buildNotification(msg, "queue");
 					WriteFuture future = ioSession.write(response);
 					future.awaitUninterruptibly();
 

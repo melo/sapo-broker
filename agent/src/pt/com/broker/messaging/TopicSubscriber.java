@@ -42,7 +42,7 @@ public class TopicSubscriber extends BrokerListener
 					{
 						if (ios.isConnected() && !ios.isClosing())
 						{
-							final SoapEnvelope response = buildNotification(amsg);
+							final SoapEnvelope response = buildNotification(amsg, "topic");
 							WriteFuture wf = ios.write(response);
 							boolean isWriten = wf.awaitUninterruptibly(MAX_WAIT_TIME, TimeUnit.MILLISECONDS);
 							

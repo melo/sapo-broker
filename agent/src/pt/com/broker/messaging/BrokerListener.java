@@ -13,7 +13,7 @@ import pt.com.gcs.messaging.MessageListener;
 
 public abstract class BrokerListener implements MessageListener
 {
-	public SoapEnvelope buildNotification(Message msg)
+	public SoapEnvelope buildNotification(Message msg, String destinationType)
 	{
 		Notification nt = new Notification();
 		BrokerMessage bkrm = nt.brokerMessage;
@@ -32,7 +32,7 @@ public abstract class BrokerListener implements MessageListener
 		SoapEnvelope soap_env = new SoapEnvelope();
 		SoapHeader soap_header = new SoapHeader();
 		EndPointReference epr = new EndPointReference();
-		epr.address = "sourceAgent";
+		epr.address = destinationType + "://" + msg.getDestination();
 		soap_header.wsaFrom = epr;
 		soap_header.wsaMessageID = "http://services.sapo.pt/broker/message/" + bkrm.messageId;
 		soap_header.wsaAction = "http://services.sapo.pt/broker/notification/";

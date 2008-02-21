@@ -97,7 +97,7 @@ public class Gcs
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 		// and then a thread pool.
-		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
+		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16, "GCS-Executor")));
 		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 		filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
 
@@ -121,7 +121,7 @@ public class Gcs
 
 		// and then a thread pool.
 		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
-		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));
+		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16, "GCS-Executor")));
 		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 
 		// filterChainBuilder.addLast("executor", new ExecutorFilter(new

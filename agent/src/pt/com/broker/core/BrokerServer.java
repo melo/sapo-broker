@@ -54,7 +54,7 @@ public class BrokerServer
 
 			
 			filterChainBuilder.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
-			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16)));	
+			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16, "Broker-Executor")));	
 			filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 //			filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
 			//filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
