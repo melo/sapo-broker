@@ -517,6 +517,8 @@ class Client:
         check_kind(kind)
         check_msg(message)
         msg_xml = message.toXML()
+        if type(u'')==type(msg_xml):
+            msg_xml=msg_xml.encode('utf-8')
         name = {'TOPIC': 'publish', 'QUEUE': 'enqueue'}[kind]
         self.__write_raw(build_msg(name, msg_xml))
 
