@@ -6,7 +6,7 @@ import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.ConnectFuture;
@@ -55,6 +55,8 @@ public class Gcs
 	private SocketAcceptor acceptor;
 
 	private SocketConnector connector;
+	
+	private final ExecutorService exec = CustomExecutors.newThreadPool(16, "GCS-Executor");
 
 	private Gcs()
 	{
@@ -91,13 +93,13 @@ public class Gcs
 
 		DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 
-		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 256 * ONE_K, 512 * ONE_K, 1024 * ONE_K);
+		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(CustomExecutors.newScheduledThreadPool(1, "GCS-Acceptor-ReadThrotle-Shed"), ReadThrottlePolicy.BLOCK, 256 * ONE_K, 512 * ONE_K, 1024 * ONE_K);
 		WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK, 0, 128 * ONE_K, 0, 256 * ONE_K, 0, 512 * ONE_K);
 
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 		// and then a thread pool.
-		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16, "GCS-Executor")));
+		filterChainBuilder.addLast("executor", new ExecutorFilter(exec));
 		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 		filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
 
@@ -120,8 +122,8 @@ public class Gcs
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 
 		// and then a thread pool.
-		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
-		filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16, "GCS-Executor")));
+		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(CustomExecutors.newScheduledThreadPool(1, "GCS-Connector-ReadThrotle-Shed"), ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
+		filterChainBuilder.addLast("executor", new ExecutorFilter(exec));
 		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
 
 		// filterChainBuilder.addLast("executor", new ExecutorFilter(new
