@@ -51,6 +51,7 @@ public class BrokerProducer
 
 			message.setContent(brkMessage.textPayload);
 			message.setSourceApp(messageSource);
+			message.setPriority(brkMessage.priority);
 
 			if (log.isDebugEnabled())
 			{
