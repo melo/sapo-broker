@@ -229,7 +229,7 @@ class DbStorage
 		return instance.i_count(destinationName);
 	}
 
-	public long i_count(String destinationName)
+	private long i_count(String destinationName)
 	{
 		synchronized (count_msg_prep_stmt)
 		{
