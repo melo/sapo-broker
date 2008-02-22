@@ -2,6 +2,7 @@ package pt.com.gcs.messaging;
 
 import java.net.SocketAddress;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoHandlerAdapter;
@@ -12,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.conf.AgentInfo;
 import pt.com.gcs.net.IoSessionHelper;
+import pt.com.gcs.tasks.Connect;
+import pt.com.gcs.tasks.GcsExecutor;
 
 class GcsRemoteProtocolHandler extends IoHandlerAdapter
 {
@@ -73,8 +76,8 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionClosed(final IoSession iosession) throws Exception
 	{
-		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(iosession));
-		Gcs.connect((SocketAddress) IoSessionHelper.getRemoteInetAddress(iosession));
+		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(iosession));	
+		GcsExecutor.schedule(new Connect((SocketAddress) IoSessionHelper.getRemoteInetAddress(iosession)), 5000, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
