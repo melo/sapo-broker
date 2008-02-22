@@ -21,13 +21,16 @@ public class QueueProcessor
 	private final AtomicBoolean isWorking = new AtomicBoolean(false);
 
 	private final AtomicLong _deliverSequence = new AtomicLong(0L);
+	
+	private final AtomicLong _counter;
 
 	private final ConcurrentMap<String, String> msgsAwaitingAck = new ConcurrentHashMap<String, String>();
 
 	public QueueProcessor(String destinationName)
 	{
 		_destinationName = destinationName;
-		log.info("Create Queue Processor for '{}'.", _destinationName);
+		 _counter = new AtomicLong(DbStorage.count(destinationName));
+		log.info("Create Queue Processor for '{}'.", _destinationName);		
 	}
 
 	public void ack(final String msgId)
@@ -39,7 +42,7 @@ public class QueueProcessor
 
 		msgsAwaitingAck.remove(msgId);
 		DbStorage.deleteMessage(msgId, _destinationName);
-
+		_counter.decrementAndGet();
 	}
 
 	protected final void wakeup()
@@ -63,8 +66,7 @@ public class QueueProcessor
 					throw new RuntimeException(t);
 				}
 			}
-		}
-		
+		}		
 		isWorking.set(false);
 	}
 
@@ -132,6 +134,7 @@ public class QueueProcessor
 		{
 			long seq_nr = _sequence.incrementAndGet();
 			DbStorage.insert(msg, seq_nr, 0, localConsumersOnly);
+			_counter.incrementAndGet();
 		}
 		catch (Throwable t)
 		{
@@ -161,7 +164,7 @@ public class QueueProcessor
 
 	public long getQueuedMessagesCount()
 	{
-		return DbStorage.count(_destinationName);
+		return _counter.get();
 	}
 
 	public String getDestinationName()
