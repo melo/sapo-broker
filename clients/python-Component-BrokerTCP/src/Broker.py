@@ -402,20 +402,16 @@ class Client:
         Threadsafe but not EINTR safe (like all python IO?)
         """
         read = ''
-        self.__lock_r()
-        try:
-            while msglen:
-                log.debug("Trying to read %d bytes", msglen)
-                ret = self.__socket.recv(msglen)
-                if '' == ret:
-                    raise Client.DisconnectedError("""Broker server at %s is dead. Can't read message data.""" % self.endpoint)
-                else:
-                    l = len(ret)
-                    log.debug('Read %d bytes.', l)
-                    read = read + ret
-                    msglen = msglen - l
-        finally:
-            self.__unlock_r()
+        while msglen:
+            log.debug("Trying to read %d bytes", msglen)
+            ret = self.__socket.recv(msglen)
+            if '' == ret:
+                raise Client.DisconnectedError("""Broker server at %s is dead. Can't read message data.""" % self.endpoint)
+            else:
+                l = len(ret)
+                log.debug('Read %d bytes.', l)
+                read = read + ret
+                msglen = msglen - l
         return read
 
     def __read_raw(self):
@@ -423,10 +419,15 @@ class Client:
         Reads and returns the raw message broker notification. (without the length header)
         """
         log.debug("Reading raw message")
-        msg_len = struct.unpack("!L", self.__read_len(4))[0]
-        log.debug("len = %d", msg_len)
-        msg = self.__read_len(msg_len)
-        log.debug("Message read = [%s]", msg)
+        self.__lock_r()
+        try:
+            msg_len = struct.unpack("!L", self.__read_len(4))[0]
+            log.debug("len = %d", msg_len)
+            msg = self.__read_len(msg_len)
+            log.debug("Message read = [%s]", msg)
+        finally:
+            self.__unlock_r()
+
         return msg
 
     def close(self):
