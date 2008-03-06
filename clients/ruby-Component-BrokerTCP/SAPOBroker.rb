@@ -185,9 +185,15 @@ END_ACK
         sick_socket?(msg_len)
         @logger.debug("Will receive message of %i bytes" % msg_len)
 
-        xml = @sock.recv(msg_len)
-        if xml.length != msg_len then
-          msg = "Couldn't receive all of the message bytes... Reconnecting..."
+        xml = ""
+        while msg_len > 0
+          block = @sock.recv(msg_len)
+          msg_len -= block.length
+          xml << block
+        end
+        
+        unless msg_len.zero?
+          msg = "Could get the correct number of message bytes. DIFF = #{msg_len}. Reconnecting..."
           @logger.error(msg)
           raise Errno::EAGAIN, msg
         end
@@ -225,7 +231,7 @@ END_ACK
             @logger.debug("Subscribed to to #{destination}")
           end
           return
-        rescue Errno::ECONNREFUSED => ex
+        rescue StandardError => ex
           @logger.warn("Problems (#{server}): #{ex.message}")
         end
       end
