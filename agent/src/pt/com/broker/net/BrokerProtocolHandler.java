@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
+import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +116,15 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			}
 			else if (sb.destinationType.equals("TOPIC_AS_QUEUE"))
 			{
-				_brokerConsumer.listen(sb, session);
+				if (StringUtils.contains(sb.destinationName, "@"))
+				{
+					_brokerConsumer.listen(sb, session);
+				}
+				else
+				{
+					throw new IllegalArgumentException("Not a valid destination name for a TOPIC_AS_QUEUE consumer");
+				}
+				
 			}
 			return;
 		}
