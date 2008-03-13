@@ -1,5 +1,7 @@
 package pt.com.gcs.messaging;
 
+import java.util.Collection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +12,11 @@ class QueueCounter implements Runnable
 	@Override
 	public void run()
 	{
-		for (QueueProcessor qp : QueueProcessorList.values())
+		Collection<QueueProcessor> qpl = QueueProcessorList.values();
+		
+		log.debug("Number of registered Queues: {}", qpl.size());
+		
+		for (QueueProcessor qp : qpl)
 		{
 			long cnt = qp.getQueuedMessagesCount();
 			if (cnt > 0)
