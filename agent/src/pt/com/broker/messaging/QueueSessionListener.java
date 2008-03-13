@@ -2,6 +2,7 @@ package pt.com.broker.messaging;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
@@ -32,46 +33,55 @@ public class QueueSessionListener extends BrokerListener
 	{
 		if (msg == null)
 			return true;
-
+		
+		int retryCount = 0;
 		final IoSession ioSession = pick();
-		try
+		
+		while (retryCount<5)
 		{
-			if (ioSession != null)
-			{
-				if (ioSession.isConnected() && !ioSession.isClosing())
-				{
-					final SoapEnvelope response = buildNotification(msg, "queue");
-					WriteFuture future = ioSession.write(response);
-					future.awaitUninterruptibly();
-
-					if (future.isWritten())
-					{
-						if (log.isDebugEnabled())
-						{
-							log.debug("Delivered message: {}", msg.getMessageId());
-						}
-
-						return true;
-					}
-				}
-				else
-				{
-					removeConsumer(ioSession);
-				}
-			}
-		}
-		catch (Throwable e)
-		{
+			
 			try
 			{
-				(ioSession.getHandler()).exceptionCaught(ioSession, e);
-				removeConsumer(ioSession);
+				if (ioSession != null)
+				{
+					if (ioSession.isConnected() && !ioSession.isClosing())
+					{
+						final SoapEnvelope response = buildNotification(msg, "queue");
+						WriteFuture future = ioSession.write(response);
+						future.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+
+						if (future.isWritten())
+						{
+							if (log.isDebugEnabled())
+							{
+								log.debug("Delivered message: {}", msg.getMessageId());
+							}
+
+							return true;
+						}
+					}
+					else
+					{
+						removeConsumer(ioSession);
+					}
+				}
 			}
-			catch (Throwable t)
+			catch (Throwable e)
 			{
-				log.error(t.getMessage(), t);
+				try
+				{
+					(ioSession.getHandler()).exceptionCaught(ioSession, e);
+					removeConsumer(ioSession);
+				}
+				catch (Throwable t)
+				{
+					log.error(t.getMessage(), t);
+				}
 			}
+			retryCount++;
 		}
+
+
 		return false;
 	}
 
