@@ -42,7 +42,7 @@ public class QueueProcessor
 
 		msgsAwaitingAck.remove(msgId);
 		DbStorage.deleteMessage(msgId, _destinationName);
-		_counter.decrementAndGet();
+		decrementMsgCounter();
 	}
 
 	protected final void wakeup()
@@ -134,7 +134,7 @@ public class QueueProcessor
 		{
 			long seq_nr = _sequence.incrementAndGet();
 			DbStorage.insert(msg, seq_nr, 0, localConsumersOnly);
-			_counter.incrementAndGet();
+			incrementMsgCounter();			
 		}
 		catch (Throwable t)
 		{
@@ -166,6 +166,16 @@ public class QueueProcessor
 	{
 		return _counter.get();
 	}
+	
+	protected void incrementMsgCounter()
+	{
+		_counter.incrementAndGet();
+	}
+	
+	protected void decrementMsgCounter()
+	{
+		_counter.decrementAndGet();
+	}
 
 	public String getDestinationName()
 	{
@@ -176,5 +186,7 @@ public class QueueProcessor
 	{
 		return RemoteQueueConsumers.size(_destinationName) + LocalQueueConsumers.size(_destinationName);
 	}
+	
+
 
 }

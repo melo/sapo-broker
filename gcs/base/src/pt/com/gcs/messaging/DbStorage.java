@@ -82,7 +82,7 @@ class DbStorage
 			dbFile = AgentInfo.getBasePersistentDirectory().concat("/");
 			dbName = MD5.getHashString(AgentInfo.getAgentName());
 
-			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=0;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=500;CACHE_TYPE=TQ");
+			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=500;CACHE_TYPE=TQ");
 			username = "sa";
 			password = "";
 
@@ -307,8 +307,9 @@ class DbStorage
 				}
 				else
 				{
-					log.warn("Expired or overdelivered message: {}", msg_id);
+					log.warn("Expired or overdelivered message: '{}' id: '{}'", msg.getDestination(),  msg_id);
 					deleteMessage(msg_id, processor.getDestinationName());
+					processor.decrementMsgCounter();
 				}
 			}
 			batchUpdateState(processor);
@@ -464,17 +465,8 @@ class DbStorage
 		}
 		catch (Throwable t)
 		{
-			closeQuietly(conn);
-			try
-			{
-				conn = DriverManager.getConnection(connURL, username, password);
-			}
-			catch (SQLException e)
-			{
-				log.error("Error creating connection: {}", e.getMessage());
-			}
 			dealWithError(t, false);
-			closeQuietly(conn);
+			closeQuietly(connection);
 			Shutdown.now();
 		}
 		finally
