@@ -1,5 +1,7 @@
 package pt.com.gcs.messaging;
 
+import org.caudexorigo.concurrent.Sleep;
+
 import pt.com.gcs.tasks.GcsExecutor;
 
 class QueueAwaker implements Runnable
@@ -18,6 +20,7 @@ class QueueAwaker implements Runnable
 			};
 
 			GcsExecutor.execute(awaker);
+			Sleep.time(100);
 		}
 	}
 
