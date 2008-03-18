@@ -13,6 +13,11 @@ namespace PTCom.ApplicationBlocks.Messaging.Sample
         {
             Console.WriteLine(DateTime.Now.Ticks + "::" + message.TextPayload);
         }
+		
+		public override void  OnConnectionClosed()
+        {
+            Console.WriteLine("ConnectionClosed()");
+        }
 
         static void Main(string[] args)
         {
@@ -24,14 +29,14 @@ namespace PTCom.ApplicationBlocks.Messaging.Sample
             nreq1.DestinationName = "/sapo/webanalytics/pageviews";
             nreq1.DestinationType = DestinationType.TOPIC;
 
-			bc.SetAsyncConsumer(nreq1, consumer);
+			bc.AddAsyncConsumer(nreq1, consumer);
             Console.WriteLine("listening... ");
 
             while (true)
             {			
                 if (Console.ReadLine().Equals("exit"))
                 {
-                    bc.Shutdown();
+                    bc.Dispose();
                     Environment.Exit(0);
                 }
             }

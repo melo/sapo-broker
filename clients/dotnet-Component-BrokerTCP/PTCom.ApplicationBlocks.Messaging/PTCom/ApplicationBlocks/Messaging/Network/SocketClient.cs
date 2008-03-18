@@ -5,10 +5,14 @@ using System.Threading;
 using System.Net.Sockets;
 using PTCom.ApplicationBlocks.Messaging.Soap;
 using PTCom.ApplicationBlocks.Messaging.Util;
+using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 
 namespace PTCom.ApplicationBlocks.Messaging.Network
 {
+    public delegate void BrokerHandler(BrokerMessage message);
+
     /// <summary>
     /// Description of SocketClient.	
     /// </summary>
@@ -18,28 +22,61 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
         private int _port;
         private BrokerClient _bkClient;
         private Socket _clientSocket;
-        private Boolean _isWaitingMessage = false;
-        private Listener _listener;
+        private Boolean _isWaitingMessage;
+        private IAsyncResult _pendingAsyncResult;
+        private bool _isDisposed;
+
+        private BrokerHandler _brokerHandlerDelegate;
+
+        public event BrokerHandler Listeners
+        {
+            add
+            {
+                AddListener(value);
+            }
+            remove
+            {
+                RemoveListener(value);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        private void RemoveListener(BrokerHandler value)
+        {
+            _brokerHandlerDelegate -= value;
+        }
+
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        private void AddListener(BrokerHandler value)
+        {
+            _brokerHandlerDelegate += value;
+        }
+
+        public BrokerHandler[] GetHandlers()
+        {
+            if (_brokerHandlerDelegate != null)
+            {
+                return _brokerHandlerDelegate.GetInvocationList() as BrokerHandler[];
+            }
+            return new BrokerHandler[] { };
+        }
 
         public SocketClient(string host, int port, BrokerClient bkClient)
         {
+            _isDisposed = false;
+            _isWaitingMessage = false;
             _host = host;
             _port = port;
             _bkClient = bkClient;
-            try
-            {
-                // Create the socket instance
-                _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                _clientSocket.Connect(_host, _port);
-            }
-            catch (Exception ex)
-            {
-                _bkClient.ExceptionCaught(ex);
-            }
 
+            // Create the socket instance
+            _clientSocket = new Socket(
+                AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _clientSocket.Connect(_host, _port);
         }
 
-        public void SendMessage(SoapEnvelope soap, bool expectResponse)
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public void SendMessageAsync(SoapEnvelope soap, bool expectResponse)
         {
             try
             {
@@ -83,16 +120,22 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
             public int totalHeaderBytesReceived = 0;
             public int totalBodyBytesReceived = 0;
         }
-
-
+        
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void WaitForHeader()
         {
+            if (_isDisposed)
+            {
+                return;
+            }
             try
             {
                 BrokerPacket messagePacket = new BrokerPacket();
                 messagePacket.thisSocket = _clientSocket;
                 // Start listening to the data asynchronously
-                _clientSocket.BeginReceive(messagePacket.msgLengthHolder, 0, messagePacket.msgLengthHolder.Length, SocketFlags.None, new AsyncCallback(OnHeaderReceived), messagePacket);
+                _pendingAsyncResult = _clientSocket.BeginReceive(messagePacket.msgLengthHolder, 0, 
+                    messagePacket.msgLengthHolder.Length, SocketFlags.None, 
+                    new AsyncCallback(OnHeaderReceived), messagePacket);
             }
             catch (Exception ex)
             {
@@ -100,16 +143,23 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
             }
         }
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void AcumulateMessageHeader(BrokerPacket messagePacket, int messageLenght, int offset)
         {
             messagePacket.thisSocket = _clientSocket;
             // Start listening to the data asynchronously
-            _clientSocket.BeginReceive(messagePacket.msgLengthHolder, offset, messageLenght, SocketFlags.None, new AsyncCallback(OnHeaderReceived), messagePacket);
+            _pendingAsyncResult = _clientSocket.BeginReceive(messagePacket.msgLengthHolder, offset,
+                messageLenght, SocketFlags.None, new AsyncCallback(OnHeaderReceived), messagePacket);
         }
 
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void OnHeaderReceived(IAsyncResult asyn)
         {
+            if (_isDisposed)
+            {
+                return;
+            }
             try
             {
                 BrokerPacket messagePacket = (BrokerPacket)asyn.AsyncState;
@@ -118,7 +168,9 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
                 if (messagePacket.totalHeaderBytesReceived < 4)
                 {
                     // Incomplete message header,  cumulate remainder
-                    AcumulateMessageHeader(messagePacket, 4 - messagePacket.totalHeaderBytesReceived, messagePacket.totalHeaderBytesReceived);
+                    AcumulateMessageHeader(
+                        messagePacket, 4 - messagePacket.totalHeaderBytesReceived, 
+                        messagePacket.totalHeaderBytesReceived);
                     return;
                 }
                 int dataSize = BitConverter.ToInt32(messagePacket.msgLengthHolder, 0);
@@ -132,13 +184,16 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
             }
         }
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void WaitForMessageBody(BrokerPacket messagePacket, int messageLenght)
         {
             try
             {
                 messagePacket.msgBodyHolder = new byte[messageLenght];
                 // Start listening to the data asynchronously
-                _clientSocket.BeginReceive(messagePacket.msgBodyHolder, 0, messageLenght, SocketFlags.None, new AsyncCallback(OnMessageBodyReceived), messagePacket);
+                _pendingAsyncResult = _clientSocket.BeginReceive(
+                    messagePacket.msgBodyHolder, 0, messageLenght, SocketFlags.None, 
+                    new AsyncCallback(OnMessageBodyReceived), messagePacket);
             }
             catch (Exception ex)
             {
@@ -146,13 +201,21 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
             }
         }
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void AcumulateMessageBody(BrokerPacket messagePacket, int messageLenght, int offset)
         {
-            _clientSocket.BeginReceive(messagePacket.msgBodyHolder, offset, messageLenght, SocketFlags.None, new AsyncCallback(OnMessageBodyReceived), messagePacket);
+            _pendingAsyncResult = _clientSocket.BeginReceive(
+                messagePacket.msgBodyHolder, offset, messageLenght, SocketFlags.None,
+                new AsyncCallback(OnMessageBodyReceived), messagePacket);
         }
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void OnMessageBodyReceived(IAsyncResult asyn)
         {
+            if (_isDisposed)
+            {
+                return;
+            }
             try
             {
                 BrokerPacket messagePacket = (BrokerPacket)asyn.AsyncState;
@@ -162,28 +225,28 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
                 if (messagePacket.totalBodyBytesReceived < messagePacket.msgBodyHolder.Length)
                 {
                     // Incomplete message body, cumulate remainder
-                    AcumulateMessageBody(messagePacket, messagePacket.msgBodyHolder.Length - messagePacket.totalBodyBytesReceived, messagePacket.totalBodyBytesReceived);
+                    AcumulateMessageBody(messagePacket, 
+                        messagePacket.msgBodyHolder.Length - messagePacket.totalBodyBytesReceived, 
+                        messagePacket.totalBodyBytesReceived);
                     return;
                 }
 
-                SoapEnvelope sp = (SoapEnvelope)SerializationHelper.DeserializeObject(messagePacket.msgBodyHolder, typeof(SoapEnvelope));
+                SoapEnvelope sp = (SoapEnvelope)SerializationHelper.DeserializeObject(
+                    messagePacket.msgBodyHolder, typeof(SoapEnvelope));
 
-				if (sp.Body.Fault != null)
-				{
-					SoapFault fault = sp.Body.Fault;
-					Exception ex = new Exception(fault.Reason.Text, new Exception(fault.Detail));
-					ex.Source = fault.Code.Value;
-					_bkClient.ExceptionCaught(ex);
-					return;
-				} 
-				else if (sp.Body.Notification != null)
+                if (sp.Body.Fault != null)
                 {
-                    if (_listener != null)
-                    {
-                        _listener.OnMessage(sp.Body.Notification.BrokerMessage);
-                    }
-				}
-                
+                    SoapFault fault = sp.Body.Fault;
+                    Exception ex = new Exception(fault.Reason.Text, new Exception(fault.Detail));
+                    ex.Source = fault.Code.Value;
+                    _bkClient.ExceptionCaught(ex);
+                    return;
+                }
+                else if (sp.Body.Notification != null)
+                {
+                    NotifyListeners(sp.Body.Notification.BrokerMessage);
+                }
+
                 WaitForHeader();
             }
             catch (Exception ex)
@@ -192,19 +255,57 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
             }
         }
 
-
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        private void NotifyListeners(BrokerMessage message)
+        {
+            if (message != null)
+            {
+                // Notify clients
+                //  queue clients notification for execution, so that this thread could 
+                //  release the lock (clients notification could be lengthy)
+                ThreadPool.QueueUserWorkItem(delegate(object state)
+                {
+                    lock (this)
+                    {
+                        if (_brokerHandlerDelegate != null)
+                        {
+                            foreach (BrokerHandler handler in _brokerHandlerDelegate.GetInvocationList())
+                            {
+                                try
+                                {
+                                    handler(message);
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    //_brokerHandlerDelegate(sp.Body.Notification.BrokerMessage);
+                });
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.Synchronized)]
         public void Disconnect()
         {
-            if (_clientSocket != null)
+            try
             {
-                _clientSocket.Close();
-                _clientSocket = null;
+                if (_clientSocket != null && !_isDisposed)
+                {
+                    _clientSocket.Shutdown(SocketShutdown.Both);
+                    _clientSocket.Close();
+                }
+                _isDisposed = true;
+            }
+            catch (Exception exception)
+            {
+                Trace.TraceError("Error while disconnecting socket: {0}{1}{2}",
+                    exception.Message, Environment.NewLine, exception.StackTrace);
             }
         }
 
-        internal void SetListener(Listener listener)
+        internal bool HasListeners()
         {
-            _listener = listener;
+            return _brokerHandlerDelegate != null;
         }
 
         public bool IsConnected()

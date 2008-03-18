@@ -8,19 +8,56 @@ using System.Collections.Generic;
 using PTCom.ApplicationBlocks.Messaging.Util;
 using PTCom.ApplicationBlocks.Messaging.Soap;
 using PTCom.ApplicationBlocks.Messaging.Network;
+using System.Diagnostics;
 
 namespace PTCom.ApplicationBlocks.Messaging
 {
-    public class BrokerClient
+    public enum ExceptionType
+    {
+        Fatal,
+        Recovered
+    }
+
+    public delegate bool ExceptionHandler(ExceptionType type, Exception exception, BrokerClient broker);
+
+    public class BrokerClient : IDisposable
     {
         public static readonly Encoding ENCODING = new UTF8Encoding(false);
+
+        private string _host;
+        private int _portNumber;
         private SocketClient _skClient;
         private string _appName;
+        private bool _isDisposed;
+        private Notify _notify;
+
+        public Notify Notify
+        {
+            get { return _notify; }
+        }
+
+        private ExceptionHandler _exceptionRaisedHandler;
+        public event ExceptionHandler ExceptionRaised
+        {
+            add
+            {
+                _exceptionRaisedHandler += value;
+            }
+            remove 
+            {
+                _exceptionRaisedHandler -= value;
+            }
+        }
 
         public BrokerClient(string host, int portNumber, string appName)
         {
+            _host = host;
+            _portNumber = portNumber;
             _appName = appName;
-            _skClient = new SocketClient(host, portNumber, this);
+            _isDisposed = false;
+
+            //CreateSocket();
+            _skClient = new SocketClient(_host, _portNumber, this);
         }
 
         public void Acknowledge(BrokerMessage brkmsg)
@@ -32,7 +69,7 @@ namespace PTCom.ApplicationBlocks.Messaging
 
                 SoapEnvelope soap = BuildSoapEnvelope("http://services.sapo.pt/broker/acknowledge");
                 soap.Body.Acknowledge = ack;
-                _skClient.SendMessage(soap, false);
+                _skClient.SendMessageAsync(soap, false);
             }
             else
             {
@@ -48,14 +85,13 @@ namespace PTCom.ApplicationBlocks.Messaging
                 enqreq.BrokerMessage = brkmsg;
                 SoapEnvelope soap = BuildSoapEnvelope("http://services.sapo.pt/broker/enqueue");
                 soap.Body.Enqueue = enqreq;
-                _skClient.SendMessage(soap, false);
+                _skClient.SendMessageAsync(soap, false);
             }
             else
             {
                 throw new ArgumentException("Mal-formed EnqueueRequest object");
             }
         }
-
 
         public void PublishMessage(BrokerMessage brkmsg)
         {
@@ -65,7 +101,7 @@ namespace PTCom.ApplicationBlocks.Messaging
                 pubreq.BrokerMessage = brkmsg;
                 SoapEnvelope soap = BuildSoapEnvelope("http://services.sapo.pt/broker/publish");
                 soap.Body.Publish = pubreq;
-                _skClient.SendMessage(soap, false);
+                _skClient.SendMessageAsync(soap, false);
             }
             else
             {
@@ -73,27 +109,40 @@ namespace PTCom.ApplicationBlocks.Messaging
             }
         }
 
-        public void SetAsyncConsumer(Notify notify, Listener listener)
+        public bool HasConsumers()
+        {
+            return _skClient.HasListeners();
+        }
+
+        public IEnumerable<IListener> GetConsumers()
+        {
+            if (_skClient != null)
+            {
+                foreach (BrokerHandler handler in _skClient.GetHandlers())
+                {
+                    IListener listener = handler.Target as IListener;
+                    if (listener != null)
+                    {
+                        yield return listener;
+                    }
+                }
+            }
+        }
+
+        public void RemoveAsyncConsumer(IListener listener)
+        {
+            _skClient.Listeners -= new BrokerHandler(listener.OnMessage);
+        }
+
+        public void AddAsyncConsumer(Notify notify, IListener listener)
         {
             if ((notify != null) && (!IsBlank(notify.DestinationName)))
             {
-                string action = "";
-                if (notify.DestinationType == DestinationType.QUEUE)
+                if (!_skClient.HasListeners())
                 {
-                    action = "http://services.sapo.pt/broker/listen";
+                    InitiateSocketToReceive(notify);
                 }
-                else if ((notify.DestinationType == DestinationType.TOPIC) || (notify.DestinationType == DestinationType.TOPIC_AS_QUEUE))
-                {
-                    action = "http://services.sapo.pt/broker/subscribe";
-                }
-                else
-                {
-                    throw new ArgumentException("Mal-formed NotificationRequest object");
-                }
-                SoapEnvelope soap = BuildSoapEnvelope(action);
-                soap.Body.Notify = notify;
-                _skClient.SendMessage(soap, true);
-                _skClient.SetListener(listener);
+                _skClient.Listeners += new BrokerHandler(listener.OnMessage);
             }
             else
             {
@@ -101,15 +150,81 @@ namespace PTCom.ApplicationBlocks.Messaging
             }
         }
 
-        public void Shutdown()
+        private void InitiateSocketToReceive(Notify notify)
         {
-            _skClient.Disconnect();
+            string action = "";
+            if (notify.DestinationType == DestinationType.QUEUE)
+            {
+                action = "http://services.sapo.pt/broker/listen";
+            }
+            else if ((notify.DestinationType == DestinationType.TOPIC) || 
+                (notify.DestinationType == DestinationType.TOPIC_AS_QUEUE))
+            {
+                action = "http://services.sapo.pt/broker/subscribe";
+            }
+            else
+            {
+                throw new ArgumentException("Mal-formed NotificationRequest object");
+            }
+
+            //CreateSocket();
+
+            SoapEnvelope soap = BuildSoapEnvelope(action);
+            soap.Body.Notify = notify;
+            _notify = notify;
+            _skClient.SendMessageAsync(soap, true);
+            //_skClient.SetListener(listener);
         }
 
-        internal void ExceptionCaught(Exception ex)
+        //private void CreateSocket()
+        //{
+        //    _skClient = new SocketClient(_host, _portNumber, this);
+        //}
+
+        private void Shutdown()
         {
-            //TODO: not sure what do here, for now just rethrow the exception.
-            throw ex;
+            if (_skClient.IsConnected())
+            {
+                _skClient.Disconnect();
+                //_skClient = null;
+            }
+            _isDisposed = true;
+        }
+
+        internal void ExceptionCaught(Exception exception)
+        {
+            try
+            {
+                Dispose();
+
+                lock (this)
+                {
+                    Trace.TraceError(string.Format("BrokerClient exception: {0}{1}{2}",
+                        exception.Message, Environment.NewLine, exception.StackTrace));
+
+                    if (_exceptionRaisedHandler != null)
+                    {
+                        bool handled = false;
+                        foreach (ExceptionHandler handler in _exceptionRaisedHandler.GetInvocationList())
+                        {
+                            if (handler(ExceptionType.Fatal, exception, this))
+                            {
+                                handled = true;
+                            }
+                        }
+                        if (!handled)
+                        {
+                            throw exception;
+                        }
+                        _exceptionRaisedHandler = null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("Error in BrokerClient.ExceptionCaught: {0}{1}{2}",
+                    ex.Message, Environment.NewLine, ex.StackTrace);
+            }
         }
 
         private SoapEnvelope BuildSoapEnvelope(string action)
@@ -125,5 +240,17 @@ namespace PTCom.ApplicationBlocks.Messaging
         {
             return String.IsNullOrEmpty(str);
         }
+
+        #region IDisposable Members
+
+        public void Dispose()
+        {
+            if (!_isDisposed)
+            {
+                Shutdown();
+            }
+        }
+
+        #endregion
     }
 }
