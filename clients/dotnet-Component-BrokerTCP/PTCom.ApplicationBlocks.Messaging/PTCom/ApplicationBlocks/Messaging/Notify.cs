@@ -8,8 +8,6 @@ namespace PTCom.ApplicationBlocks.Messaging
 
         private DestinationType destinationType;
 
-        private AcknowledgeMode ackMode;
-
 
         public string DestinationName
         {
@@ -32,18 +30,6 @@ namespace PTCom.ApplicationBlocks.Messaging
             set
             {
                 this.destinationType = value;
-            }
-        }
-
-        public AcknowledgeMode AcknowledgeMode
-        {
-            get
-            {
-                return this.ackMode;
-            }
-            set
-            {
-                this.ackMode = value;
             }
         }
     }

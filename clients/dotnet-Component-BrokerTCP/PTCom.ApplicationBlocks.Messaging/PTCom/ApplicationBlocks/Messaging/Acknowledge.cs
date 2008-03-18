@@ -4,6 +4,7 @@ namespace PTCom.ApplicationBlocks.Messaging
 {
     public class Acknowledge
     {
-        public string MessageId;
+        public string DestinationName;
+		public string MessageId;
     }
 }

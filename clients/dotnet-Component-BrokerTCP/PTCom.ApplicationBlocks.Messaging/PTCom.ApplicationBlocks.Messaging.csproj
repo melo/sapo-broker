@@ -49,6 +49,9 @@
     <WarningLevel>4</WarningLevel>
     <DebugType>full</DebugType>
     <ErrorReport>prompt</ErrorReport>
+    <OutputType>Library</OutputType>
+    <AssemblyName>PTCom.ApplicationBlocks.Messaging_v1</AssemblyName>
+    <RootNamespace>PTCom.ApplicationBlocks.Messaging</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -72,6 +75,9 @@
     <WarningLevel>4</WarningLevel>
     <DebugType>none</DebugType>
     <ErrorReport>prompt</ErrorReport>
+    <OutputType>Library</OutputType>
+    <AssemblyName>PTCom.ApplicationBlocks.Messaging_v1</AssemblyName>
+    <RootNamespace>PTCom.ApplicationBlocks.Messaging</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System">
@@ -86,7 +92,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PTCom\ApplicationBlocks\Messaging\DenqueResponseHolder.cs" />
     <Compile Include="PTCom\ApplicationBlocks\Messaging\DestinationType.cs" />
     <Compile Include="PTCom\ApplicationBlocks\Messaging\Acknowledge.cs" />
     <Compile Include="AssemblyInfo.cs">
@@ -98,12 +103,7 @@
     <Compile Include="PTCom\ApplicationBlocks\Messaging\BrokerMessage.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="PTCom\ApplicationBlocks\Messaging\AcknowledgeMode.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="PTCom\ApplicationBlocks\Messaging\DeliveryMode.cs" />
-    <Compile Include="PTCom\ApplicationBlocks\Messaging\Denqueue.cs" />
-    <Compile Include="PTCom\ApplicationBlocks\Messaging\DenqueueResponse.cs" />
     <Compile Include="PTCom\ApplicationBlocks\Messaging\Enqueue.cs" />
     <Compile Include="PTCom\ApplicationBlocks\Messaging\Listener.cs" />
     <Compile Include="PTCom\ApplicationBlocks\Messaging\Network\SocketClient.cs" />
@@ -120,5 +120,7 @@
     </PreBuildEvent>
     <PostBuildEvent>
     </PostBuildEvent>
+    <ProjectGuid>{F4C3D49E-A55F-451E-A46B-B76EC684F58C}</ProjectGuid>
+    <RootNamespace>PTCom.ApplicationBlocks.Messaging</RootNamespace>
   </PropertyGroup>
 </Project>

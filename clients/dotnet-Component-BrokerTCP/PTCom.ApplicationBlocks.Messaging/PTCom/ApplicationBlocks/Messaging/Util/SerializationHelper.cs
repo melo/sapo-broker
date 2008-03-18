@@ -23,7 +23,6 @@ namespace PTCom.ApplicationBlocks.Messaging.Util
         {
             XmlSerializer xs = new XmlSerializer(type);
             MemoryStream memoryStream = new MemoryStream(data);
-            XmlTextWriter xmlTextWriter = new XmlTextWriter(memoryStream, BrokerClient.ENCODING);
             return xs.Deserialize(memoryStream);
         }
     }

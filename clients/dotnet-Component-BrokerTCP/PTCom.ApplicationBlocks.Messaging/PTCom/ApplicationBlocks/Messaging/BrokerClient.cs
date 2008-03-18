@@ -14,16 +14,11 @@ namespace PTCom.ApplicationBlocks.Messaging
     public class BrokerClient
     {
         public static readonly Encoding ENCODING = new UTF8Encoding(false);
-
-        private string _host;
-        private int _portNumber;
         private SocketClient _skClient;
         private string _appName;
 
         public BrokerClient(string host, int portNumber, string appName)
         {
-            _host = host;
-            _portNumber = portNumber;
             _appName = appName;
             _skClient = new SocketClient(host, portNumber, this);
         }
@@ -61,21 +56,6 @@ namespace PTCom.ApplicationBlocks.Messaging
             }
         }
 
-        public DenqueueResponse DenqueueMessage(Denqueue denqreq)
-        {
-            if ((denqreq != null) && (!IsBlank(denqreq.DestinationName)))
-            {
-                SoapEnvelope soap = BuildSoapEnvelope("http://services.sapo.pt/broker/denqueue");
-                soap.Body.Denqueue = denqreq;
-                _skClient.SendMessage(soap, true);
-
-                return DenqueResponseHolder.GetMessageFromQueue(denqreq.DestinationName);
-            }
-            else
-            {
-                throw new ArgumentException("Mal-formed DenqueueRequest object");
-            }
-        }
 
         public void PublishMessage(BrokerMessage brkmsg)
         {
@@ -143,20 +123,7 @@ namespace PTCom.ApplicationBlocks.Messaging
 
         private static bool IsBlank(string str)
         {
-            int strLen;
-            if (str == null || (strLen = str.Trim().Length) == 0)
-            {
-                return true;
-            }
-            char[] str_arr = str.ToCharArray();
-            for (int i = 0; i < str_arr.Length; i++)
-            {
-                if ((char.IsWhiteSpace(str_arr[i]) == false))
-                {
-                    return false;
-                }
-            }
-            return true;
+            return String.IsNullOrEmpty(str);
         }
     }
 }

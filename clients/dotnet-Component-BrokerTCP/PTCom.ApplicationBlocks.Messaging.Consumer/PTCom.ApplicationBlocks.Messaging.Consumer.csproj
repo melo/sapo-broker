@@ -18,6 +18,12 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>PTCom.ApplicationBlocks.Messaging.Consumer</AssemblyName>
+    <RootNamespace>PTCom.ApplicationBlocks.Messaging.Sample</RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <ApplicationIcon>.</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -26,6 +32,13 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>PTCom.ApplicationBlocks.Messaging.Consumer</AssemblyName>
+    <DebugSymbols>true</DebugSymbols>
+    <RootNamespace>PTCom.ApplicationBlocks.Messaging.Sample</RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <ApplicationIcon>.</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

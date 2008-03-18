@@ -182,11 +182,7 @@ namespace PTCom.ApplicationBlocks.Messaging.Network
                     {
                         _listener.OnMessage(sp.Body.Notification.BrokerMessage);
                     }
-                }
-                else if (sp.Body.DenqueueResponse != null)
-                {
-                    DenqueResponseHolder.AddMessageToQueue(sp.Body.DenqueueResponse);
-                }
+				}
                 
                 WaitForHeader();
             }

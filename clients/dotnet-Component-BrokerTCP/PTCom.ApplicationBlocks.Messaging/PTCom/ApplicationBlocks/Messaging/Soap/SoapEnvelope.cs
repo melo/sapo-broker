@@ -53,20 +53,11 @@ namespace PTCom.ApplicationBlocks.Messaging.Soap
 		[XmlElement(ElementName = "BrokerMessage", Namespace = "http://services.sapo.pt/broker", IsNullable = false)]
 		public BrokerMessage BrokerMessage;
 
-
-		[XmlElement(ElementName = "Denqueue", Namespace = "http://services.sapo.pt/broker", IsNullable = false)]
-		public Denqueue Denqueue;
-
-		[XmlElement(ElementName = "DenqueueResponse", Namespace = "http://services.sapo.pt/broker", IsNullable = false)]
-		public DenqueueResponse DenqueueResponse;
-
-
 		[XmlElement(ElementName = "Enqueue", Namespace = "http://services.sapo.pt/broker", IsNullable = false)]
 		public Enqueue Enqueue;
 
 		[XmlElement(ElementName = "Notification", Namespace = "http://services.sapo.pt/broker", IsNullable = false)]
 		public Notification Notification;
-
 
 		[XmlElement(ElementName = "Publish", Namespace = "http://services.sapo.pt/broker", IsNullable = false)]
 		public Publish Publish;

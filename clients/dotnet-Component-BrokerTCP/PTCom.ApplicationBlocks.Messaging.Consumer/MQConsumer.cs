@@ -18,17 +18,17 @@ namespace PTCom.ApplicationBlocks.Messaging.Sample
         {
             MQConsumer consumer = new MQConsumer();
 
-            BrokerClient bc = new BrokerClient("localhost", 2222, "tcp://mycompany.com/mysniffer");
+            BrokerClient bc = new BrokerClient("10.135.5.86", 3322, "tcp://mycompany.com/mysniffer");
 
             Notify nreq1 = new Notify();
-            nreq1.DestinationName = "sample_topic1";
+            nreq1.DestinationName = "/sapo/webanalytics/pageviews";
             nreq1.DestinationType = DestinationType.TOPIC;
 
-            bc.SetAsyncConsumer(nreq1, consumer);
+			bc.SetAsyncConsumer(nreq1, consumer);
             Console.WriteLine("listening... ");
 
             while (true)
-            {
+            {			
                 if (Console.ReadLine().Equals("exit"))
                 {
                     bc.Shutdown();
