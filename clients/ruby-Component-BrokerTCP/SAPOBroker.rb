@@ -136,6 +136,7 @@ END_SUB
 </Acknowledge>
 </soapenv:Body></soapenv:Envelope>
 END_ACK
+      @logger.debug("Will send ACK %s" % ack_msg)
       ack_msg = [ack_msg.length].pack('N') + ack_msg
       @sock.write(ack_msg)
     end
@@ -224,6 +225,7 @@ END_ACK
         begin
           @logger.debug("Trying #{host} on port #{port}")
           @sock = TCPSocket.new(host, port)
+          @sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
           @logger.debug("Connected to #{host} on port #{port}")
           @sub_map.each_pair do |destination, params|
             @logger.debug("Re-subscribing to #{destination}")
@@ -247,7 +249,8 @@ END_ACK
 </#{msg_type}>
 </soapenv:Body></soapenv:Envelope>
 END_EVT
-      
+
+      @logger.debug("Will send message %s" % evt_msg)
       evt_msg = [evt_msg.length].pack('N') + evt_msg
       begin
         @sock.write(evt_msg)
