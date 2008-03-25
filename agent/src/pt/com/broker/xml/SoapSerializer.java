@@ -35,7 +35,6 @@ public class SoapSerializer
 				buf.append("\npriority: " + bmsg.priority);
 				buf.append("\ntextPayload: " + bmsg.textPayload);
 				buf.append("\ntimestamp: " + bmsg.timestamp);
-				buf.append("\ndeliveryMode: " + bmsg.deliveryMode);
 
 				log.error("Unable to marshal soap envelope:" + buf.toString());
 			}
