@@ -2,8 +2,6 @@ package pt.com.broker.messaging;
 
 public class BrokerMessage
 {
-	public DeliveryMode deliveryMode;
-
 	public int priority;
 
 	public String messageId;
@@ -20,7 +18,6 @@ public class BrokerMessage
 
 	public BrokerMessage()
 	{
-		deliveryMode = DeliveryMode.TRANSIENT;
 		priority = 4;
 		messageId = "";
 		correlationId = "";
