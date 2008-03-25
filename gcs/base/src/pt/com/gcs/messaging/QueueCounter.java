@@ -30,7 +30,7 @@ class QueueCounter implements Runnable
 					log.warn("Operator attention required. Queue '{}' has {} message(s) and no consumers.", qp.getDestinationName(), cnt);
 				}
 			}
-			else
+			else if (cnt == 0)
 			{
 				log.info("Queue '{}' is empty.", qp.getDestinationName());
 			}

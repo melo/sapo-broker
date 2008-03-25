@@ -103,27 +103,27 @@ class DbStorage
 		}
 	}
 
-	public static void deleteMessage(String msgId, String queueName)
+	public static boolean deleteMessage(String msgId, String queueName)
 	{
-		instance.i_deleteMessage(msgId, queueName);
+		return instance.i_deleteMessage(msgId, queueName);
 	}
 
-	private void i_deleteMessage(String msgId, String queueName)
+	private boolean i_deleteMessage(String msgId, String queueName)
 	{
 		synchronized (ack_state_prep_stmt)
 		{
 			try
 			{
 				ack_state_prep_stmt.setString(1, msgId);
-				ack_state_prep_stmt.setString(2, queueName);
-				ack_state_prep_stmt.executeUpdate();
+				ack_state_prep_stmt.setString(2, queueName);				
+				return (ack_state_prep_stmt.executeUpdate()>0);
 			}
 			catch (Throwable t)
 			{
 				dealWithError(t, false);
+				return false;
 			}
 		}
-
 	}
 
 	private void batchUpdateState(QueueProcessor qproc)

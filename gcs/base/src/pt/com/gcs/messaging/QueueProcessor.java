@@ -41,8 +41,10 @@ public class QueueProcessor
 		}
 
 		msgsAwaitingAck.remove(msgId);
-		DbStorage.deleteMessage(msgId, _destinationName);
-		decrementMsgCounter();
+		if (DbStorage.deleteMessage(msgId, _destinationName))
+		{
+			decrementMsgCounter();
+		}
 	}
 
 	protected final void wakeup()
@@ -51,8 +53,8 @@ public class QueueProcessor
 		{
 			return;
 		}
-		
-		if (getQueuedMessagesCount() > 0)
+		long cnt = getQueuedMessagesCount();
+		if (cnt > 0)
 		{
 			if (hasRecipient())
 			{
@@ -66,7 +68,17 @@ public class QueueProcessor
 					throw new RuntimeException(t);
 				}
 			}
-		}		
+		}
+		else if (cnt < 0)
+		{
+			log.warn("Queue '{}' as an invalid message count: {}. Will try to fix", getDestinationName(), cnt);
+			
+			synchronized (_counter)
+			{
+				_counter.set(DbStorage.count(getDestinationName()));
+			}
+			log.info("Queue '{}' has {} message(s).", getDestinationName(), cnt);
+		}
 		isWorking.set(false);
 	}
 
