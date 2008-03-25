@@ -14,10 +14,8 @@ import org.apache.mina.common.DefaultIoFilterChainBuilder;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
-import org.apache.mina.filter.traffic.ReadThrottleFilter;
-import org.apache.mina.filter.traffic.ReadThrottlePolicy;
-import org.apache.mina.filter.traffic.WriteThrottleFilter;
-import org.apache.mina.filter.traffic.WriteThrottlePolicy;
+import org.apache.mina.filter.executor.IoEventQueueThrottle;
+import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
 import org.apache.mina.transport.socket.SocketAcceptor;
 import org.apache.mina.transport.socket.SocketConnector;
 import org.apache.mina.transport.socket.SocketSessionConfig;
@@ -48,15 +46,13 @@ public class Gcs
 
 	private static final String SERVICE_NAME = "SAPO GCS";
 
-	private static final int ONE_K = 1024;
+	private static final int MAX_BUFFER_SIZE = 8 * 1024 * 1024;
 
 	private static final Gcs instance = new Gcs();
 
 	private SocketAcceptor acceptor;
 
 	private SocketConnector connector;
-	
-	private final ExecutorService exec = CustomExecutors.newThreadPool(16, "GCS-Executor");
 
 	private Gcs()
 	{
@@ -93,15 +89,10 @@ public class Gcs
 
 		DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 
-		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(CustomExecutors.newScheduledThreadPool(1, "GCS-Acceptor-ReadThrotle-Shed"), ReadThrottlePolicy.BLOCK, 256 * ONE_K, 512 * ONE_K, 1024 * ONE_K);
-		WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK, 0, 128 * ONE_K, 0, 256 * ONE_K, 0, 512 * ONE_K);
-
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 		// and then a thread pool.
-		filterChainBuilder.addLast("executor", new ExecutorFilter(exec));
-		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
-		filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
+		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
 
 		acceptor.setHandler(new GcsAcceptorProtocolHandler());
 
@@ -122,13 +113,7 @@ public class Gcs
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 
 		// and then a thread pool.
-		ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(CustomExecutors.newScheduledThreadPool(1, "GCS-Connector-ReadThrotle-Shed"), ReadThrottlePolicy.BLOCK, 128 * ONE_K, 256 * ONE_K, 512 * ONE_K);
-		filterChainBuilder.addLast("executor", new ExecutorFilter(exec));
-		filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
-
-		// filterChainBuilder.addLast("executor", new ExecutorFilter(new
-		// OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS, new
-		// IoEventQueueThrottle(2 * 65536))));
+		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle(MAX_BUFFER_SIZE))));
 
 		connector.setHandler(new GcsRemoteProtocolHandler());
 		connector.setConnectTimeout(5); // 5 seconds timeout

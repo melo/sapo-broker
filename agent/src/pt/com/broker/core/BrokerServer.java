@@ -1,18 +1,17 @@
 package pt.com.broker.core;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.DefaultIoFilterChainBuilder;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
-import org.apache.mina.filter.traffic.ReadThrottleFilter;
-import org.apache.mina.filter.traffic.ReadThrottlePolicy;
+import org.apache.mina.filter.executor.IoEventQueueThrottle;
+import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
 import org.apache.mina.transport.socket.SocketAcceptor;
 import org.apache.mina.transport.socket.SocketSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.caudexorigo.Shutdown;
-import org.caudexorigo.concurrent.CustomExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ public class BrokerServer
 
 	private int _portNumber;
 
-	private static final int ONE_K = 1024;
+	private static final int MAX_BUFFER_SIZE = 8 * 1024 * 1024;
 
 	private static final int NCPU = Runtime.getRuntime().availableProcessors();
 
@@ -48,18 +47,8 @@ public class BrokerServer
 			((SocketSessionConfig) acceptor.getSessionConfig()).setReuseAddress(true);
 
 			DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
-			ReadThrottleFilter readThrottleFilter = new ReadThrottleFilter(Executors.newSingleThreadScheduledExecutor(), ReadThrottlePolicy.BLOCK, 256 * ONE_K, 512 * ONE_K, 1024 * ONE_K);
-			//WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.FAIL, 0, 1024 * ONE_K, 0, 4096 * ONE_K, 0, 4096 * ONE_K);
-			//WriteThrottleFilter writeThrottleFilter = new WriteThrottleFilter(WriteThrottlePolicy.BLOCK);
-
-			
 			filterChainBuilder.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
-			filterChainBuilder.addLast("executor", new ExecutorFilter(CustomExecutors.newThreadPool(16, "Broker-Executor")));	
-			filterChainBuilder.addLast("readThrottleFilter", readThrottleFilter);
-//			filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
-			//filterChainBuilder.addLast("writeThrottleFilter", writeThrottleFilter);
-			
-			
+			filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle(MAX_BUFFER_SIZE))));
 
 			acceptor.setHandler(new BrokerProtocolHandler());
 

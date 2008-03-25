@@ -2,10 +2,8 @@ package pt.com.broker.messaging;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +19,8 @@ public class TopicSubscriber extends BrokerListener
 	private final List<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
 
 	private final String _dname;
-	
-	private static final int MAX_WAIT_TIME = 500;
+
+	private final static int MAX_SESSION_BUFFER_SIZE = 1024 * 1024;
 
 	public TopicSubscriber(String destinationName)
 	{
@@ -38,39 +36,48 @@ public class TopicSubscriber extends BrokerListener
 		{
 			for (IoSession ios : _sessions)
 			{
-					try
+				try
+				{
+					if (ios.isConnected() && !ios.isClosing())
 					{
-						if (ios.isConnected() && !ios.isClosing())
+
+						if (ios.getScheduledWriteBytes() > (MAX_SESSION_BUFFER_SIZE))
 						{
-							final SoapEnvelope response = buildNotification(amsg, "topic");
-							WriteFuture wf = ios.write(response);
-							boolean isWriten = wf.awaitUninterruptibly(MAX_WAIT_TIME, TimeUnit.MILLISECONDS);
-							
 							if (log.isDebugEnabled())
 							{
-								if (!isWriten)
-								{
-									log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
-								}								
-							}							
+								log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
+							}
+							return false;
 						}
-						else
+
+						final SoapEnvelope response = buildNotification(amsg, "topic");
+						ios.write(response);
+
+						if (log.isDebugEnabled())
 						{
-							removeConsumer(ios);
+							if (!true)
+							{
+								log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
+							}
 						}
 					}
-					catch (Throwable t)
+					else
 					{
 						removeConsumer(ios);
-						try
-						{
-							(ios.getHandler()).exceptionCaught(ios, t);
-						}
-						catch (Throwable t1)
-						{
-							log.error("Could not propagate error to the client session! Message: {}", t1.getMessage());
-						}
 					}
+				}
+				catch (Throwable t)
+				{
+					removeConsumer(ios);
+					try
+					{
+						(ios.getHandler()).exceptionCaught(ios, t);
+					}
+					catch (Throwable t1)
+					{
+						log.error("Could not propagate error to the client session! Message: {}", t1.getMessage());
+					}
+				}
 			}
 			return true;
 		}
@@ -103,7 +110,7 @@ public class TopicSubscriber extends BrokerListener
 		}
 		log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 	}
-	
+
 	public String getDestinationName()
 	{
 		return _dname;
