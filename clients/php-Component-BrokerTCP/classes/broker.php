@@ -725,7 +725,7 @@ class SAPO_Broker_Parser {
         if (!empty($elements['DestinationName'])) {
             foreach ($subscriptions as $subscription) {
                 if ($subscription['topic'] == $elements['DestinationName']) {
-                    call_user_func($subscription['callback'], $elements['TextPayload']);
+                    call_user_func($subscription['callback'], $elements['TextPayload'],$elements['DestinationName']);
                 }
             }
         }
