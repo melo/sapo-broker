@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.xml.SoapEnvelope;
+import pt.com.gcs.messaging.DestinationType;
 import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.net.IoSessionHelper;
@@ -28,6 +29,12 @@ public class QueueSessionListener extends BrokerListener
 	{
 		_dname = destinationName;
 	}
+	
+	@Override
+	public DestinationType getDestinationType()
+	{
+		return DestinationType.QUEUE;
+	}
 
 	public boolean onMessage(final Message msg)
 	{
@@ -38,15 +45,14 @@ public class QueueSessionListener extends BrokerListener
 		final IoSession ioSession = pick();
 		
 		while (retryCount<5)
-		{
-			
+		{		
 			try
 			{
 				if (ioSession != null)
 				{
 					if (ioSession.isConnected() && !ioSession.isClosing())
 					{
-						final SoapEnvelope response = buildNotification(msg, "queue");
+						final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
 						WriteFuture future = ioSession.write(response);
 						future.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
 
@@ -132,7 +138,7 @@ public class QueueSessionListener extends BrokerListener
 
 			if (_sessions.size() == 0)
 			{
-				Gcs.removeQueueConsumer(this);
+				Gcs.removeAsyncConsumer(this);
 				QueueSessionListenerList.removeValue(this);
 			}
 		}

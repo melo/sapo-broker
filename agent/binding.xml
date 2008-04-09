@@ -27,6 +27,7 @@
 
 	<mapping name="Body" class="pt.com.broker.xml.SoapBody" ns="http://www.w3.org/2003/05/soap-envelope">
 		<structure field="enqueue" usage="optional" />
+		<structure field="poll" usage="optional" />
 		<structure field="publish" usage="optional" />
 		<structure field="notify" usage="optional" />
 		<structure field="unsubscribe" usage="optional" />
@@ -52,6 +53,10 @@
 
 	<mapping name="Enqueue" class="pt.com.broker.messaging.Enqueue" ns="http://services.sapo.pt/broker">
 		<structure field="brokerMessage" />
+	</mapping>
+	
+	<mapping name="Poll" class="pt.com.broker.messaging.Poll" ns="http://services.sapo.pt/broker">
+		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
 	<mapping name="Publish" class="pt.com.broker.messaging.Publish" ns="http://services.sapo.pt/broker">

@@ -13,7 +13,7 @@ import pt.com.gcs.messaging.MessageListener;
 
 public abstract class BrokerListener implements MessageListener
 {
-	public SoapEnvelope buildNotification(Message msg, String destinationType)
+	public static SoapEnvelope buildNotification(Message msg, String destinationType)
 	{
 		Notification nt = new Notification();
 		BrokerMessage bkrm = nt.brokerMessage;

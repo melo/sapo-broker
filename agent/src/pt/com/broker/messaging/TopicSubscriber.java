@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.xml.SoapEnvelope;
+import pt.com.gcs.messaging.DestinationType;
 import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.net.IoSessionHelper;
@@ -25,6 +26,12 @@ public class TopicSubscriber extends BrokerListener
 	public TopicSubscriber(String destinationName)
 	{
 		_dname = destinationName;
+	}
+	
+	@Override
+	public DestinationType getDestinationType()
+	{
+		return DestinationType.TOPIC;
 	}
 
 	public boolean onMessage(Message amsg)
@@ -50,7 +57,7 @@ public class TopicSubscriber extends BrokerListener
 							return false;
 						}
 
-						final SoapEnvelope response = buildNotification(amsg, "topic");
+						final SoapEnvelope response = BrokerListener.buildNotification(amsg, "topic");
 						ios.write(response);
 
 						if (log.isDebugEnabled())
@@ -95,7 +102,7 @@ public class TopicSubscriber extends BrokerListener
 			_sessions.remove(iosession);
 			if (_sessions.size() == 0)
 			{
-				Gcs.removeTopicConsumer(this);
+				Gcs.removeAsyncConsumer(this);
 				TopicSubscriberList.removeValue(this);
 			}
 		}

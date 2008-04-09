@@ -21,7 +21,7 @@ public class TopicSubscriberList
 			try
 			{
 				TopicSubscriber subscriber = new TopicSubscriber(destinationName);
-				Gcs.addTopicConsumer(destinationName, subscriber);
+				Gcs.addAsyncConsumer(destinationName, subscriber);
 				return subscriber;
 			}
 			catch (Throwable e)

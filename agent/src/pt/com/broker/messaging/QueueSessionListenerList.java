@@ -24,7 +24,7 @@ public class QueueSessionListenerList
 			try
 			{
 				QueueSessionListener qsl = new QueueSessionListener(destinationName);
-				Gcs.addQueueConsumer(destinationName, qsl);
+				Gcs.addAsyncConsumer(destinationName, qsl);
 				return qsl;
 			}
 			catch (Throwable e)

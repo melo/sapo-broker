@@ -10,6 +10,7 @@ import org.apache.mina.filter.codec.http.HttpResponseStatus;
 import org.apache.mina.filter.codec.http.MutableHttpResponse;
 import org.caudexorigo.Shutdown;
 import org.caudexorigo.io.UnsynchByteArrayInputStream;
+import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,7 @@ import pt.com.broker.messaging.BrokerProducer;
 import pt.com.broker.messaging.MQ;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.broker.xml.SoapSerializer;
+import pt.com.gcs.messaging.QueueProcessorList;
 import pt.com.http.HttpAction;
 
 public class BrokerHttpAction extends HttpAction
@@ -74,7 +76,31 @@ public class BrokerHttpAction extends HttpAction
 
 				if (req_message.body.publish != null)
 				{
-					_http_broker.publishMessage(req_message.body.publish, requestSource);
+					String destinationName = req_message.body.publish.brokerMessage.destinationName;
+					
+					if (StringUtils.equals(destinationName, "/system/management"))
+					{
+						String payload = req_message.body.publish.brokerMessage.textPayload;
+						
+						if (StringUtils.isNotBlank(payload))
+						{
+							if (payload.equals("RELOAD"))
+							{
+								Shutdown.now();
+							}
+							else if (payload.startsWith("QUEUE:"))
+							{
+								String queueName = StringUtils.substringAfter(payload, ":");
+								QueueProcessorList.remove(queueName);
+							}
+							
+						}
+					}
+					else
+					{
+						_http_broker.publishMessage(req_message.body.publish, requestSource);
+					}
+					
 				}
 				else if (req_message.body.enqueue != null)
 				{

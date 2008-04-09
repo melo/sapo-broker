@@ -32,6 +32,14 @@
 					</xsd:all>
 				</xsd:complexType>
 			</xsd:element>
+			
+			<xsd:element name="Poll">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="string" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
 
 			<xsd:element name="Notify">
 				<xsd:complexType>
@@ -98,6 +106,14 @@
 	<message name="NotifySoapIn">
 		<part name="parameters" element="tns:Notify" />
 	</message>
+	
+	<message name="PollSoapIn">
+		<part name="parameters" element="tns:Poll" />
+	</message>
+
+	<message name="PollSoapOut">
+		<part name="parameters" element="tns:Notification" />
+	</message>
 
 	<message name="UnsubscribeSoapIn">
 		<part name="parameters" element="tns:Unsubscribe" />
@@ -115,6 +131,11 @@
 
 		<operation name="Enqueue">
 			<input message="tns:EnqueueSoapIn" />
+		</operation>
+		
+		<operation name="Poll">
+			<input message="tns:PollSoapIn" />
+			<output message="tns:PollSoapOut" />
 		</operation>
 
 		<operation name="Subscribe">
@@ -170,6 +191,13 @@
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
+		
+		<operation name="Poll">
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/poll" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
 
 		<operation name="Notify">
 			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/notify" />
@@ -196,7 +224,7 @@
 
 	<service name="Broker">
 		<port binding="tns:BrokerSoapBinding" name="Broker">
-			<wsoap12:address location="tcp://localhost:2222" />
+			<wsoap12:address location="tcp://localhost:3322" />
 		</port>
 	</service>
 

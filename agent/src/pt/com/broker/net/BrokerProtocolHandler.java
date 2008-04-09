@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 import pt.com.broker.core.ErrorHandler;
 import pt.com.broker.messaging.BrokerConsumer;
 import pt.com.broker.messaging.BrokerProducer;
+import pt.com.broker.messaging.BrokerSyncConsumer;
 import pt.com.broker.messaging.MQ;
 import pt.com.broker.messaging.Notify;
+import pt.com.broker.messaging.Poll;
 import pt.com.broker.messaging.QueueSessionListenerList;
 import pt.com.broker.messaging.Unsubscribe;
 import pt.com.broker.xml.SoapEnvelope;
@@ -25,6 +27,8 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	private static final BrokerProducer _brokerProducer = BrokerProducer.getInstance();
 
 	private static final BrokerConsumer _brokerConsumer = BrokerConsumer.getInstance();
+	
+	private Object mutex = new Object();
 
 	public BrokerProtocolHandler()
 	{
@@ -136,6 +140,16 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		else if (request.body.enqueue != null)
 		{
 			_brokerProducer.enqueueMessage(request.body.enqueue, requestSource);
+			return;
+		}
+		else if (request.body.poll != null)
+		{
+			Poll poll = request.body.poll;
+			synchronized (mutex)
+			{
+				BrokerSyncConsumer.poll(poll, session);
+			}
+			
 			return;
 		}
 		else if (request.body.acknowledge != null)

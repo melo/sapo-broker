@@ -4,6 +4,7 @@ import pt.com.broker.messaging.Acknowledge;
 import pt.com.broker.messaging.Enqueue;
 import pt.com.broker.messaging.Notification;
 import pt.com.broker.messaging.Notify;
+import pt.com.broker.messaging.Poll;
 import pt.com.broker.messaging.Publish;
 import pt.com.broker.messaging.Unsubscribe;
 
@@ -18,6 +19,8 @@ public class SoapBody
 	public Unsubscribe unsubscribe;
 	
 	public Enqueue enqueue;
+	
+	public Poll poll;
 
 	public Notification notification;
 

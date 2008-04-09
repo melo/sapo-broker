@@ -3,6 +3,10 @@ package pt.com.broker.messaging;
 import org.apache.mina.common.IoSession;
 import org.caudexorigo.text.StringUtils;
 
+import pt.com.broker.xml.SoapEnvelope;
+import pt.com.gcs.messaging.Gcs;
+import pt.com.gcs.messaging.Message;
+
 public class BrokerConsumer
 {
 	private static BrokerConsumer instance = new BrokerConsumer();
@@ -28,6 +32,7 @@ public class BrokerConsumer
 			throw new RuntimeException(e);
 		}
 	}
+	
 
 	public synchronized void subscribe(Notify sb, IoSession ios)
 	{
