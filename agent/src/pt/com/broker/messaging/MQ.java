@@ -27,8 +27,6 @@ public class MQ
 
 	public static final String STATISTICS_TOPIC = "/system/stats";
 
-	public static final String DISPATCHER_TOPIC = "/system/dispatcher";
-
 	public static final String MESSAGE_SOURCE = "MESSAGE_SOURCE";
 
 	public static final String ASYNC_QUEUE_CONSUMER_LIST_ATTR = "ASYNC_QUEUE_CONSUMER_LIST_ATTR";
