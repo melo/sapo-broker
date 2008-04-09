@@ -2,7 +2,6 @@ package pt.com.gcs.messaging;
 
 import org.caudexorigo.concurrent.Sleep;
 
-import pt.com.gcs.tasks.GcsExecutor;
 
 class QueueAwaker implements Runnable
 {

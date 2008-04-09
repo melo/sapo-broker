@@ -1,6 +1,7 @@
 package pt.com.gcs.messaging;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +23,8 @@ class LocalQueueConsumers
 	private static final LocalQueueConsumers instance = new LocalQueueConsumers();
 
 	public static final AtomicLong ackedMessages = new AtomicLong(0L);
+
+	private static final Set<String> _syncConsumers = new HashSet<String>();
 
 	public static void acknowledgeMessage(Message msg, IoSession ioSession)
 	{
@@ -46,6 +49,30 @@ class LocalQueueConsumers
 		instance.broadCastNewQueueConsumer(queueName);
 	}
 
+	public static void addSyncConsumer(String queueName)
+	{
+		synchronized (_syncConsumers)
+		{
+			if (!_syncConsumers.contains(queueName))
+			{
+				_syncConsumers.add(queueName);
+				instance.broadCastNewQueueConsumer(queueName);
+			}
+		}
+	}
+
+	public static void removeSyncConsumer(String queueName)
+	{
+		synchronized (_syncConsumers)
+		{
+			if (_syncConsumers.contains(queueName))
+			{
+				_syncConsumers.remove(queueName);
+				instance.broadCastRemovedQueueConsumer(queueName);
+			}
+		}
+
+	}
 
 	public static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
 	{
@@ -53,7 +80,7 @@ class LocalQueueConsumers
 		{
 			return;
 		}
-		
+
 		if (action.equals("CREATE"))
 		{
 			log.info("Tell {} about new queue consumer for: {}.", ioSession.getRemoteAddress().toString(), destinationName);
@@ -72,7 +99,7 @@ class LocalQueueConsumers
 		WriteFuture wf = ioSession.write(m);
 		wf.awaitUninterruptibly();
 	}
-	
+
 	public synchronized static void delete(String queueName)
 	{
 		instance.localQueueConsumers.remove(queueName);
@@ -137,14 +164,14 @@ class LocalQueueConsumers
 		}
 	}
 
-	private void broadCastNewQueueConsumer(String topicName)
+	private void broadCastNewQueueConsumer(String destinationName)
 	{
-		broadCastActionQueueConsumer(topicName, "CREATE");
+		broadCastActionQueueConsumer(destinationName, "CREATE");
 	}
 
-	private void broadCastRemovedQueueConsumer(String topicName)
+	private void broadCastRemovedQueueConsumer(String destinationName)
 	{
-		broadCastActionQueueConsumer(topicName, "DELETE");
+		broadCastActionQueueConsumer(destinationName, "DELETE");
 	}
 
 	public boolean doNotify(Message message)

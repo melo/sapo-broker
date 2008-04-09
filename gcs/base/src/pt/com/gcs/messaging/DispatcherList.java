@@ -67,7 +67,7 @@ public class DispatcherList
 			{
 				TopicToQueueDispatcher listener = _dCache.get(queueName, qp_cf);
 				_dCache.remove(queueName);
-				Gcs.removeTopicConsumer(listener);
+				Gcs.removeAsyncConsumer(listener);
 			}
 			DbStorage.deleteVirtualQueue(queueName);
 		}

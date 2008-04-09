@@ -21,16 +21,9 @@ class QueueCounter implements Runnable
 			long cnt = qp.getQueuedMessagesCount();
 			if (cnt > 0)
 			{
-				if (qp.hasRecipient())
-				{
-					log.info("Queue '{}' has {} message(s).", qp.getDestinationName(), cnt);
-				}
-				else
-				{
-					log.warn("Operator attention required. Queue '{}' has {} message(s) and no consumers.", qp.getDestinationName(), cnt);
-				}
+				log.info("Queue '{}' has {} message(s).", qp.getDestinationName(), cnt);
 			}
-			else if (cnt == 0)
+			else if ((cnt == 0) && !qp.emptyQueueInfoDisplay.getAndSet(true))
 			{
 				log.info("Queue '{}' is empty.", qp.getDestinationName());
 			}

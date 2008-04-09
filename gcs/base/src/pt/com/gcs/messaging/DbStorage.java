@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
@@ -26,11 +27,13 @@ class DbStorage
 
 	private static final String insert_sql = "INSERT INTO Message (msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, sequence_nr, delivery_count, local_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-	private static final String update_state_sql = "UPDATE Message SET delivery_count=delivery_count+1 WHERE msg_id = ?";
+	private static final String update_state_sql = "UPDATE Message SET delivery_count=delivery_count+1 WHERE msg_id = ? AND destination = ?";
 
 	private static final String ack_sql = "DELETE FROM Message WHERE msg_id = ? AND destination = ?";
 
-	private static final String fetch_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message  WHERE destination=? ORDER BY priority DESC, sequence_nr ASC";
+	private static final String fetch_all_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message  WHERE destination=?";
+
+	private static final String fetch_top_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE  msg_id NOT IN (SELECT mid FROM TABLE(mid VARCHAR = ?)) AND destination=? LIMIT 1";
 
 	private static final String count_msg_sql = "SELECT COUNT(*) FROM Message WHERE destination = ?";
 
@@ -39,8 +42,62 @@ class DbStorage
 	private static final String insert_virtual_queue_sql = "MERGE INTO VirtualQueue KEY(queue_name) VALUES(?);";
 
 	private static final String delete_virtual_queue_sql = "DELETE FROM VirtualQueue WHERE queue_name = ?";
-	
+
 	private static final String delete_queue_sql = "DELETE FROM Message WHERE destination = ?";
+
+	private static final int MAX_DELIVERY_COUNT = 25;
+
+	private static final DbStorage instance = new DbStorage();
+
+	protected static long count(String destinationName)
+	{
+		return instance.i_count(destinationName);
+	}
+
+	protected static boolean deleteMessage(String msgId, String queueName)
+	{
+		return instance.i_deleteMessage(msgId, queueName);
+	}
+
+	protected static void deleteQueue(String queueName)
+	{
+		instance.i_deleteQueue(queueName);
+	}
+
+	protected static void deleteVirtualQueue(String queueName)
+	{
+		instance.i_deleteVirtualQueue(queueName);
+	}
+
+	protected static String[] getVirtualQueuesNames()
+	{
+		return instance.i_getVirtualQueuesNames();
+	}
+
+	protected static void incrementDeliveryCount(String msgid, String destinationName)
+	{
+		instance.i_incrementDeliveryCount(msgid, destinationName);
+	}
+
+	protected static void insert(Message msg, long sequence, int deliveryCount, boolean localConsumersOnly)
+	{
+		instance.i_insert(msg, sequence, deliveryCount, localConsumersOnly);
+	}
+
+	protected static Message poll(final QueueProcessor processor)
+	{
+		return instance.i_poll(processor);
+	}
+
+	protected static void recoverMessages(final QueueProcessor processor)
+	{
+		instance.i_recoverMessages(processor);
+	}
+
+	protected static void saveVirtualQueue(String queue_name)
+	{
+		instance.i_saveVirtualQueue(queue_name);
+	}
 
 	private Connection conn;
 
@@ -67,12 +124,10 @@ class DbStorage
 	private PreparedStatement insert_virtual_queue_prep_stmt;
 
 	private PreparedStatement delete_virtual_queue_prep_stmt;
-	
+
 	private PreparedStatement delete_queue_prep_stmt;
 
-	private static final int MAX_DELIVERY_COUNT = 25;
-
-	private static final DbStorage instance = new DbStorage();
+	private PreparedStatement fetch_top_msg_prep_stmt;
 
 	private DbStorage()
 	{
@@ -82,7 +137,7 @@ class DbStorage
 			dbFile = AgentInfo.getBasePersistentDirectory().concat("/");
 			dbName = MD5.getHashString(AgentInfo.getAgentName());
 
-			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=500;CACHE_TYPE=TQ");
+			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=500;CACHE_TYPE=TQ;RECOVER=1");
 			username = "sa";
 			password = "";
 
@@ -103,29 +158,6 @@ class DbStorage
 		}
 	}
 
-	public static boolean deleteMessage(String msgId, String queueName)
-	{
-		return instance.i_deleteMessage(msgId, queueName);
-	}
-
-	private boolean i_deleteMessage(String msgId, String queueName)
-	{
-		synchronized (ack_state_prep_stmt)
-		{
-			try
-			{
-				ack_state_prep_stmt.setString(1, msgId);
-				ack_state_prep_stmt.setString(2, queueName);				
-				return (ack_state_prep_stmt.executeUpdate()>0);
-			}
-			catch (Throwable t)
-			{
-				dealWithError(t, false);
-				return false;
-			}
-		}
-	}
-
 	private void batchUpdateState(QueueProcessor qproc)
 	{
 		try
@@ -134,8 +166,8 @@ class DbStorage
 			{
 				for (String mid : qproc.getAckWaitList())
 				{
-					qproc.removeFromAckWaitList(mid);
 					update_state_prep_stmt.setString(1, mid);
+					update_state_prep_stmt.setString(2, qproc.getDestinationName());
 					update_state_prep_stmt.executeUpdate();
 				}
 			}
@@ -144,6 +176,31 @@ class DbStorage
 		{
 			dealWithError(t, false);
 		}
+	}
+
+	private Message buildMessage(ResultSet rs) throws SQLException
+	{
+		final Message msg = new Message();
+		msg.setMessageId(rs.getString(1));
+		msg.setCorrelationId(rs.getString(2));
+		msg.setDestination(rs.getString(3));
+		msg.setPriority(rs.getInt(4));
+		msg.setTimestamp(rs.getLong(5));
+		msg.setExpiration(rs.getLong(6));
+		msg.setSourceApp(rs.getString(7));
+		msg.setContent(rs.getString(8));
+		return msg;
+	}
+
+	private synchronized void buildSchema() throws Throwable
+	{
+		BufferedReader in = new BufferedReader(new InputStreamReader(DbStorage.class.getResourceAsStream("/pt/com/gcs/etc/create_schema.sql")));
+		String sql;
+		while ((sql = in.readLine()) != null)
+		{
+			runActionSql(conn, sql);
+		}
+		in.close();
 	}
 
 	private synchronized void buildStatments()
@@ -158,6 +215,7 @@ class DbStorage
 			insert_virtual_queue_prep_stmt = conn.prepareStatement(insert_virtual_queue_sql);
 			delete_virtual_queue_prep_stmt = conn.prepareStatement(delete_virtual_queue_sql);
 			delete_queue_prep_stmt = conn.prepareStatement(delete_queue_sql);
+			fetch_top_msg_prep_stmt = conn.prepareStatement(fetch_top_msg_sql);
 		}
 		catch (Throwable t)
 		{
@@ -166,17 +224,6 @@ class DbStorage
 			closeQuietly(conn);
 			Shutdown.now();
 		}
-	}
-
-	private synchronized void buildSchema() throws Throwable
-	{
-		BufferedReader in = new BufferedReader(new InputStreamReader(DbStorage.class.getResourceAsStream("/pt/com/gcs/etc/create_schema.sql")));
-		String sql;
-		while ((sql = in.readLine()) != null)
-		{
-			runActionSql(conn, sql);
-		}
-		in.close();
 	}
 
 	private void closeQuietly(Connection connection)
@@ -224,9 +271,15 @@ class DbStorage
 		}
 	}
 
-	public static long count(String destinationName)
+	private void dealWithError(Throwable t, boolean rethrow)
 	{
-		return instance.i_count(destinationName);
+		Throwable rt = ErrorAnalyser.findRootCause(t);
+		log.error(rt.getMessage(), rt);
+		ErrorAnalyser.exitIfOOM(rt);
+		if (rethrow)
+		{
+			throw new RuntimeException(rt);
+		}
 	}
 
 	private long i_count(String destinationName)
@@ -253,80 +306,54 @@ class DbStorage
 		}
 	}
 
-	public static void recoverMessages(final QueueProcessor processor)
+	private boolean i_deleteMessage(String msgId, String queueName)
 	{
-		instance.i_recoverMessages(processor);
-	}
-
-	private void i_recoverMessages(final QueueProcessor processor)
-	{
-		ResultSet rs = null;
-		try
+		synchronized (ack_state_prep_stmt)
 		{
-			PreparedStatement fetch_stmt = conn.prepareStatement(fetch_msg_sql);
-			fetch_stmt.setString(1, processor.getDestinationName());
-			rs = fetch_stmt.executeQuery();
-			log.debug("Processing stored messages for queue '{}'", processor.getDestinationName());
-			while (rs.next())
+			try
 			{
-				final Message msg = new Message();
-				String msg_id = rs.getString(1);
-				msg.setMessageId(msg_id);
-				msg.setCorrelationId(rs.getString(2));
-				msg.setDestination(rs.getString(3));
-				msg.setPriority(rs.getInt(4));
-				msg.setTimestamp(rs.getLong(5));
-				msg.setExpiration(rs.getLong(6));
-				msg.setSourceApp(rs.getString(7));
-				msg.setContent(rs.getString(8));
-
-				int deliveryCount = rs.getInt(9);
-				final boolean localConsumersOnly = rs.getBoolean(10);
-				long mark = System.currentTimeMillis();
-
-				// System.out.println("mark: " + mark + ", expiration: " +
-				// msg.getExpiration() + ", deliveryCount: " + deliveryCount);
-
-				if ((mark <= msg.getExpiration()) && (deliveryCount <= MAX_DELIVERY_COUNT))
-				{
-					if (processor.forward(msg, localConsumersOnly))
-					{
-						if (log.isDebugEnabled())
-						{
-							log.debug("Message delivered. Dump: {}", msg.toString());
-						}
-					}
-					else
-					{
-						if (log.isDebugEnabled())
-						{
-							log.debug("Could not deliver message. Dump: {}", msg.toString());
-						}
-						break;
-					}
-				}
-				else
-				{
-					log.warn("Expired or overdelivered message: '{}' id: '{}'", msg.getDestination(),  msg_id);
-					deleteMessage(msg_id, processor.getDestinationName());
-					processor.decrementMsgCounter();
-				}
+				ack_state_prep_stmt.setString(1, msgId);
+				ack_state_prep_stmt.setString(2, queueName);
+				return (ack_state_prep_stmt.executeUpdate() > 0);
 			}
-			batchUpdateState(processor);
-		}
-		catch (Throwable t)
-		{
-			dealWithError(t, false);
-		}
-		finally
-		{
-			closeQuietly(rs);
+			catch (Throwable t)
+			{
+				dealWithError(t, false);
+				return false;
+			}
 		}
 	}
 
-	public static String[] getVirtualQueuesNames()
+	private void i_deleteQueue(String queueName)
 	{
-		return instance.i_getVirtualQueuesNames();
+		synchronized (delete_queue_prep_stmt)
+		{
+			try
+			{
+				delete_queue_prep_stmt.setString(1, queueName);
+				delete_queue_prep_stmt.executeUpdate();
+			}
+			catch (Throwable t)
+			{
+				dealWithError(t, false);
+			}
+		}
+	}
+
+	private void i_deleteVirtualQueue(String queueName)
+	{
+		synchronized (delete_virtual_queue_prep_stmt)
+		{
+			try
+			{
+				delete_virtual_queue_prep_stmt.setString(1, queueName);
+				delete_virtual_queue_prep_stmt.executeUpdate();
+			}
+			catch (Throwable t)
+			{
+				dealWithError(t, false);
+			}
+		}
 	}
 
 	private String[] i_getVirtualQueuesNames()
@@ -344,7 +371,6 @@ class DbStorage
 				lst_q.add(rs.getString(1));
 			}
 			return lst_q.toArray(new String[lst_q.size()]);
-
 		}
 		catch (Throwable t)
 		{
@@ -357,9 +383,21 @@ class DbStorage
 		}
 	}
 
-	public static void insert(Message msg, long sequence, int deliveryCount, boolean localConsumersOnly)
+	protected void i_incrementDeliveryCount(String msgid, String destinationName)
 	{
-		instance.i_insert(msg, sequence, deliveryCount, localConsumersOnly);
+		try
+		{
+			synchronized (update_state_prep_stmt)
+			{
+				update_state_prep_stmt.setString(1, msgid);
+				update_state_prep_stmt.setString(2, destinationName);
+				update_state_prep_stmt.executeUpdate();
+			}
+		}
+		catch (Throwable t)
+		{
+			dealWithError(t, false);
+		}
 	}
 
 	private void i_insert(Message msg, long sequence, int deliveryCount, boolean localConsumersOnly)
@@ -388,51 +426,97 @@ class DbStorage
 		}
 	}
 
-	public static void deleteVirtualQueue(String queueName)
+	private Message i_poll(final QueueProcessor processor)
 	{
-		instance.i_deleteVirtualQueue(queueName);
-	}
 
-	private void i_deleteVirtualQueue(String queueName)
-	{
-		synchronized (delete_virtual_queue_prep_stmt)
+		Set<String> reservedMessages = processor.getReservedMessages();
+
+		synchronized (reservedMessages)
 		{
+
+			ResultSet rs = null;
 			try
 			{
-				delete_virtual_queue_prep_stmt.setString(1, queueName);
-				delete_virtual_queue_prep_stmt.executeUpdate();
+				String[] eq_mids = reservedMessages.toArray(new String[reservedMessages.size()]);
+
+				synchronized (reservedMessages)
+				{
+					fetch_top_msg_prep_stmt.setObject(1, eq_mids);
+					fetch_top_msg_prep_stmt.setString(2, processor.getDestinationName());
+					rs = fetch_top_msg_prep_stmt.executeQuery();
+				}
+
+				if (rs.next())
+				{
+					log.debug("Get head message for queue '{}'", processor.getDestinationName());
+					Message msg = buildMessage(rs);
+
+					int deliveryCount = rs.getInt(9);
+
+					long mark = System.currentTimeMillis();
+
+					if ((mark <= msg.getExpiration()) && (deliveryCount <= MAX_DELIVERY_COUNT))
+					{
+						reservedMessages.add(msg.getMessageId());
+						return msg;
+					}
+					else
+					{
+						log.warn("Expired or overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+						deleteMessage(msg.getMessageId(), processor.getDestinationName());
+						processor.decrementMsgCounter();
+						return i_poll(processor);
+					}
+				}
+				else
+				{
+					return null;
+				}
+
 			}
 			catch (Throwable t)
 			{
 				dealWithError(t, false);
+				return i_poll(processor);
+			}
+			finally
+			{
+				closeQuietly(rs);
 			}
 		}
-	}
-	
-	public static void deleteQueue(String queueName)
-	{
-		instance.i_deleteQueue(queueName);
+
 	}
 
-	private void i_deleteQueue(String queueName)
+	private void i_recoverMessages(final QueueProcessor processor)
 	{
-		synchronized (delete_queue_prep_stmt)
+		ResultSet rs = null;
+		try
 		{
-			try
+			PreparedStatement fetch_stmt = conn.prepareStatement(fetch_all_msg_sql);
+			fetch_stmt.setString(1, processor.getDestinationName());
+			rs = fetch_stmt.executeQuery();
+			log.debug("Processing stored messages for queue '{}'", processor.getDestinationName());
+			while (rs.next() && processor.hasRecipient())
 			{
-				delete_queue_prep_stmt.setString(1, queueName);
-				delete_queue_prep_stmt.executeUpdate();
-			}
-			catch (Throwable t)
-			{
-				dealWithError(t, false);
-			}
-		}
-	}
+				final Message msg = buildMessage(rs);
+				int deliveryCount = rs.getInt(9);
+				final boolean localConsumersOnly = rs.getBoolean(10);
 
-	public static void saveVirtualQueue(String queue_name)
-	{
-		instance.i_saveVirtualQueue(queue_name);
+				if (!processor.getReservedMessages().contains(msg.getMessageId()))
+				{
+					processMessage(processor, msg, deliveryCount, localConsumersOnly);
+				}
+			}
+			batchUpdateState(processor);
+		}
+		catch (Throwable t)
+		{
+			dealWithError(t, false);
+		}
+		finally
+		{
+			closeQuietly(rs);
+		}
 	}
 
 	private void i_saveVirtualQueue(String queue_name)
@@ -448,6 +532,35 @@ class DbStorage
 			{
 				dealWithError(t, false);
 			}
+		}
+	}
+
+	private void processMessage(final QueueProcessor processor, final Message msg, int deliveryCount, final boolean localConsumersOnly)
+	{
+		long mark = System.currentTimeMillis();
+
+		if ((mark <= msg.getExpiration()) && (deliveryCount <= MAX_DELIVERY_COUNT))
+		{
+			if (processor.forward(msg, localConsumersOnly))
+			{
+				if (log.isDebugEnabled())
+				{
+					log.debug("Message delivered. Dump: {}", msg.toString());
+				}
+			}
+			else
+			{
+				if (log.isDebugEnabled())
+				{
+					log.debug("Could not deliver message. Dump: {}", msg.toString());
+				}
+			}
+		}
+		else
+		{
+			log.warn("Expired or overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+			deleteMessage(msg.getMessageId(), processor.getDestinationName());
+			processor.decrementMsgCounter();
 		}
 	}
 
@@ -476,14 +589,4 @@ class DbStorage
 		return success;
 	}
 
-	private void dealWithError(Throwable t, boolean rethrow)
-	{
-		Throwable rt = ErrorAnalyser.findRootCause(t);
-		log.error(rt.getMessage(), rt);
-		ErrorAnalyser.exitIfOOM(rt);
-		if (rethrow)
-		{
-			throw new RuntimeException(rt);
-		}
-	}
 }

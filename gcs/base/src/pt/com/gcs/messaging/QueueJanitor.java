@@ -2,7 +2,6 @@ package pt.com.gcs.messaging;
 
 import java.util.concurrent.TimeUnit;
 
-import pt.com.gcs.tasks.GcsExecutor;
 
 public class QueueJanitor
 {

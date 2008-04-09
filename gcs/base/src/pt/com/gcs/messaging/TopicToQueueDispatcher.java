@@ -10,6 +10,12 @@ class TopicToQueueDispatcher implements MessageListener
 	{
 		_queueName = queueName;
 	}
+	
+	@Override
+	public DestinationType getDestinationType()
+	{
+		return DestinationType.TOPIC;
+	}
 
 	public boolean onMessage(Message message)
 	{

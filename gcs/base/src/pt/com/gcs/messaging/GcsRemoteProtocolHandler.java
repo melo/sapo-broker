@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.conf.AgentInfo;
 import pt.com.gcs.net.IoSessionHelper;
-import pt.com.gcs.tasks.Connect;
-import pt.com.gcs.tasks.GcsExecutor;
 
 class GcsRemoteProtocolHandler extends IoHandlerAdapter
 {
@@ -56,7 +54,6 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 				LocalQueueConsumers.acknowledgeMessage(msg, iosession);
 				receivedMessages.put(msg.getMessageId());
 			}
-
 		}
 		else
 		{
