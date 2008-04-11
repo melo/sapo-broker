@@ -124,7 +124,9 @@ taglist = (
     ('enqueue', 'Enqueue'),
     ('subscribe', 'Notify'),
     ('unsubscribe', 'Unsubscribe'),
-    ('acknowledge', 'Acknowledge'))
+    ('acknowledge', 'Acknowledge'),
+    ('request', 'Poll')
+)
 
 #pre-built tags
 tags = dict( map( lambda (name, tag): (name, prod_tags(tag)) , taglist) )
@@ -139,6 +141,9 @@ def subscribe_msg(destination, kind):
     escape_xml(destination),
     escape_xml(kind)
     )
+
+def request_msg(destination):
+    return """<DestinationName>%s</DestinationName>""" % (escape_xml(destination),)
 
 #aux function for debugging
 def str2hex(raw):
@@ -327,14 +332,15 @@ class Client:
         """
 
         log.info("Server for %s:%s", host, port)
-        self.__mutex_r  = threading.Lock()
-        self.__mutex_w  = threading.Lock()
+        self.__mutex_r  = threading.RLock()
+        self.__mutex_w  = threading.RLock()
         self.host       = host
         self.port       = port
         self.endpoint   = "%s:%s" % (host, port)
         self.subscribed = set()
         self.__auto_ack = set()
         self.__closed   = False
+        self.__request_ack = {}
 
         #first create the socket
         self.__socket = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
@@ -492,21 +498,47 @@ class Client:
         else:
             log.warn("destination (%s, %s) not subscribed. Can't unsubscribe." %(destination, kind))
 
+    def request(self, destination):
+        """
+        Requests that a notification for the destination QUEUE be delivered.
+        Doesn't guarantee that the very next notification is from destination when multiple destinations have been subscribed or polled.
+        """
+        log.info("Client.request (%s)", destination)
+        self.__lock_w()
+        try:
+            self.__write_raw(build_msg('request', request_msg(destination)))
+            self.__request_ack[destination] = self.__request_ack.get(destination, 0)+1
+        finally:
+            self.__unlock_w()
+
     def consume(self):
         """
         Wait for a notification and return it as a Message object.
         Blocking call (no timeout).
         """
         log.info("Client.consume")
-        content = self.__read_raw()
-        msg = Message.fromXML(content)
+        selr.__lock_r()
+        try:
+            content = self.__read_raw()
+            msg = Message.fromXML(content)
 
-        if msg.destination in self.__auto_ack:
-            #XXX I can't tell whether this is from a TOPIC or QUEUE which is a pain
-            log.info("Auto acknowledging received message")
-            self.acknowledge(msg)
-        
-        return msg
+            if msg.destination in self.__auto_ack:
+                #XXX I can't tell whether this is from a TOPIC or QUEUE which is a pain
+                log.info("Auto acknowledging received message (subscribe)")
+                self.acknowledge(msg)
+            elif msg.destination in self.__request_ack:
+                count = self.__request_ack[msg.destination]
+                if 1==count:
+                    del self.__request_ack[msg.destination]
+                else:
+                    self.__request_ack[msg.destination] = count-1
+
+                log.info("Auto acknowledging received message (poll)")
+                self.acknowledge(msg)
+            
+            return msg
+        finally:
+            self.__unlock_r()
 
     def produce(self, message, kind=DEFAULT_KIND):
         """
