@@ -83,6 +83,8 @@ module SAPOBroker
         when 'CorrelationId' then self.correlation_id = elem.text
         end
       end
+      
+      raise ArgumentError unless self.id && self.destination
       self
     end
 
@@ -109,6 +111,28 @@ END_SUB
     sub_msg = [sub_msg.length].pack('N') + sub_msg
     @sock.write(sub_msg)
     @sub_map.delete(dest_name)
+    end
+
+    def poll(queues)
+      queues.each do |queue|
+
+        @logger.debug("Polling #{queue}")
+        poll_msg = <<END_POLL
+<?xml version='1.0' encoding='UTF-8'?>
+<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
+<soap:Body>
+<mq:Poll>
+<mq:DestinationName>#{queue}</mq:DestinationName>
+</mq:Poll>
+</soap:Body>
+</soap:Envelope>
+END_POLL
+
+        poll_msg = [poll_msg.length].pack('N') + poll_msg
+        @sock.write(poll_msg)
+        @poll_map[queue] = 1
+        @logger.debug("Polled #{queue}")
+      end
     end
 
     def subscribe(dest_name, type = 'QUEUE', ack_mode = 'AUTO')
@@ -173,6 +197,7 @@ END_ACK
       end
 
       @sub_map = {}
+      @poll_map = {}
 
       @server_list = server_list
       @sock = nil
@@ -201,9 +226,10 @@ END_ACK
         
         @logger.debug("Got message %s" % xml)
         message = Message.new.from_xml(xml)
-        ack(message) if @sub_map.has_key?(message.destination) && 
+        ack(message) unless @sub_map.has_key?(message.destination) && 
           @sub_map[message.destination][:type] != 'TOPIC' &&
-          @sub_map[message.destination][:ack_mode] == 'AUTO'
+          @sub_map[message.destination][:ack_mode] != 'AUTO'
+        @poll_map.delete(message.destination) if @poll_map.has_key?(message.destination)
         message
       rescue SystemCallError => ex
         @logger.error("Problems receiving event: #{ex.message}")
@@ -232,6 +258,7 @@ END_ACK
             subscribe(destination, params[:type], params[:ack_mode])
             @logger.debug("Subscribed to to #{destination}")
           end
+          @sub_map.each_key {|queue| poll(queue)}
           return
         rescue StandardError => ex
           @logger.warn("Problems (#{server}): #{ex.message}")
@@ -254,7 +281,7 @@ END_EVT
       evt_msg = [evt_msg.length].pack('N') + evt_msg
       begin
         @sock.write(evt_msg)
-      rescue SystemCallError => ex
+      rescue StandardError => ex
         @logger.error("Problems sending event: #{ex.message}")
         reconnect
         retry
