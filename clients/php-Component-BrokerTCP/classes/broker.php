@@ -7,7 +7,7 @@
  * to build consumers and producers.
  *
  * @package Broker
- * @version 0.1.0
+ * @version 0.2  
  * @author Celso Martinho <celso@co.sapo.pt>
  * @author Bruno Pedro <bpedro@co.sapo.pt>
  **/
@@ -30,6 +30,12 @@ class SAPO_Broker {
 
         // pre init()
         $this->debug = $args['debug'];
+        //
+        // Check for Multibyte functions
+        //
+        if(extension_loaded('mbstring')==FALSE) {
+          die ("SAPO_Broker requires Multibyte String Functions support.\nPlease upgrade...\n\n");
+        }
 
         //
         // Check for supported PHP version.
@@ -411,7 +417,7 @@ class SAPO_Broker_Net {
             $this->init();
         }
         $this->con_retry_count++;
-        SAPO_Broker::dodebug("Entering connect() ".$this->con_retry_count."");
+        SAPO_Broker::dodebug("Entering connect(".$this->server.") ".$this->con_retry_count."");
         
         $address = gethostbyname($this->server);
         $this->socket = fsockopen($address, $this->port, $errno, $errstr);
@@ -449,7 +455,7 @@ class SAPO_Broker_Net {
             }
         }
         SAPO_Broker::dodebug("put() socket_writing: ".$msg."\n");
-        if(fwrite($this->socket, pack('N',strlen($msg)).$msg, strlen($msg) + 4)===false) {
+        if(fwrite($this->socket, pack('N',mb_strlen($msg,'latin1')).$msg, mb_strlen($msg,'latin1') + 4)===false) {
             $this->connected = false;
             return(false);
         }
@@ -494,7 +500,7 @@ class SAPO_Broker_Net {
             } // end callbacks
             SAPO_Broker::dodebug("Doing socket_read() inside netread()");
             $end=SAPO_Broker_Tools::utime();
-            $l=strlen($tmp);
+            $l=mb_strlen($tmp,'latin1');
             if((($end-$start)<((float)($this->rcv_to_float)))&&$l==0) {
                 $this->connected=false; return('');
             }
@@ -547,7 +553,7 @@ class SAPO_Broker_Net_Sockets extends SAPO_Broker_Net {
             $this->init();
         }
         $this->con_retry_count++;
-        SAPO_Broker::dodebug("Entering connect() ".$this->con_retry_count."");
+        SAPO_Broker::dodebug("Entering connect(".$this->server.") ".$this->con_retry_count."");
         $address = gethostbyname($this->server);
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if ($this->socket < 0) {
@@ -582,7 +588,7 @@ class SAPO_Broker_Net_Sockets extends SAPO_Broker_Net {
             }
         }
         SAPO_Broker::dodebug("put() socket_writing: ".$msg."\n");
-        if(socket_write($this->socket, pack('N',strlen($msg)).$msg, strlen($msg) + 4)===false) {
+        if(socket_write($this->socket, pack('N',mb_strlen($msg,'latin1')).$msg, mb_strlen($msg,'latin1') + 4)===false) {
             $this->connected = false;
             return(false);
         }
@@ -627,7 +633,7 @@ class SAPO_Broker_Net_Sockets extends SAPO_Broker_Net {
             } // end callbacks
             SAPO_Broker::dodebug("Doing socket_read() inside netread()");
             $end=SAPO_Broker_Tools::utime();
-            $l=strlen($tmp);
+            $l=mb_strlen($tmp,'latin1');
 
             SAPO_Broker::dodebug("end-start: ".($end-$start)."\nthis->rcv_to_float: ".$this->rcv_to_float."\nl: ".$l."\n");
 
