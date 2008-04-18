@@ -25,6 +25,7 @@ class SAPO_Broker {
                                 'debug'=>FALSE,
                                 'force_sockets'=>FALSE,
                                 'force_streams'=>FALSE,
+				'timeout'=>5, // in seconds
                                 'force_expat'=>FALSE,
                                 'force_dom'=>FALSE),$args);
 
@@ -54,6 +55,10 @@ class SAPO_Broker {
             SAPO_Broker::dodebug("Using SAPO_Broker_Net() aka Streams");
             $this->net =& new SAPO_Broker_Net($this->debug);
         }
+
+        // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
+	$this->net->rcv_to=$args['timeout']*1000000;
+	$this->net->snd_to=$args['timeout']*1000000;
 
         //
         // Look for DOM support and use appropriate Parser.
@@ -322,8 +327,8 @@ class SAPO_Broker_Net {
     var $socket;
     var $sokbuf = '';
     var $sokbuflen = 0;
-    var $rcv_to = 5000000; // time in microseconds to timeout on receiving data - xuning here
-    var $snd_to = 5000000; // time in microseconds to timeout on sending data
+    var $rcv_to = 0; // time in microseconds to timeout on receiving data
+    var $snd_to = 0; // time in microseconds to timeout on sending data
     var $snd_to_sec;
     var $rcv_to_sec;
     var $snd_to_usec;
