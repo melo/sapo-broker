@@ -29,7 +29,7 @@ public class QueueSessionListener extends BrokerListener
 	{
 		_dname = destinationName;
 	}
-	
+
 	@Override
 	public DestinationType getDestinationType()
 	{
@@ -40,12 +40,12 @@ public class QueueSessionListener extends BrokerListener
 	{
 		if (msg == null)
 			return true;
-		
+
 		int retryCount = 0;
 		final IoSession ioSession = pick();
-		
-		while (retryCount<5)
-		{		
+
+		while (retryCount < 5)
+		{
 			try
 			{
 				if (ioSession != null)
@@ -87,7 +87,6 @@ public class QueueSessionListener extends BrokerListener
 			retryCount++;
 		}
 
-
 		return false;
 	}
 
@@ -124,9 +123,12 @@ public class QueueSessionListener extends BrokerListener
 	{
 		synchronized (_sessions)
 		{
-			_sessions.add(iosession);
-		}
-		log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+			if (!_sessions.contains(iosession))
+			{
+				_sessions.add(iosession);
+				log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+			}
+		}		
 	}
 
 	public void removeConsumer(IoSession iosession)
@@ -151,7 +153,7 @@ public class QueueSessionListener extends BrokerListener
 			return _sessions.size();
 		}
 	}
-	
+
 	public String getDestinationName()
 	{
 		return _dname;

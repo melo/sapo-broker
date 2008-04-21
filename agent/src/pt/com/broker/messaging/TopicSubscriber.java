@@ -1,7 +1,7 @@
 package pt.com.broker.messaging;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.mina.common.IoSession;
 import org.slf4j.Logger;
@@ -17,7 +17,7 @@ public class TopicSubscriber extends BrokerListener
 {
 	private static final Logger log = LoggerFactory.getLogger(TopicSubscriber.class);
 
-	private final List<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
+	private final Set<IoSession> _sessions = new HashSet<IoSession>();
 
 	private final String _dname;
 
@@ -27,7 +27,7 @@ public class TopicSubscriber extends BrokerListener
 	{
 		_dname = destinationName;
 	}
-	
+
 	@Override
 	public DestinationType getDestinationType()
 	{
@@ -90,7 +90,7 @@ public class TopicSubscriber extends BrokerListener
 		}
 		catch (Throwable e)
 		{
-			log.error("Error on message Listener: '{}'", e.getMessage(), e);
+			log.error("Error on message listener for '{}': {}", e.getMessage(), _dname);
 		}
 		return false;
 	}
@@ -99,23 +99,27 @@ public class TopicSubscriber extends BrokerListener
 	{
 		synchronized (_sessions)
 		{
-			_sessions.remove(iosession);
+			if (_sessions.remove(iosession))
+			{
+				log.info("Remove message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+			}
 			if (_sessions.size() == 0)
 			{
 				Gcs.removeAsyncConsumer(this);
 				TopicSubscriberList.removeValue(this);
 			}
 		}
-		log.info("Remove message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 	}
 
 	public void addConsumer(IoSession iosession)
 	{
 		synchronized (_sessions)
 		{
-			_sessions.add(iosession);
+			if (_sessions.add(iosession))
+			{
+				log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+			}
 		}
-		log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 	}
 
 	public String getDestinationName()
