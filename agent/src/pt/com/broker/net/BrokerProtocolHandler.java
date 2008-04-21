@@ -16,6 +16,7 @@ import pt.com.broker.messaging.MQ;
 import pt.com.broker.messaging.Notify;
 import pt.com.broker.messaging.Poll;
 import pt.com.broker.messaging.QueueSessionListenerList;
+import pt.com.broker.messaging.Status;
 import pt.com.broker.messaging.Unsubscribe;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.gcs.net.IoSessionHelper;
@@ -162,6 +163,13 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		{
 			Unsubscribe unsubs = request.body.unsubscribe;
 			_brokerConsumer.unsubscribe(unsubs, session);
+			return;
+		}
+		else if (request.body.checkStatus != null)
+		{
+			SoapEnvelope soap_status = new SoapEnvelope();
+			soap_status.body.status = new Status();			
+			session.write(soap_status);
 			return;
 		}
 		else

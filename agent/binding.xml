@@ -34,6 +34,8 @@
 		<structure field="notification" usage="optional" />
 		<structure field="acknowledge" usage="optional" />
 		<structure field="fault" usage="optional" />
+		<structure field="status" usage="optional" />
+		<structure field="checkStatus" usage="optional" />
 	</mapping>
 	
 	<mapping type-name="FaultCode" abstract="true" class="pt.com.broker.xml.FaultCode" ns="http://www.w3.org/2003/05/soap-envelope">
@@ -80,6 +82,13 @@
 	<mapping name="Acknowledge" class="pt.com.broker.messaging.Acknowledge" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="required" ns="http://services.sapo.pt/broker" />
+	</mapping>
+	
+	<mapping name="CheckStatus" class="pt.com.broker.messaging.CheckStatus" ns="http://services.sapo.pt/broker" />
+	
+	<mapping name="Status" class="pt.com.broker.messaging.Status" ns="http://services.sapo.pt/broker" ordered="false">
+		<value name="Message" field="message" usage="optional" ns="http://services.sapo.pt/broker" />
+		<value name="Timestamp" field="timestamp" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
 	<mapping name="BrokerMessage" class="pt.com.broker.messaging.BrokerMessage" ns="http://services.sapo.pt/broker" ordered="false" flexible="true">
