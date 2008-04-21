@@ -2,7 +2,7 @@
 
 title broker1
 
-set JAVA=C:\Java\jdk1.6.0\bin\java
+set JAVA=%JAVA_HOME%\bin\java
 
 set CLASSPATH=./conf
 set CLASSPATH=%CLASSPATH%;./lib/*
@@ -12,7 +12,7 @@ set JAVA_OPTS=%JAVA_OPTS% -Xverify:none -Xms256M -Xmx256M
 
 set JAVA_OPTS=%JAVA_OPTS% -Djava.awt.headless=true -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv6Addresses=false -Dfile.encoding=UTF-8
 
-set JAVA_OPTS=%JAVA_OPTS% -Dconfig-path=./conf/main.xml
+set JAVA_OPTS=%JAVA_OPTS% -Dconfig-path=./conf/main_example.xml
 
  
 

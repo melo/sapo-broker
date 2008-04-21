@@ -7,7 +7,7 @@
 			<transport>
 				<type>TCP</type>
 				<ip>127.0.0.1</ip>
-				<port>6615</port>
+				<port>3315</port>
 			</transport>
 		</peer>
 	</domain>

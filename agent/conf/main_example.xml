@@ -1,19 +1,19 @@
 <config>
-	<name>broker-@PEER_IP@-@PEER_PORT@</name>
+	<name>broker1</name>
 	<config-version>1.0</config-version>
 	<net>
-		<ip>@PEER_IP@</ip>
-		<port>@PEER_PORT@</port>
+		<ip>127.0.0.1</ip>
+		<port>3315</port>
 		<setTcpNoDelay>false</setTcpNoDelay>
 		<!--
-		A delay time (in milliseconds) that allows Broker peers to detect
+		A delay time (in milliseconds) that allows broker peers to detect
 		new producers and make sure that they are ready to receive messages.
 		Valid values: Positive integer Default value: 100
 		-->
 		<discovery_delay>100</discovery_delay>
-		<file_ref>@PATH_TO_WORLDMAP@</file_ref>
-		<broker-port>@BROKER_PORT@</broker-port>
-		<broker-http-port>@HTTP_PORT@</broker-http-port>
+		<file_ref>./conf/world_map.xml</file_ref>
+		<broker-port>3322</broker-port>
+		<broker-http-port>3380</broker-http-port>
 	</net>
 
 	<!-- Persistent storage configuration -->
@@ -24,7 +24,7 @@
 		Valid values: A Valid path (relative/full) to the directory Default 
 		value: ./persistent
 		-->
-		<directory>@PATH_TO_PERSISTENT_STORAGE@</directory>
+		<directory>./persistent</directory>
 	</persistency>
 
 	<messaging>
@@ -47,14 +47,14 @@
 			Valid values: a directory path.
 			Default value: <empty>
 			-->
-			<dir>@PATH_TO_DROP_BOX@</dir>
+			<dir></dir>
 
 			<!--
 			The interval in seconds in which the directory is checked for new files.
 			Valid values: Positive long value.
 			Default value: 5
 			-->
-			<check_interval>@DROP_BOX_POLLING_INTERVAL@</check_interval>
+			<check_interval>5</check_interval>
 		</dropbox>
 
 	</messaging>

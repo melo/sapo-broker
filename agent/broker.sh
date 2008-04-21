@@ -8,6 +8,6 @@ java -server \
 -Djava.net.preferIPv4Stack=true \
 -Djava.net.preferIPv6Addresses=false \
 -Dfile.encoding=UTF-8 \
--Dconfig-path=./conf/main.xml \
+-Dconfig-path=./conf/main_example.xml \
 -cp "./conf:./lib/*" \
 pt.com.broker.Start
