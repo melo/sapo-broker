@@ -25,7 +25,7 @@ class SAPO_Broker {
                                 'debug'=>FALSE,
                                 'force_sockets'=>FALSE,
                                 'force_streams'=>FALSE,
-				'timeout'=>5, // in seconds
+				                        'timeout'=>60*5, // in seconds
                                 'force_expat'=>FALSE,
                                 'force_dom'=>FALSE),$args);
 
@@ -57,8 +57,8 @@ class SAPO_Broker {
         }
 
         // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
-	$this->net->rcv_to=$args['timeout']*1000000;
-	$this->net->snd_to=$args['timeout']*1000000;
+	      $this->net->rcv_to=$args['timeout']*1000000;
+	      $this->net->snd_to=$args['timeout']*1000000;
 
         //
         // Look for DOM support and use appropriate Parser.
@@ -362,7 +362,7 @@ class SAPO_Broker_Net {
     {
         list($this->rcv_to_sec, $this->rcv_to_usec, $this->rcv_to_float) = $this->timesplit($this->rcv_to);
         list($this->snd_to_sec, $this->snd_to_usec, $this->snd_to_float) = $this->timesplit($this->snd_to);
-        SAPO_Broker::dodebug("Adjusting timmers because of lower periodic Callback. New timers:");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::Adjusting timmers because of lower periodic Callback. New timers:");
         SAPO_Broker::dodebug("  rcv_to_sec: ".$this->rcv_to_sec."");
         SAPO_Broker::dodebug("  rcv_to_usec: ".$this->rcv_to_usec."");
         SAPO_Broker::dodebug("  rcv_to_float: ".$this->rcv_to_float."");
@@ -379,10 +379,10 @@ class SAPO_Broker_Net {
     }
 
     function sendSubscriptions() {
-        SAPO_Broker::dodebug("entering sendSubscriptions()");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::entering sendSubscriptions()");
         foreach($this->subscriptions as $subscription)
         {
-            SAPO_Broker::dodebug("sendSubscriptions() subscribing ".$subscription['topic']);
+            SAPO_Broker::dodebug("SAPO_Broker_Net::sendSubscriptions() subscribing ".$subscription['topic']);
             $msg = '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:mq="http://services.sapo.pt/broker">';
             $msg .= '<soap:Body>';
             $msg .= '<mq:Notify>';
@@ -422,7 +422,7 @@ class SAPO_Broker_Net {
             $this->init();
         }
         $this->con_retry_count++;
-        SAPO_Broker::dodebug("Entering connect(".$this->server.") ".$this->con_retry_count."");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::Entering connect(".$this->server.") ".$this->con_retry_count."");
         
         $address = gethostbyname($this->server);
         $this->socket = fsockopen($address, $this->port, $errno, $errstr);
@@ -442,7 +442,7 @@ class SAPO_Broker_Net {
             //
             stream_set_blocking($this->socket, 1);
             
-            SAPO_Broker::dodebug("Connected to server");
+            SAPO_Broker::dodebug("SAPO_Broker_Net::Connected to server");
             $this->connected=true;
             $this->con_retry_count=0;
             $this->sendSubscriptions();
@@ -453,13 +453,13 @@ class SAPO_Broker_Net {
     function put($msg)
     {
         if($this->connected==false) {
-            SAPO_Broker::dodebug("put() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("SAPO_Broker_Net::put() ups, we're not connected, let's go for ir");
 
             if($this->connect()==false) {
                 return(false);
             }
         }
-        SAPO_Broker::dodebug("put() socket_writing: ".$msg."\n");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::put() socket_writing: ".$msg."\n");
         if(fwrite($this->socket, pack('N',mb_strlen($msg,'latin1')).$msg, mb_strlen($msg,'latin1') + 4)===false) {
             $this->connected = false;
             return(false);
@@ -470,15 +470,16 @@ class SAPO_Broker_Net {
     function netread($len) {
         SAPO_Broker::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
         if($this->connected==false) {
-            SAPO_Broker::dodebug("netread() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("SAPO_Broker_Net::netread() ups, we're not connected, let's go for ir");
             if($this->connect()==false) {
-               return('');
+              SAPO_Broker::dodebug("SAPO_Broker_Net::netread() couldn't reconnect");
+              return('');
             }
         }
         $i=$this->sokbuflen;
         if($this->debug) {
             if(function_exists('memory_get_usage')) {
-                echo "PHP process memory: ".memory_get_usage()." bytes\n";
+                echo "SAPO_Broker_Net::PHP process memory: ".memory_get_usage()." bytes\n";
             } else {
                 switch(php_uname('s')) {
                     case "Darwin":
@@ -498,12 +499,12 @@ class SAPO_Broker_Net {
             $tmp=fread($this->socket, 1024); // block read with timeout
             foreach($this->callbacks as $callback) { // periodic callbacks here, if any
                 if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Broker_Tools::utime()) {
-		    SAPO_Broker::dodebug("Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
+		                SAPO_Broker::dodebug("SAPO_Broker_Net::Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
                     $this->callbacks_ts[$callback['id']]=SAPO_Broker_Tools::utime();
                     call_user_func($callback['name']);
                 }
             } // end callbacks
-            SAPO_Broker::dodebug("Doing socket_read() inside netread()");
+            SAPO_Broker::dodebug("SAPO_Broker_Net::Doing socket_read() inside netread()");
             $end=SAPO_Broker_Tools::utime();
             $l=mb_strlen($tmp,'latin1');
             if((($end-$start)<((float)($this->rcv_to_float)))&&$l==0) {
@@ -516,7 +517,7 @@ class SAPO_Broker_Net {
         $this->sokbuflen-=$len;
         $r=substr($this->sokbuf,0,$len);
         $this->sokbuf=substr($this->sokbuf,$len); // cut
-        SAPO_Broker::dodebug("netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
         return($r);
     }
 
@@ -603,7 +604,7 @@ class SAPO_Broker_Net_Sockets extends SAPO_Broker_Net {
     function netread($len) {
         SAPO_Broker::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
         if($this->connected==false) {
-            SAPO_Broker::dodebug("netread() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("SAPO_Broker_Net_Sockets::netread() ups, we're not connected, let's go for ir");
             if($this->connect()==false) {
                 return('');
             }
