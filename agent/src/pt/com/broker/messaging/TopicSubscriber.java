@@ -1,7 +1,7 @@
 package pt.com.broker.messaging;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.mina.common.IoSession;
 import org.slf4j.Logger;
@@ -17,7 +17,7 @@ public class TopicSubscriber extends BrokerListener
 {
 	private static final Logger log = LoggerFactory.getLogger(TopicSubscriber.class);
 
-	private final Set<IoSession> _sessions = new HashSet<IoSession>();
+	private final Set<IoSession> _sessions = new CopyOnWriteArraySet<IoSession>();
 
 	private final String _dname;
 
@@ -86,6 +86,7 @@ public class TopicSubscriber extends BrokerListener
 					}
 				}
 			}
+
 			return true;
 		}
 		catch (Throwable e)
@@ -97,28 +98,22 @@ public class TopicSubscriber extends BrokerListener
 
 	public void removeConsumer(IoSession iosession)
 	{
-		synchronized (_sessions)
+		if (_sessions.remove(iosession))
 		{
-			if (_sessions.remove(iosession))
-			{
-				log.info("Remove message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
-			}
-			if (_sessions.size() == 0)
-			{
-				Gcs.removeAsyncConsumer(this);
-				TopicSubscriberList.removeValue(this);
-			}
+			log.info("Remove message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+		}
+		if (_sessions.size() == 0)
+		{
+			Gcs.removeAsyncConsumer(this);
+			TopicSubscriberList.removeValue(this);
 		}
 	}
 
 	public void addConsumer(IoSession iosession)
 	{
-		synchronized (_sessions)
+		if (_sessions.add(iosession))
 		{
-			if (_sessions.add(iosession))
-			{
-				log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
-			}
+			log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 		}
 	}
 
