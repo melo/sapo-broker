@@ -31,7 +31,9 @@ class DbStorage
 
 	private static final String ack_sql = "DELETE FROM Message WHERE msg_id = ? AND destination = ?";
 
-	private static final String fetch_all_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message  WHERE destination=?";
+	private static final String fetch_all_msg_sql_ordered = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE destination=? ORDER BY priority DESC, sequence_nr ASC";
+
+	private static final String fetch_all_msg_sql_non_ordered = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE destination=?";
 
 	private static final String fetch_top_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE  msg_id NOT IN (SELECT mid FROM TABLE(mid VARCHAR = ?)) AND destination=? LIMIT 1";
 
@@ -46,6 +48,8 @@ class DbStorage
 	private static final String delete_queue_sql = "DELETE FROM Message WHERE destination = ?";
 
 	private static final int MAX_DELIVERY_COUNT = 25;
+	
+	private static final long PRIORITY_ORDERING_THRESHOLD = 50000;
 
 	private static final DbStorage instance = new DbStorage();
 
@@ -492,7 +496,18 @@ class DbStorage
 		ResultSet rs = null;
 		try
 		{
-			PreparedStatement fetch_stmt = conn.prepareStatement(fetch_all_msg_sql);
+			long count = processor.getQueuedMessagesCount();
+
+			PreparedStatement fetch_stmt;
+			if (count < PRIORITY_ORDERING_THRESHOLD)
+			{
+				fetch_stmt = conn.prepareStatement(fetch_all_msg_sql_ordered);
+			}
+			else
+			{
+				fetch_stmt = conn.prepareStatement(fetch_all_msg_sql_non_ordered);
+			}
+
 			fetch_stmt.setString(1, processor.getDestinationName());
 			rs = fetch_stmt.executeQuery();
 			log.debug("Processing stored messages for queue '{}'", processor.getDestinationName());
