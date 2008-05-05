@@ -146,7 +146,7 @@ public class Gcs
 			startAcceptor(AgentInfo.getAgentPort());
 			startConnector();
 
-			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 5, 5, TimeUnit.SECONDS);
+			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 2500, 2500, TimeUnit.MILLISECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new QueueCounter(), 20, 20, TimeUnit.SECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 120, 120, TimeUnit.SECONDS);
 		}
@@ -239,6 +239,7 @@ public class Gcs
 		((SocketSessionConfig) acceptor.getSessionConfig()).setReuseAddress(true);
 		((SocketSessionConfig) acceptor.getSessionConfig()).setTcpNoDelay(false);
 		((SocketSessionConfig) acceptor.getSessionConfig()).setKeepAlive(true);
+		((SocketSessionConfig) acceptor.getSessionConfig()).setWriteTimeout(120);
 
 		acceptor.setBacklog(100);
 

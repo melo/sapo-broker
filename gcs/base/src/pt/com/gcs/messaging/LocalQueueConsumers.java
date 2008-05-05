@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mina.common.IoSession;
@@ -32,9 +33,8 @@ class LocalQueueConsumers
 
 		Message m = new Message(msg.getMessageId(), msg.getDestination(), "ACK");
 		m.setType((MessageType.ACK));
-		// WriteFuture wf = ioSession.write(m);
-		// wf.awaitUninterruptibly();
-		ioSession.write(m);
+		WriteFuture wf = ioSession.write(m);
+		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
 	}
 
 	public static void add(String queueName, MessageListener listener)
@@ -97,7 +97,7 @@ class LocalQueueConsumers
 		m.setDestination(destinationName);
 		m.setContent(payload);
 		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly();
+		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
 	}
 
 	public synchronized static void delete(String queueName)
