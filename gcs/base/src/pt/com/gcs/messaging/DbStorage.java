@@ -9,12 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.mina.common.IoSession;
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
 import org.caudexorigo.cryto.MD5;
@@ -571,7 +568,6 @@ class DbStorage
 				{
 					log.debug("Could not deliver message. Dump: {}", msg.toString());
 				}
-				log.warn("Could not deliver message. Dump: {}", msg.toString());
 			}
 		}
 		else
