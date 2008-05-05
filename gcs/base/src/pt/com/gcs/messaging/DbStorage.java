@@ -9,9 +9,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.mina.common.IoSession;
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
 import org.caudexorigo.cryto.MD5;
@@ -33,7 +36,7 @@ class DbStorage
 
 	private static final String fetch_all_msg_sql_ordered = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE destination=? ORDER BY priority DESC, sequence_nr ASC";
 
-	private static final String fetch_all_msg_sql_non_ordered = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE destination=?";
+	private static final String fetch_all_msg_sql_non_ordered = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE destination=? LIMIT 19999";
 
 	private static final String fetch_top_msg_sql = "SELECT msg_id, correlation_id, destination, priority, mtimestamp, expiration, source_app, content, delivery_count, local_only FROM Message WHERE  msg_id NOT IN (SELECT mid FROM TABLE(mid VARCHAR = ?)) AND destination=? LIMIT 1";
 
@@ -48,8 +51,8 @@ class DbStorage
 	private static final String delete_queue_sql = "DELETE FROM Message WHERE destination = ?";
 
 	private static final int MAX_DELIVERY_COUNT = 25;
-	
-	private static final long PRIORITY_ORDERING_THRESHOLD = 50000;
+
+	private static final long PRIORITY_ORDERING_THRESHOLD = 20000;
 
 	private static final DbStorage instance = new DbStorage();
 
@@ -141,7 +144,7 @@ class DbStorage
 			dbFile = AgentInfo.getBasePersistentDirectory().concat("/");
 			dbName = MD5.getHashString(AgentInfo.getAgentName());
 
-			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=1000;MAX_MEMORY_ROWS=1000;WRITE_DELAY=500;CACHE_TYPE=TQ;RECOVER=1");
+			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=10000;MAX_MEMORY_ROWS=20000;WRITE_DELAY=200;CACHE_TYPE=TQ;RECOVER=1");
 			username = "sa";
 			password = "";
 
@@ -184,15 +187,12 @@ class DbStorage
 
 	private Message buildMessage(ResultSet rs) throws SQLException
 	{
-		final Message msg = new Message();
-		msg.setMessageId(rs.getString(1));
+		final Message msg = new Message(rs.getString(1), rs.getString(3), rs.getString(8));
 		msg.setCorrelationId(rs.getString(2));
-		msg.setDestination(rs.getString(3));
 		msg.setPriority(rs.getInt(4));
 		msg.setTimestamp(rs.getLong(5));
 		msg.setExpiration(rs.getLong(6));
 		msg.setSourceApp(rs.getString(7));
-		msg.setContent(rs.getString(8));
 		return msg;
 	}
 
@@ -410,6 +410,7 @@ class DbStorage
 		{
 			try
 			{
+
 				insert_prep_stmt.setString(1, msg.getMessageId());
 				insert_prep_stmt.setString(2, msg.getCorrelationId());
 				insert_prep_stmt.setString(3, msg.getDestination());
@@ -432,23 +433,24 @@ class DbStorage
 
 	private Message i_poll(final QueueProcessor processor)
 	{
-
-		Set<String> reservedMessages = processor.getReservedMessages();
-
-		synchronized (reservedMessages)
+		synchronized (processor)
 		{
-
 			ResultSet rs = null;
 			try
 			{
-				String[] eq_mids = reservedMessages.toArray(new String[reservedMessages.size()]);
+				Set<String> reservedMessages = processor.getReservedMessages();
+				Set<String> ackWaitList = processor.getAckWaitList();
+				String[] eq_mids0 = reservedMessages.toArray(new String[reservedMessages.size()]);
+				String[] eq_mids1 = ackWaitList.toArray(new String[ackWaitList.size()]);
 
-				synchronized (reservedMessages)
-				{
-					fetch_top_msg_prep_stmt.setObject(1, eq_mids);
-					fetch_top_msg_prep_stmt.setString(2, processor.getDestinationName());
-					rs = fetch_top_msg_prep_stmt.executeQuery();
-				}
+				String[] eq_mids = new String[eq_mids0.length + eq_mids1.length];
+
+				System.arraycopy(eq_mids0, 0, eq_mids, 0, eq_mids0.length);
+				System.arraycopy(eq_mids1, 0, eq_mids, eq_mids0.length, eq_mids1.length);
+
+				fetch_top_msg_prep_stmt.setObject(1, eq_mids);
+				fetch_top_msg_prep_stmt.setString(2, processor.getDestinationName());
+				rs = fetch_top_msg_prep_stmt.executeQuery();
 
 				if (rs.next())
 				{
@@ -569,6 +571,7 @@ class DbStorage
 				{
 					log.debug("Could not deliver message. Dump: {}", msg.toString());
 				}
+				log.warn("Could not deliver message. Dump: {}", msg.toString());
 			}
 		}
 		else

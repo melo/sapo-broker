@@ -63,9 +63,12 @@ public class Message implements Externalizable
 
 	public Message(String id, String destination, String content)
 	{
-		this(destination, content);
 		checkArg(id);
+		checkArg(destination);
+		checkArg(content);		
 		_id = id;
+		_destination = destination;
+		_content = content;
 	}
 
 	private void checkArg(String value)
@@ -187,14 +190,14 @@ public class Message implements Externalizable
 
 	public void writeExternal(ObjectOutput oout) throws IOException
 	{
-		oout.writeUTF(getContent());
-		oout.writeUTF(getCorrelationId());
-		oout.writeUTF(getDestination());
-		oout.writeUTF(getMessageId());
-		oout.writeInt(getPriority());
-		oout.writeUTF(getSourceApp());
-		oout.writeLong(getTimestamp());
-		oout.writeLong(getExpiration());
+		oout.writeUTF(_content);
+		oout.writeUTF(_correlationId);
+		oout.writeUTF(_destination);
+		oout.writeUTF(_id);
+		oout.writeInt(_priority);
+		oout.writeUTF(_sourceApp);
+		oout.writeLong(_timestamp);
+		oout.writeLong(_expiration);
 		oout.writeInt(getType().getValue());
 	}
 

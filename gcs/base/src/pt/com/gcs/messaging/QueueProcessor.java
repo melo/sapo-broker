@@ -3,6 +3,7 @@ package pt.com.gcs.messaging;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mina.util.ConcurrentHashSet;
@@ -22,6 +23,8 @@ public class QueueProcessor
 	private final AtomicLong _deliverSequence = new AtomicLong(0L);
 
 	private final AtomicLong _counter;
+
+	private final AtomicInteger _skippedWakeups = new AtomicInteger(0);
 
 	protected final AtomicBoolean emptyQueueInfoDisplay = new AtomicBoolean(false);
 
@@ -71,6 +74,23 @@ public class QueueProcessor
 				log.debug("Wakeup queue '{}'", _destinationName);
 				try
 				{
+					int ackWaitListSize = ackWaitListSize();
+
+					if (ackWaitListSize > 0)
+					{
+						if (_skippedWakeups.incrementAndGet() < 10)
+						{
+							log.warn("Processing for queue '{}' was skipped. There are '{}' message(s) waiting for ACK.", _destinationName, ackWaitListSize);
+							isWorking.set(false);
+							return;
+						}
+						else
+						{
+							log.error("The maximum amount of skipped wakeups was reached. There are '{}' message(s) waiting for ACK, but the processing must proceed.", ackWaitListSize);
+							msgsAwaitingAck.clear();
+						}
+					}
+					_skippedWakeups.set(0);
 					DbStorage.recoverMessages(this);
 				}
 				catch (Throwable t)
@@ -100,6 +120,7 @@ public class QueueProcessor
 		int size = lqsize + rqsize;
 
 		boolean isDelivered = false;
+		putInAckWaitList(message.getMessageId());
 
 		if (size == 0)
 		{
@@ -129,11 +150,10 @@ public class QueueProcessor
 			}
 		}
 
-		if (isDelivered)
+		if (!isDelivered)
 		{
-			putInAckWaitList(message.getMessageId());
+			msgsAwaitingAck.remove(message.getMessageId());
 		}
-
 		return isDelivered;
 	}
 
@@ -221,6 +241,11 @@ public class QueueProcessor
 
 	protected Message poll()
 	{
+		int lqsize = LocalQueueConsumers.size(_destinationName);
+		if (lqsize > 0)
+		{
+			throw new IllegalStateException("An async consumer already exists, it's not possible to mix sync and async consumers for the same Queue on the same peer.");
+		}
 		return DbStorage.poll(this);
 	}
 
