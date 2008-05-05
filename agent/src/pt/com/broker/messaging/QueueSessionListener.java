@@ -54,7 +54,7 @@ public class QueueSessionListener extends BrokerListener
 					{
 						final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
 						WriteFuture future = ioSession.write(response);
-						future.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+						future.awaitUninterruptibly(15000, TimeUnit.MILLISECONDS);
 
 						if (future.isWritten())
 						{
