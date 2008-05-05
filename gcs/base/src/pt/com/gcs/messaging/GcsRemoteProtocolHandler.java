@@ -27,6 +27,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		{
 			log.error("STACKTRACE", rootCause);
 		}
+		iosession.close();
 	}
 
 	@Override
@@ -46,14 +47,8 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		}
 		else if (msg.getType() == (MessageType.COM_QUEUE))
 		{
-			ReceivedMessagesBuffer receivedMessages = ReceivedMessagesBufferList.get(msg.getDestination());
-
-			if (!receivedMessages.isDuplicate(msg.getMessageId()))
-			{
-				QueueProcessorList.get(msg.getDestination()).store(msg, true);
-				LocalQueueConsumers.acknowledgeMessage(msg, iosession);
-				receivedMessages.put(msg.getMessageId());
-			}
+			QueueProcessorList.get(msg.getDestination()).store(msg, true);
+			LocalQueueConsumers.acknowledgeMessage(msg, iosession);			
 		}
 		else
 		{
