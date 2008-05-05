@@ -29,5 +29,4 @@ class QueueCounter implements Runnable
 			}
 		}
 	}
-
 }
