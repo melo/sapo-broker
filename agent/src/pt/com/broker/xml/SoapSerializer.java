@@ -1,5 +1,6 @@
 package pt.com.broker.xml;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -38,7 +39,7 @@ public class SoapSerializer
 
 				log.error("Unable to marshal soap envelope:" + buf.toString());
 			}
-			
+
 			JibxActors.reload();
 			throw new RuntimeException(e);
 		}
@@ -57,8 +58,34 @@ public class SoapSerializer
 		}
 		catch (JiBXException e)
 		{
+
 			JibxActors.reload();
 			throw new RuntimeException(e);
 		}
+		finally
+		{
+			try
+			{
+				String invalidMessage = slurp(in);
+				log.error("\n" + invalidMessage + "\n");
+			}
+			catch (IOException ioe)
+			{
+				// ignore this exception
+			}
+		}
 	}
+
+	private static String slurp(InputStream in) throws IOException
+	{
+		in.reset();
+		StringBuilder out = new StringBuilder();
+		byte[] b = new byte[4096];
+		for (int n; (n = in.read(b)) != -1;)
+		{
+			out.append(new String(b, 0, n));
+		}
+		return out.toString();
+	}
+
 }
