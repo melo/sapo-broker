@@ -48,6 +48,6 @@ public class MQ
 				if (StringUtils.isNotBlank(soap.header.wsaFrom.address))
 					return soap.header.wsaFrom.address;
 
-		return "broker://agent/" + pt.com.gcs.conf.AgentInfo.getAgentName() + "/";
+		return "broker://agent/" + pt.com.gcs.conf.GcsInfo.getAgentName() + "/";
 	}
 }

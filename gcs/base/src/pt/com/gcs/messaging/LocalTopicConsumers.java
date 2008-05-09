@@ -14,7 +14,7 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 
 class LocalTopicConsumers
 {
@@ -142,7 +142,7 @@ class LocalTopicConsumers
 		Message m = new Message();
 		m.setType((MessageType.SYSTEM_TOPIC));
 		String ptemplate = "<sysmessage><action>%s</action><source-name>%s</source-name><source-ip>%s</source-ip><destination>%s</destination></sysmessage>";
-		String payload = String.format(ptemplate, action, AgentInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
+		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
 		WriteFuture wf = ioSession.write(m);

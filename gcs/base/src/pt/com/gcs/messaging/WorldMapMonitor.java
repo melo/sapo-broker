@@ -6,7 +6,7 @@ import org.caudexorigo.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 import pt.com.gcs.conf.WorldMap;
 
 public class WorldMapMonitor implements Runnable
@@ -19,7 +19,7 @@ public class WorldMapMonitor implements Runnable
 	{
 		log.debug("Checking world map file for modifications.");
 		
-		String worldMapPath = AgentInfo.getWorldMapPath();
+		String worldMapPath = GcsInfo.getWorldMapPath();
 		File worldMapFile = new File(worldMapPath);
 		
 		if (worldMapFile.lastModified()!=WorldMap.lastModified())

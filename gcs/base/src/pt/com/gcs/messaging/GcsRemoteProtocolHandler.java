@@ -11,7 +11,7 @@ import org.caudexorigo.ErrorAnalyser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 import pt.com.gcs.net.IoSessionHelper;
 
 class GcsRemoteProtocolHandler extends IoHandlerAdapter
@@ -106,7 +106,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		}
 
 		Message m = new Message();
-		String agentId = AgentInfo.getAgentName() + "@" + AgentInfo.getAgentHost() + ":" + AgentInfo.getAgentPort();
+		String agentId = GcsInfo.getAgentName() + "@" + GcsInfo.getAgentHost() + ":" + GcsInfo.getAgentPort();
 		m.setType((MessageType.HELLO));
 		m.setDestination("HELLO");
 		m.setContent(agentId);

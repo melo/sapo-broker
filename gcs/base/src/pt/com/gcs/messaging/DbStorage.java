@@ -19,7 +19,7 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 
 class DbStorage
 {
@@ -138,8 +138,8 @@ class DbStorage
 		try
 		{
 			driverName = "org.h2.Driver";
-			dbFile = AgentInfo.getBasePersistentDirectory().concat("/");
-			dbName = MD5.getHashString(AgentInfo.getAgentName());
+			dbFile = GcsInfo.getBasePersistentDirectory().concat("/");
+			dbName = MD5.getHashString(GcsInfo.getAgentName());
 
 			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=10000;MAX_MEMORY_ROWS=20000;WRITE_DELAY=200;CACHE_TYPE=TQ;RECOVER=1");
 			username = "sa";

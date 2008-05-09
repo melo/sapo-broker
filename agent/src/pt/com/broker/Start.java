@@ -6,7 +6,7 @@ import pt.com.broker.core.BrokerServer;
 import pt.com.broker.core.ErrorHandler;
 import pt.com.broker.core.FilePublisher;
 import pt.com.broker.http.BrokerHttpService;
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 
 public class Start
 {
@@ -20,11 +20,11 @@ public class Start
 		System.setProperty("file.encoding", "UTF-8");
 		ExceptionMonitor.setInstance(new ErrorHandler());
 
-		int bus_port = AgentInfo.getBrokerPort();
+		int bus_port = GcsInfo.getBrokerPort();
 		BrokerServer broker_srv = new BrokerServer(bus_port);
 		broker_srv.start();
 
-		int http_port = AgentInfo.getBrokerHttpPort();
+		int http_port = GcsInfo.getBrokerHttpPort();
 		BrokerHttpService http_srv = new BrokerHttpService(http_port);
 		http_srv.start();
 

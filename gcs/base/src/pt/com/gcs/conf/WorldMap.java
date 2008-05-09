@@ -37,11 +37,11 @@ public class WorldMap
 	
 	private synchronized void populateWorldMap()
 	{
-		String selfName = AgentInfo.getAgentName();
-		String selfHost = AgentInfo.getAgentHost();
-		int selfPort = AgentInfo.getAgentPort();
+		String selfName = GcsInfo.getAgentName();
+		String selfHost = GcsInfo.getAgentHost();
+		int selfPort = GcsInfo.getAgentPort();
 
-		String worldMapPath = AgentInfo.getWorldMapPath();
+		String worldMapPath = GcsInfo.getWorldMapPath();
 		Source schemaLocation = new StreamSource(WorldMap.class.getResourceAsStream("/pt/com/gcs/etc/world_map.xsd"));
 		File xmlFile = new File(worldMapPath);
 

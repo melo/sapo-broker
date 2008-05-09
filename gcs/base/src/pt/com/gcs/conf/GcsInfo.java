@@ -13,13 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class AgentInfo
+public class GcsInfo
 {
-	private static Logger log = LoggerFactory.getLogger(AgentInfo.class);
+	private static Logger log = LoggerFactory.getLogger(GcsInfo.class);
 
-	public static final String AGENT_VERSION = "1.0";
+	public static final String VERSION = "@gcsversion@";
 
-	private static final AgentInfo instance = new AgentInfo();
+	private static final GcsInfo instance = new GcsInfo();
 
 	public static String getAgentHost()
 	{
@@ -95,7 +95,7 @@ public class AgentInfo
 
 	private Config conf;
 
-	private AgentInfo()
+	private GcsInfo()
 	{
 		String filePath = System.getProperty("config-path");
 		if (StringUtils.isBlank(filePath))

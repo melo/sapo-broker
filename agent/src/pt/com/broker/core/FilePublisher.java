@@ -17,7 +17,7 @@ import pt.com.broker.messaging.BrokerProducer;
 import pt.com.broker.messaging.MQ;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.broker.xml.SoapSerializer;
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 
 public class FilePublisher
 {
@@ -39,9 +39,9 @@ public class FilePublisher
 
 	private FilePublisher()
 	{
-		isEnabled = AgentInfo.isDropboxEnabled();
-		dir = AgentInfo.getDropBoxDir();
-		check_interval = AgentInfo.getDropBoxCheckInterval() > 0 ? AgentInfo.getDropBoxCheckInterval() : DEFAULT_CHECK_DELAY;
+		isEnabled = GcsInfo.isDropboxEnabled();
+		dir = GcsInfo.getDropBoxDir();
+		check_interval = GcsInfo.getDropBoxCheckInterval() > 0 ? GcsInfo.getDropBoxCheckInterval() : DEFAULT_CHECK_DELAY;
 
 		log.debug("DropBox Monitor, dir: {}", dir);
 		log.debug("DropBox Monitor, enabled: {}", isEnabled);

@@ -14,7 +14,7 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.broker.messaging.AgentInfo;
+import pt.com.broker.core.BrokerInfo;
 import pt.com.http.HttpAction;
 
 public class ManagementAction extends HttpAction
@@ -27,7 +27,7 @@ public class ManagementAction extends HttpAction
 
 	private byte[] error_page;
 
-	private static final byte[] footer = String.format("<!-- version:%s -->", AgentInfo.AGENT_VERSION).getBytes();
+	private static final byte[] footer = String.format("<!-- version:%s -->", BrokerInfo.VERSION).getBytes();
 
 	/**
 	 * Sends the configured message as an HTTP response
@@ -83,7 +83,7 @@ public class ManagementAction extends HttpAction
 
 			if ((StringUtils.isNotBlank(loglevel)) && (StringUtils.isNotBlank(logcategory)))
 			{
-				// org.apache.log4j.Logger.getLogger(logcategory).setLevel(Level.toLevel(loglevel));
+				// org.apache.log4j.LoggerFactory.getLogger(logcategory).setLevel(Level.toLevel(loglevel));
 				out.write(ok_page);
 			}
 			else

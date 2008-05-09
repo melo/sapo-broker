@@ -27,7 +27,7 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.gcs.conf.AgentInfo;
+import pt.com.gcs.conf.GcsInfo;
 import pt.com.gcs.conf.WorldMap;
 import pt.com.gcs.net.Peer;
 import pt.com.gcs.net.codec.GcsCodec;
@@ -143,7 +143,7 @@ public class Gcs
 		try
 		{
 
-			startAcceptor(AgentInfo.getAgentPort());
+			startAcceptor(GcsInfo.getAgentPort());
 			startConnector();
 
 			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 2500, 2500, TimeUnit.MILLISECONDS);
@@ -156,7 +156,7 @@ public class Gcs
 			log.error(rootCause.getMessage(), rootCause);
 			Shutdown.now();
 		}
-		Sleep.time(AgentInfo.getInitialDelay());
+		Sleep.time(GcsInfo.getInitialDelay());
 
 	}
 

@@ -25,11 +25,11 @@
 	<target name="help">
 		<echo message="Targets are:" />
 		<echo />
-		<echo message="clean      delete all class files and generated code" />
-		<echo message="compile    compile class files as a separate step" />
-		<echo message="bind       compile JiBX bindings as a separate step" />
-		<echo message="build      compile classes and JiBX binding" />
-		<echo message="package    creates distribution" />
+		<echo message="clean delete all class files and generated code" />
+		<echo message="compile compile class files as a separate step" />
+		<echo message="bind compile JiBX bindings as a separate step" />
+		<echo message="build compile classes and JiBX binding" />
+		<echo message="package creates distribution" />
 	</target>
 
 	<target name="init" depends="clean">
@@ -57,41 +57,46 @@
 	</target>
 
 
-	<target name="compile"  depends="init" >
+	<target name="compile" depends="init" >
 		<echo message="${ant.project.name}: ${ant.file}" />
+		<tstamp/>
+		
+		<copy file="${gcs_src}/pt/com/gcs/conf/GcsInfo.java" tofile="${gcs_src}/pt/com/gcs/conf/GcsInfo.bak" overwrite="true"/>
+		<replace file="${gcs_src}/pt/com/gcs/conf/GcsInfo.java" token="@gcsversion@" value="${DSTAMP}${TSTAMP}"/>
 		<javac destdir="${gcs}" encoding="UTF-8">
 			<src path="${gcs_src}" />
 			<classpath refid="project.classpath" />
-		</javac>		
+		</javac>
+		<move file="${gcs_src}/pt/com/gcs/conf/GcsInfo.bak" tofile="${gcs_src}/pt/com/gcs/conf/GcsInfo.java" overwrite="true"/>		
 		<copy todir="${gcs}">
 			<fileset dir="${gcs_src}" excludes="**/*.java"/>
 		</copy>
 		
-		
+		<copy file="src/pt/com/broker/core/BrokerInfo.java" tofile="src/pt/com/broker/core/BrokerInfo.bak" overwrite="true"/>
+		<replace file="src/pt/com/broker/core/BrokerInfo.java" token="@brokerversion@" value="${DSTAMP}${TSTAMP}"/>
 		<javac destdir="bin" encoding="UTF-8" debug="true" debuglevel="lines,vars,source">
 			<src path="src" />
 			<classpath refid="project.classpath" />
 		</javac>
+		<move file="src/pt/com/broker/core/BrokerInfo.bak" tofile="src/pt/com/broker/core/BrokerInfo.java" overwrite="true"/>
 		<copy todir="bin">
 			<fileset dir="src" excludes="**/*.java"/>
 		</copy>
+		
 	</target>
 
 	<target name="build" depends="compile,bind" />
 
 
 	<target name="package" depends="build">
-		
 
 		<mkdir dir="${dist}/lib" />
-
-
 		
 		<copy todir="${dist}/lib">
 			<fileset dir="${sapo-broker.location}/../common-libs/">
 				<include name="*.jar"/>
 			</fileset>
-  		</copy>
+ 		</copy>
 		
 		<jar destfile="${dist}/lib/sapo-gcs.jar">
 			<fileset dir="${gcs}"/>
@@ -103,15 +108,14 @@
 		
 		<copy todir="${dist}/doc">
 			<fileset dir="doc"/>
-  		</copy>
-
+ 		</copy>
 
 		<copy todir="${dist}/doc">
 			<fileset dir="doc"/>
-  		</copy>
+ 		</copy>
 		<copy todir="${dist}/conf">
 			<fileset dir="conf"/>
-  		</copy>
+ 		</copy>
 		
 		<copy file="broker.bat" todir="${dist}" />
 		<copy file="broker.sh" todir="${dist}" />
