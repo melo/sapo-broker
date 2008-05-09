@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<classpath>
-	<classpathentry excluding="**/.svn/*" kind="src" output="base/bin" path="base/src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Sapo-BrokerV2-Libs"/>
-	<classpathentry kind="output" path="base/bin"/>
-</classpath>
