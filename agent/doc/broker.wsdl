@@ -106,6 +106,10 @@
 	<message name="NotifySoapIn">
 		<part name="parameters" element="tns:Notify" />
 	</message>
+
+	<message name="NotificationSoapOut">
+		<part name="parameters" element="tns:Notification" />
+	</message>
 	
 	<message name="PollSoapIn">
 		<part name="parameters" element="tns:Poll" />
