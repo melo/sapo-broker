@@ -1,8 +1,8 @@
 Source: libsapo-broker
 Section: libs
 Priority: extra
-Maintainer: Daniel Ruoso <daniel.ruoso@segula.pt>
-Build-Depends: cdbs, debhelper (>= 5), autotools-dev, libtool, autogen, autoconf, automake, libxml2-dev
+Maintainer: Francisco Lourenco <francisco.lourenco@segula.pt>
+Build-Depends: cdbs, debhelper (>= 5), autotools-dev, libtool, autogen, autoconf, automake, expat, libexpat-dev
 Standards-Version: 3.7.2
 
 Package: libsapo-broker0

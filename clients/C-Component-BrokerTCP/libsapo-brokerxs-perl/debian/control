@@ -1,7 +1,7 @@
 Source: libsapo-brokerxs-perl
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 5.0.0), perl (>= 5.8.8-7), libsapo-broker-dev
+Build-Depends: debhelper (>= 5.0.0), perl (>= 5.8.8-7), libsapo-broker-dev (>= 0.1.0.0)
 Maintainer: Daniel Ruoso <daniel.ruoso@segula.pt>
 Standards-Version: 3.7.2
 

@@ -1,3 +1,9 @@
+libsapo-brokerxs-perl (0.0.3) unstable; urgency=low
+  * update for new version of libsapobroker
+  * ads ack and timetolive
+
+ -- Francisco Lourenco <francisco.lourenco@segula.pt>  Mon,  17 Mar 2008 15:28:42 +0100
+
 libsapo-brokerxs-perl (0.0.2) unstable; urgency=low
 
   * Encapsulates the SAPO_BROKER_T inside another structure

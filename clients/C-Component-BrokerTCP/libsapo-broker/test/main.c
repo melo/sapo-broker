@@ -3,10 +3,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
+#include <glib.h>
 #include "sapo_broker.h"
+#include "sapo_broker_xml.h"
 
 
-
+/*
 #define ADW_QUEUE_STRING "\
 <adw-queue>\
   <operation>\
@@ -124,7 +127,7 @@
     </table>\
   </operation>\
 </adw-queue>"
-
+*/
 
 /*! \struct option
   \brief This structure defines the application parameters.
@@ -187,9 +190,11 @@ void usage(char *name){
 	printf("  -t=topic\tTopic\n");
 	printf("  -m=message\tMessage to send\n");
 	printf("  -r\tRole is receiver\n");
+        printf("  -c\tcount messages per second\n");
 	printf("  -i\tRole is interactive\n");
 	printf("  -s\tRole is sender\n");
 	printf("  -q=msg_type\tType of message to send [1=QUEUE,2=TOPIC,3=PUBLISH]\t");
+        
 }
 
 int show_menu(int socket, int type, char * topic, char * body){	
@@ -210,6 +215,10 @@ int show_menu(int socket, int type, char * topic, char * body){
 	return bla[0];
 }
 
+
+
+int count = 0;
+
 int main (int argc, char *argv[]){	
 	char hostname[20];
 	int port ;
@@ -223,7 +232,6 @@ int main (int argc, char *argv[]){
 	SAPO_BROKER_T * conn=0;
 
 	int role = ROLE_NONE;
-
 	strcpy(topic, "/sapo/adword\0");
 	strcpy (message, "Hello world\0");
 	strcpy(hostname,DEFAULT_HOST);
@@ -260,6 +268,10 @@ int main (int argc, char *argv[]){
 			printf ("Will subscribe the topic and receive only\n");			
 			role = ROLE_RECEIVER;
 			break;
+
+                case 'c':
+                        count = 0;
+                        break;
 		case 'i':
 			if (role){
 				printf("Cannot be interactive and sender/receiver at the same time\n");
@@ -294,7 +306,7 @@ int main (int argc, char *argv[]){
                 }
         }
 
-	conn = sapo_broker_new(hostname , port);
+	conn = sb_new(hostname , port);
 	
 	
 	switch(role){
@@ -313,7 +325,7 @@ int main (int argc, char *argv[]){
 	}
 	
 	if (conn)
-		sapo_broker_destroy(conn);
+		sb_destroy(conn);
 
 	return 0;
 }
@@ -322,48 +334,66 @@ int main (int argc, char *argv[]){
 
 
 int receiver( SAPO_BROKER_T *conn, int msg_type, char * topic){
-	char * payload;
+	BrokerMessage * payload;
 	int i=1;
 	
+        GTimer * gtime_iter;
+        gtime_iter = g_timer_new();        
+        
+        g_timer_start(gtime_iter);
+
 	while(1){
 		if (!conn->connected){
-			if (sapo_broker_reconnect(conn) ){
+			if (sb_reconnect(conn) ){
 				printf("Problems connecting: %s\n", strerror(conn->last_status));
 				sleep(1);
 				continue;
 			}
-			if (sapo_broker_subscribe(conn,msg_type, topic)<0){
+			if (sb_subscribe(conn,msg_type, topic)<0){
 				printf("Problems subscribing: %s\n ", strerror(conn->last_status));
 				sleep(1);
 				continue;
 			}
 		}
-		if ( (payload = sapo_broker_receive(conn))==NULL){
+		if ( (payload = sb_receive(conn))==NULL){
 			printf("Connection was broken when receiving. Reconnecting\n");
 			usleep(10000);
-			sapo_broker_reconnect(conn);
+			sb_reconnect(conn);
 			continue;
 		}
-		payload[120] = 0;
-		printf("%s\n",payload+40);
-		if (i%100 ==0)
-			printf (">>%s\n",payload);
+		payload->payload[120] = 0;
+		printf("%s\n",payload->payload);
+		//if (i%100 ==0)
+		//	printf (">>%s\n",payload);
 		
+                sb_send_ack(conn, payload);
 		i++;		
-		sapo_broker_free_message(payload);
+		sb_free_message(payload);
 
+                if (i%1000==0){
+                        float a= g_timer_elapsed(gtime_iter,NULL) ;
+                        printf("Received %d in %.2f secs. %.2f messages per second\n", i, a , (float)i/a );
+                        g_timer_start(gtime_iter);
+                        i = 0;
+                }
+                
 	}
 }
 
 int sender( SAPO_BROKER_T *conn, int msg_type, char * topic, char * message){
-	int i=1;
+	int i=0 , c=0;
 	char str[1024*8];
 	
-
-	while(i<20000){
+        GTimer * gtime_iter;
+        gtime_iter = g_timer_new();        
+        
+        g_timer_start(gtime_iter);
+	while(i < 10){
+                
 		i++;
+                c++;
 		if (!conn->connected){
-			if (sapo_broker_reconnect(conn) ){
+			if (sb_reconnect(conn) ){
 				printf("Problems connecting: %s\n", strerror(conn->last_status));
 				sleep(1);
 				continue;
@@ -371,20 +401,29 @@ int sender( SAPO_BROKER_T *conn, int msg_type, char * topic, char * message){
 		}
 		
 		//sprintf(str,ADW_QUEUE_STRING,i++, time(NULL));
-		printf ("word_id = %d\n", i);
-		sprintf(str,ADW_QUEUE_STRING, time(NULL) );
+		//printf ("word_id = %d\n", i);
+		//sprintf(str,ADW_QUEUE_STRING, (unsigned int)time(NULL) );
 		
+                sprintf(str,"%d",i);
 		//sprintf(str,"AAAAAAA generating %d AAAAAAA",i);		
 		//if (i%100 ==0)
 		//	printf("%d\n",i);
 			//i++;
 
-		if (sapo_broker_publish(conn, msg_type, topic, str)<0){
+		if (sb_publish_time(conn, msg_type, topic, str,10)<0){
 			printf("Connection was broken when sending. Reconnecting\n");
 			sleep(1);
-			sapo_broker_reconnect(conn);
+			sb_reconnect(conn);
 			continue;
 		}
+                
+                if (c%1000==0){
+                        float a= g_timer_elapsed(gtime_iter,NULL);
+                        printf("Sending %d msg in %.2f : %.2f messages per second\n", c, a, (float)c/a );
+                        g_timer_start(gtime_iter);
+                        c= 0;
+                }
+                
 		//usleep(1);
 	}
 	printf("going away\n");
@@ -403,15 +442,15 @@ int interactive( SAPO_BROKER_T *conn, int msg_type, char * topic, char * message
 				printf("Already connected\n");				
 				continue;
 			}
-			//socket = sapo_broker_connect(hostname, port);
-			sapo_broker_connect(conn);
+			//socket = sb_connect(hostname, port);
+			sb_connect(conn);
 			if (conn && conn->socket>0){
 				printf("Connected successfuly\n");
 			}
 			else {
 				
 				printf("Error connecting\n");
-				sapo_broker_disconnect(conn);
+				sb_disconnect(conn);
 				sleep(1);			       
 			}
 			break;
@@ -421,7 +460,7 @@ int interactive( SAPO_BROKER_T *conn, int msg_type, char * topic, char * message
 				printf("Already disconnected\n");				
 				continue;
 			}
-			if (sapo_broker_disconnect(conn) < 0){
+			if (sb_disconnect(conn) < 0){
 				printf("Disconnected successfuly\n");
 			}		
 			else {
@@ -441,15 +480,15 @@ int interactive( SAPO_BROKER_T *conn, int msg_type, char * topic, char * message
 			
 		case '4': // publish
 			if (conn && conn->socket>0)
-				sapo_broker_publish(conn, msg_type, topic, message);
+				sb_publish(conn, msg_type, topic, message);
 			break;
 		case '5': // subscribe
 			if (conn && conn->socket>0)
-				sapo_broker_subscribe(conn, msg_type, topic);
+				sb_subscribe(conn, msg_type, topic);
 			break;
 		case '6': // receive
 			if (conn && conn->socket>0)
-				sapo_broker_receive(conn);
+				sb_receive(conn);
 			break;			
 		case '0':
 			quit = 1;

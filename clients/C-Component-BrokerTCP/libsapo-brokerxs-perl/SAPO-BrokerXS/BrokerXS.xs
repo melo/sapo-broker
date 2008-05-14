@@ -41,7 +41,7 @@ CODE:
         
         /* Initialize SAPO Broker and create an IV ref
            containing its memory location */
-        self->handle = sapo_broker_new(hostname, port);
+        self->handle = sb_new(hostname, port);
         self_ref = newRV_noinc((SV *) self);
         RETVAL = newSV(0); /* This gets mortalized automagically */
 
@@ -55,7 +55,7 @@ DESTROY(self)
          SAPO::BrokerXS self
 CODE:
 {
-        sapo_broker_destroy(self->handle);
+        sb_destroy(self->handle);
         self->handle = NULL;
 }
 
@@ -67,7 +67,7 @@ connect(self)
         // $object->connect();
         // this returns a true value in success
         // opposed to the C implementation
-        int r = sapo_broker_connect(self->handle);
+        int r = sb_connect(self->handle);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -85,7 +85,7 @@ CODE:
         // $object->disconnect();
         // this returns a true value in success
         // opposed to the C implementation
-        int r = sapo_broker_disconnect(self->handle);
+        int r = sb_disconnect(self->handle);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -103,7 +103,7 @@ CODE:
         // $object->reconnect();
         // this returns a true value in success
         // opposed to the C implementation
-        int r = sapo_broker_reconnect(self->handle);
+        int r = sb_reconnect(self->handle);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -126,7 +126,7 @@ CODE:
         // the methods "publish" and "subscribe" will refer
         // to that. For "Topic as a queue", the suffix "_queue"
         // will be used in both methods.
-        int r = sapo_broker_publish(self->handle, EQUEUE_TOPIC, topic, payload);
+        int r = sb_publish(self->handle, EQUEUE_TOPIC, topic, payload);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -141,12 +141,23 @@ publish_queue(self, char * topic, char * payload)
 SAPO::BrokerXS self
 CODE:
 {
-        int r = sapo_broker_publish(self->handle, EQUEUE_QUEUE, topic, payload);
+        int r = sb_publish(self->handle, EQUEUE_QUEUE, topic, payload);
         if (r == 0) {
                 RETVAL = 1;
         } else {
                 RETVAL = 0;
         }
+}
+OUTPUT:
+    RETVAL
+
+
+int publish_queue_time(self, char* topic, char* payload, int expiration)
+SAPO::BrokerXS self
+CODE:
+{
+       int r = sb_publish_time(self->handle, EQUEUE_QUEUE, topic, payload, expiration);
+       RETVAL = (r==0);
 }
 OUTPUT:
     RETVAL
@@ -156,7 +167,7 @@ subscribe(self, char * topic)
 SAPO::BrokerXS self
 CODE:
 {
-        int r = sapo_broker_subscribe(self->handle, EQUEUE_TOPIC, topic);
+        int r = sb_subscribe(self->handle, EQUEUE_TOPIC, topic);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -167,11 +178,35 @@ OUTPUT:
     RETVAL
 
 int
+send_ack(self, SV * msg_p)
+SAPO::BrokerXS self
+CODE:
+{
+        BrokerMessage message;
+	HV * msg = (HV*)SvRV(msg_p);
+	SV** message_id =  hv_fetch(msg, (const char*)"msg_id", 6,0);
+	SV** destination = hv_fetch(msg, (const char*)"destination", 11,0);
+	
+	if (message_id && destination){
+	  message.ack = 0;
+	  strcpy(message.message_id,(char*)SvRV(*message_id));
+	  strcpy(message.destination,(char*)SvRV(*destination));	  
+	  int r = sb_send_ack(self->handle,&message);
+	  RETVAL = (r == 0);
+	}else {
+	  RETVAL = 0;
+	}
+}
+OUTPUT:
+    RETVAL
+
+
+int
 subscribe_queue(self, char * topic)
 SAPO::BrokerXS self
 CODE:
 {
-        int r = sapo_broker_subscribe(self->handle, EQUEUE_QUEUE, topic);
+        int r = sb_subscribe(self->handle, EQUEUE_QUEUE, topic);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -187,7 +222,7 @@ error(self)
 SAPO::BrokerXS self
 CODE:
 {
-        RETVAL = sapo_broker_error(self->handle);
+        RETVAL = sb_error(self->handle);
 }
 OUTPUT:
     RETVAL
@@ -197,7 +232,7 @@ wait(self)
 SAPO::BrokerXS self
 CODE:
 {
-        int r = sapo_broker_wait(self->handle);
+        int r = sb_wait(self->handle);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -218,7 +253,7 @@ CODE:
         // 1 microsecond
         sec_t = trunc(sec);
         usec_t = round((sec - trunc(sec)) * 1000000);
-        int r = sapo_broker_wait(self->handle);
+        int r = sb_wait(self->handle);
         if (r == 0) {
                 RETVAL = 1;
         } else {
@@ -228,12 +263,24 @@ CODE:
 OUTPUT:
     RETVAL
 
-char *
+SV *
 receive(self)
 SAPO::BrokerXS self
 CODE:
 {
-        RETVAL = sapo_broker_receive(self->handle);
+	HV * message = (HV*)sv_2mortal((SV*)newHV());
+        BrokerMessage * bm = sb_receive(self->handle);
+	if (bm){
+	  hv_store(message, "valid", 5, newSVuv(1),0);
+	  hv_store(message, "payload",7,newSVpv(bm->payload, strlen(bm->payload)),0);
+	  hv_store(message, "msg_id",6,newSVpv(bm->message_id, strlen(bm->message_id)),0);	
+	  hv_store(message, "destination",11,newSVpv(bm->destination, strlen(bm->destination)),0);	
+	  sb_free_message(bm);
+	}else{
+	  hv_store(message, "valid", 5, newSVuv(0),0);
+	}
+
+	RETVAL = newRV_inc((SV*)message);
 }
 OUTPUT:
     RETVAL

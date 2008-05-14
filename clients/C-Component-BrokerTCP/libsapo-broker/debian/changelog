@@ -1,3 +1,17 @@
+libsapo-broker (0.1.0.0) unstable; urgency=low
+
+  * new version using expat...
+  * adds ack to to sender 
+  * adds timestamp/timeout to queue
+
+ -- Francisco Lourenco <francisco.lourenco@segula.pt>  Mon,  17 Mar 2008 15:11:00 +0100
+
+libsapo-broker (0.0.3.2) unstable; urgency=low
+
+  * Better error handling when things go bad
+
+ -- Francisco Lourenco <francisco.lourenco@segula.pt>  Mon,  8 Nov 2007 12:46:29 +0100
+
 libsapo-broker (0.0.3.1) unstable; urgency=low
 
   * Include support for -dbg package. No longer compatible with sarge.
