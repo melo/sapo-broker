@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="java-Component-BrokerTCP">
+	<property name="java-Component-BrokerTCP.location" value="." />
+	<property name="dist" value="../dist" />
+
+	
+
+	<path id="project.classpath">
+		<pathelement location="${java-Component-BrokerTCP.location}/bin" />
+		<pathelement location="${java-Component-BrokerTCP.location}/clib/bcel.jar" />
+		<pathelement location="${java-Component-BrokerTCP.location}/clib/jibx-bind.jar" />
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/jibx-run.jar"/>
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/logback-classic-0.9.8.jar"/>
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/logback-core-0.9.8.jar"/>
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/slf4j-api-1.4.3.jar"/>
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/org.caudexorigo.jar"/>
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/mina2-snapshot.jar"/>
+	</path>
+
+
+	<!-- show list of targets -->
+	<target name="help">
+		<echo message="Targets are:" />
+		<echo />
+		<echo message="clean delete all class files and generated code" />
+		<echo message="compile compile class files as a separate step" />
+		<echo message="bind compile JiBX bindings as a separate step" />
+		<echo message="build compile classes and JiBX binding" />
+		<echo message="package creates distribution" />
+	</target>
+
+	<target name="init" depends="clean">
+		<mkdir dir="bin" />
+	</target>
+
+	<target name="clean">
+		<delete dir="bin" />
+		<delete dir="${dist}" />		
+	</target>
+
+
+	<!-- bind as a separate step -->
+	<target name="bind">
+		<echo message="Running JiBX binding compiler" />
+		<taskdef name="bind" classname="org.jibx.binding.ant.CompileTask">
+			<classpath refid="project.classpath" />
+		</taskdef>
+		<bind binding="${basedir}/binding.xml">
+			<classpath refid="project.classpath" />
+		</bind>
+	</target>
+
+
+	<target name="compile" depends="init" >
+		<echo message="${ant.project.name}: ${ant.file}" />
+
+		<javac destdir="bin" encoding="UTF-8" debug="true" debuglevel="lines,vars,source">
+			<src path="src" />
+			<classpath refid="project.classpath" />
+		</javac>
+		<copy todir="bin">
+			<fileset dir="src" excludes="**/*.java"/>
+		</copy>
+		
+	</target>
+
+	<target name="build" depends="compile,bind" />
+
+
+	<target name="package" depends="build">
+
+		<mkdir dir="${dist}/lib" />
+		
+		<copy todir="${dist}/lib">
+			<fileset dir="${java-Component-BrokerTCP.location}/../../common-libs/">
+				<include name="*.jar"/>
+				<exclude name="h2.jar"/>
+				<exclude name="mina_http_filter.jar"/>
+			</fileset>
+ 		</copy>
+		
+		<jar destfile="${dist}/lib/java-Component-BrokerTCP.jar">
+			<fileset dir="bin"/>
+		</jar>
+	</target>
+
+</project>
