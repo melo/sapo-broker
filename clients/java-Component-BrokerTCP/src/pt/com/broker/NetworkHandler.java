@@ -31,7 +31,7 @@ public class NetworkHandler
 
 	private static final int NCPU = Runtime.getRuntime().availableProcessors();
 
-	private static final int MAX_BUFFER_SIZE = 8 * 1024 * 1024;
+	private static final int MAX_BUFFER_SIZE = 32 * 1024 * 1024;
 
 	private static final int IO_THREADS = NCPU + 1;
 
@@ -57,7 +57,7 @@ public class NetworkHandler
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new SoapCodec()));
 
 		// and then a thread pool.
-		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle(MAX_BUFFER_SIZE))));
+		filterChainBuilder.addLast("executor", new ExecutorFilter(16, 30));
 
 		connector.setHandler(new BrokerProtocolHandler(this));
 		connector.setConnectTimeoutMillis(5000); // 5 seconds timeout
@@ -112,7 +112,8 @@ public class NetworkHandler
 		if (_ioSession != null && _ioSession.isConnected())
 		{
 			WriteFuture wf = _ioSession.write(soap);
-			wf.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+			//wf.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+			wf.awaitUninterruptibly();
 			if (!wf.isWritten())
 			{
 				throw new RuntimeException("Message could not be written");
