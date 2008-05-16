@@ -4,12 +4,11 @@ public class Unsubscribe
 {
 	public String destinationName;
 
-	public String destinationType;
+	public DestinationType destinationType;
 
 	public Unsubscribe()
 	{
 		destinationName = "";
-		destinationType = "";
 	}
 
 	@Override
