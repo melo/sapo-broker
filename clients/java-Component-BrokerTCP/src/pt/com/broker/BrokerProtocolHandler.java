@@ -48,7 +48,14 @@ public class BrokerProtocolHandler implements IoHandler
 
 		final SoapEnvelope request = (SoapEnvelope) message;
 
-		_netHandler.handleReceivedMessage(ioSession, request);
+		try
+		{
+			_netHandler.handleReceivedMessage(ioSession, request);
+		}
+		catch (Throwable e)
+		{
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override

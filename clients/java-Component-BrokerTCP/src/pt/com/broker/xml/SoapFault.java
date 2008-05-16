@@ -21,9 +21,9 @@ public class SoapFault
 	{
 		StringBuilder sb = new StringBuilder();
 		sb.append("\n");
-		sb.append("faultCode:" + faultCode);
+		sb.append("faultCode:" + faultCode.value);
 		sb.append("\n");
-		sb.append("faultReason:" + faultReason);
+		sb.append("faultReason:" + faultReason.text);
 		sb.append("\n");
 		sb.append("faultDetail:\n" + detail);
 		sb.append("\n");

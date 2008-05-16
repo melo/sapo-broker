@@ -27,7 +27,7 @@ import pt.com.broker.xml.SoapFault;
 
 public class NetworkHandler
 {
-	private static Logger log = LoggerFactory.getLogger(NetworkHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(NetworkHandler.class);
 
 	private static final int NCPU = Runtime.getRuntime().availableProcessors();
 
@@ -35,9 +35,9 @@ public class NetworkHandler
 
 	private static final int IO_THREADS = NCPU + 1;
 
-	private SocketConnector connector;
-	private String _host;
-	private int _portNumber;
+	private final SocketConnector connector;
+	private final String _host;
+	private final int _portNumber;
 	private IoSession _ioSession;
 	private final BrokerClient _brokerClient;
 
@@ -48,13 +48,6 @@ public class NetworkHandler
 		_host = brokerClient.getHost();
 		_portNumber = brokerClient.getPort();
 
-		startConnector();
-
-		_brokerClient = brokerClient;
-	}
-
-	private void startConnector()
-	{
 		connector = new NioSocketConnector(IO_THREADS);
 		((SocketSessionConfig) connector.getSessionConfig()).setKeepAlive(true);
 
@@ -72,6 +65,7 @@ public class NetworkHandler
 		SocketAddress addr = new InetSocketAddress(_host, _portNumber);
 		connect(connector, addr);
 
+		_brokerClient = brokerClient;
 	}
 
 	protected void connect(SocketConnector connector, SocketAddress address)
@@ -79,16 +73,19 @@ public class NetworkHandler
 		String message = "Connecting to '{}'.";
 		log.info(message, address.toString());
 
-		boolean isConnected = connector.connect(address).awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+		ConnectFuture cf = connector.connect(address);
 
-		if (!isConnected)
+		cf.awaitUninterruptibly();
+
+		if (!cf.isConnected())
 		{
+			log.warn("Could not connect to '{}'", address.toString());
 			BrokerClientExecutor.schedule(new Connect(this, address), 5000, TimeUnit.MILLISECONDS);
 			return;
 
 		}
 
-		if (isConnected)
+		if (cf.isConnected())
 		{
 			if (connector.getManagedSessionCount() == 1)
 			{
@@ -96,6 +93,11 @@ public class NetworkHandler
 				{
 					_ioSession = ios;
 				}
+			}
+
+			if (_brokerClient != null)
+			{
+				_brokerClient.bindConsumers();
 			}
 		}
 	}
@@ -124,7 +126,7 @@ public class NetworkHandler
 		}
 	}
 
-	public void handleReceivedMessage(IoSession ioSession, SoapEnvelope request)
+	protected void handleReceivedMessage(IoSession ioSession, SoapEnvelope request) throws Throwable
 	{
 		if (request.body.notification != null)
 		{
@@ -134,14 +136,7 @@ public class NetworkHandler
 			{
 				if (_waitResponse.getAndSet(false))
 				{
-					try
-					{
-						_brokerClient.feedSyncConsumer(msg);
-					}
-					catch (Exception e)
-					{
-						throw new RuntimeException(e);
-					}
+					_brokerClient.feedSyncConsumer(msg);
 				}
 				else
 				{
@@ -152,12 +147,13 @@ public class NetworkHandler
 		else if (request.body.status != null)
 		{
 			Status status = request.body.status;
-			// _brokerClient.notifyListener(msg);
+			_brokerClient.feedStatusConsumer(status);
 		}
 		else if (request.body.fault != null)
 		{
 			SoapFault fault = request.body.fault;
 			log.error(fault.toString());
+			throw new RuntimeException(fault.faultReason.text);
 		}
 
 	}
@@ -169,18 +165,25 @@ public class NetworkHandler
 
 	public void close()
 	{
-		for (IoSession ios : connector.getManagedSessions())
+		try
 		{
-			try
+			for (IoSession ios : connector.getManagedSessions())
 			{
-				ios.close().await();
+				try
+				{
+					ios.close().await();
+				}
+				catch (InterruptedException e)
+				{
+					log.error(e.getMessage());
+				}
 			}
-			catch (InterruptedException e)
-			{
-				log.error(e.getMessage());
-			}
+			connector.dispose();
 		}
-		connector.dispose();
+		catch (Throwable e)
+		{
+			// ignore
+		}
 
 	}
 

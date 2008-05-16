@@ -1,5 +1,10 @@
 package pt.com.broker.messaging;
 
+import java.util.Date;
+
+import org.caudexorigo.text.DateUtil;
+import org.caudexorigo.text.StringUtils;
+
 public class BrokerMessage
 {
 	public int priority;
@@ -25,5 +30,39 @@ public class BrokerMessage
 		expiration = "";
 		destinationName = "";
 		textPayload = "";
+	}
+
+	public Date expirationAsDate()
+	{
+		return convertToDate(expiration);
+	}
+
+	public Date timestampAsDate()
+	{
+		return convertToDate(timestamp);
+	}
+
+	public void expirationFromDate(Date date)
+	{
+		expiration = DateUtil.formatISODate(date);
+	}
+
+	private Date convertToDate(String dateString)
+	{
+		try
+		{
+			if (StringUtils.isNotBlank(dateString))
+			{
+				return DateUtil.parseISODate(dateString);
+			}
+			else
+			{
+				throw new RuntimeException("Invalid date format");
+			}
+		}
+		catch (Throwable t)
+		{
+			throw new RuntimeException(t);
+		}
 	}
 }
