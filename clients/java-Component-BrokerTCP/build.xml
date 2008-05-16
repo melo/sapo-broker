@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project basedir="." default="build" name="java-Component-BrokerTCP">
 	<property name="java-Component-BrokerTCP.location" value="." />
-	<property name="dist" value="../dist" />
+	<property name="dist" value="./dist" />
 
 	
 
@@ -76,6 +76,7 @@
 				<include name="*.jar"/>
 				<exclude name="h2.jar"/>
 				<exclude name="mina_http_filter.jar"/>
+				<exclude name="logback*"/>
 			</fileset>
  		</copy>
 		
