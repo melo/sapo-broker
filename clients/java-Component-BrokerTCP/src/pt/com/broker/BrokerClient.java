@@ -83,6 +83,8 @@ public class BrokerClient
 
 				_async_listeners.put(notify.destinationName, listener);
 			}
+			
+			_consumerList.add(new BrokerAsyncConsumer(notify, listener));
 
 			String action = buildAction(notify);
 
@@ -91,7 +93,7 @@ public class BrokerClient
 			SoapEnvelope soap = buildSoapEnvelope(action);
 			soap.body.notify = notify;
 			_netHandler.sendMessage(soap);
-			_consumerList.add(new BrokerAsyncConsumer(notify, listener));
+			
 		}
 		else
 		{
