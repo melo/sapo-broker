@@ -54,7 +54,7 @@
 	<target name="compile" depends="init" >
 		<echo message="${ant.project.name}: ${ant.file}" />
 
-		<javac destdir="bin" encoding="UTF-8" debug="true" debuglevel="lines,vars,source">
+		<javac destdir="bin" encoding="UTF-8" debug="true" debuglevel="lines,vars,source" target="1.5">
 			<src path="src" />
 			<classpath refid="project.classpath" />
 		</javac>
