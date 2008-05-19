@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 
 import org.apache.mina.common.ExceptionMonitor;
 import org.caudexorigo.ErrorAnalyser;
+import org.caudexorigo.Shutdown;
 import org.caudexorigo.text.StringBuilderWriter;
 import org.caudexorigo.text.StringUtils;
 import org.jibx.runtime.JiBXException;
@@ -24,19 +25,19 @@ public class ErrorHandler extends ExceptionMonitor
 		{
 			log.error("Unexpected exception.", rootCause);
 		}
-		ErrorAnalyser.exitIfOOM(rootCause);
+		exitIfCritical(rootCause);
 	}
 
 	public static void checkAbort(Throwable t)
 	{
 		Throwable rootCause = ErrorAnalyser.findRootCause(t);
-		ErrorAnalyser.exitIfOOM(rootCause);
+		exitIfCritical(rootCause);
 	}
 
 	public static WTF buildSoapFault(Throwable ex)
 	{
 		Throwable rootCause = ErrorAnalyser.findRootCause(ex);
-		ErrorAnalyser.exitIfOOM(rootCause);
+		exitIfCritical(rootCause);
 
 		String ereason = "soap:Receiver";
 		if (rootCause instanceof JiBXException)
@@ -59,7 +60,7 @@ public class ErrorHandler extends ExceptionMonitor
 		}
 
 		Throwable rootCause = ErrorAnalyser.findRootCause(ex);
-		ErrorAnalyser.exitIfOOM(rootCause);
+		exitIfCritical(rootCause);
 		return _buildSoapFault(faultCode, rootCause);
 	}
 
@@ -91,4 +92,21 @@ public class ErrorHandler extends ExceptionMonitor
 
 		public Throwable Cause;
 	}
+	
+	private static void exitIfUlimit(Throwable t)
+	{
+		String ul_error = "Too many open files".toLowerCase();
+		String emsg = t.getMessage().toLowerCase();
+		if (emsg.contains(ul_error))
+		{
+			Shutdown.now();
+		}
+	}
+	
+	private static void exitIfCritical(Throwable cause)
+	{
+		ErrorAnalyser.exitIfOOM(cause);
+		exitIfUlimit(cause);
+	}
+
 }
