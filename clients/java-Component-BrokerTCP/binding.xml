@@ -89,6 +89,7 @@
 	<mapping name="Status" class="pt.com.broker.messaging.Status" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="Message" field="message" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="Timestamp" field="timestamp" usage="optional" ns="http://services.sapo.pt/broker" />
+		<value name="Version" field="version" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
 	<mapping name="BrokerMessage" class="pt.com.broker.messaging.BrokerMessage" ns="http://services.sapo.pt/broker" ordered="false" flexible="true">

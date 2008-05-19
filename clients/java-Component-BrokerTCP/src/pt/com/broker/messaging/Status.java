@@ -38,4 +38,16 @@ public class Status
 			throw new RuntimeException(t);
 		}
 	}
+	
+	@Override
+	public String toString()
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append("{");
+		sb.append("message:" + message);
+		sb.append("; timestamp:" + timestamp);
+		sb.append("; version:" + version);
+		sb.append("}");
+		return sb.toString();
+	}
 }
