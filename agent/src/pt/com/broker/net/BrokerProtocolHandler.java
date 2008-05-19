@@ -28,7 +28,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	private static final BrokerProducer _brokerProducer = BrokerProducer.getInstance();
 
 	private static final BrokerConsumer _brokerConsumer = BrokerConsumer.getInstance();
-	
+
 	private Object mutex = new Object();
 
 	public BrokerProtocolHandler()
@@ -129,7 +129,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 				{
 					throw new IllegalArgumentException("Not a valid destination name for a TOPIC_AS_QUEUE consumer");
 				}
-				
+
 			}
 			return;
 		}
@@ -150,7 +150,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			{
 				BrokerSyncConsumer.poll(poll, session);
 			}
-			
+
 			return;
 		}
 		else if (request.body.acknowledge != null)
@@ -168,7 +168,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		else if (request.body.checkStatus != null)
 		{
 			SoapEnvelope soap_status = new SoapEnvelope();
-			soap_status.body.status = new Status();			
+			soap_status.body.status = new Status();
 			session.write(soap_status);
 			return;
 		}
