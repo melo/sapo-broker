@@ -1,9 +1,13 @@
 package pt.com.gcs.messaging;
 
 import org.caudexorigo.text.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class TopicMatcher
 {
+	private static Logger log = LoggerFactory.getLogger(TopicMatcher.class);
+
 	public static boolean match(String subscriptionName, String topicName)
 	{
 		if (StringUtils.countMatches(subscriptionName, "/") < 2)
@@ -26,78 +30,100 @@ class TopicMatcher
 
 	private static boolean wildcardMatch(String subscriptionName, String topicName)
 	{
-
-		if (!StringUtils.contains(subscriptionName, '#'))
+		try
 		{
-			return false;
-		}
-
-		String[] sub_parts = subscriptionName.split("/");
-		String[] topic_parts = topicName.split("/");
-
-		if (sub_parts.length != topic_parts.length)
-			return false;
-
-		for (int i = 0; i < sub_parts.length; i++)
-		{
-			if (sub_parts[i].equals("#"))
+			if (!StringUtils.contains(subscriptionName, '#'))
 			{
-				topic_parts[i] = "#";
+				return false;
 			}
-		}
 
-		StringBuilder sb = new StringBuilder();
-		for (int i = 1; i < topic_parts.length; i++)
+			String[] sub_parts = subscriptionName.split("/");
+			String[] topic_parts = topicName.split("/");
+
+			if (sub_parts.length != topic_parts.length)
+				return false;
+
+			for (int i = 0; i < sub_parts.length; i++)
+			{
+				if (sub_parts[i].equals("#"))
+				{
+					topic_parts[i] = "#";
+				}
+			}
+
+			StringBuilder sb = new StringBuilder();
+			for (int i = 1; i < topic_parts.length; i++)
+			{
+				sb.append("/");
+				sb.append(topic_parts[i]);
+			}
+
+			if (sb.toString().equals(subscriptionName))
+			{
+				return true;
+			}
+
+			return false;
+
+		}
+		catch (Throwable error)
 		{
-			sb.append("/");
-			sb.append(topic_parts[i]);
+			log.error("wildcardMatch -> subscriptionName: '{}' ;topicName: '{}'", subscriptionName, topicName);
+			throw new RuntimeException(error);
 		}
-
-		if (sb.toString().equals(subscriptionName))
-		{
-			return true;
-		}
-
-		return false;
 	}
 
 	private static boolean recursiveMatch(String subscriptionName, String topicName)
 	{
-		if (!StringUtils.contains(subscriptionName, '>'))
+		try
 		{
-			return false;
-		}
-
-		if (!subscriptionName.endsWith("/>"))
-		{
-			return false;
-		}
-
-		String[] sub_parts = subscriptionName.split("/");
-		String[] topic_parts = topicName.split("/");
-
-		int pos = -1;
-		for (int i = 0; i < sub_parts.length; i++)
-		{
-			if (sub_parts[i].equals(">"))
+			if (!StringUtils.contains(subscriptionName, '>'))
 			{
-				pos = i;
+				return false;
 			}
-		}
 
-		StringBuilder sb = new StringBuilder();
-		for (int i = 1; i < pos; i++)
+			if (!subscriptionName.endsWith("/>"))
+			{
+				return false;
+			}
+
+			String[] sub_parts = subscriptionName.split("/");
+			String[] topic_parts = topicName.split("/");
+			
+			if (topic_parts.length < sub_parts.length)
+			{
+				return false;
+			}
+
+			int pos = -1;
+			for (int i = 0; i < sub_parts.length; i++)
+			{
+				if (sub_parts[i].equals(">"))
+				{
+					pos = i;
+				}
+			}
+
+			StringBuilder sb = new StringBuilder();
+			for (int i = 1; i < pos; i++)
+			{
+				sb.append("/");
+				sb.append(topic_parts[i]);
+			}
+			sb.append("/>");
+
+			if (sb.toString().equals(subscriptionName))
+			{
+				return true;
+			}
+
+			return false;
+		}
+		catch (Throwable error)
 		{
-			sb.append("/");
-			sb.append(topic_parts[i]);
-		}
-		sb.append("/>");
-
-		if (sb.toString().equals(subscriptionName))
-		{
-			return true;
+			log.error("recursiveMatch -> subscriptionName: '{}' ;topicName: '{}'", subscriptionName, topicName);
+			throw new RuntimeException(error);
 		}
 
-		return false;
 	}
 }
