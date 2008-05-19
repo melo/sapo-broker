@@ -10,8 +10,6 @@
 		<pathelement location="${java-Component-BrokerTCP.location}/clib/bcel.jar" />
 		<pathelement location="${java-Component-BrokerTCP.location}/clib/jibx-bind.jar" />
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/jibx-run.jar"/>
-		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/logback-classic-0.9.8.jar"/>
-		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/logback-core-0.9.8.jar"/>
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/slf4j-api-1.4.3.jar"/>
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/org.caudexorigo.jar"/>
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/mina2-snapshot.jar"/>
