@@ -11,8 +11,6 @@ import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
-import org.apache.mina.filter.executor.IoEventQueueThrottle;
-import org.apache.mina.filter.executor.OrderedThreadPoolExecutor;
 import org.apache.mina.transport.socket.SocketConnector;
 import org.apache.mina.transport.socket.SocketSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
@@ -104,22 +102,32 @@ public class NetworkHandler
 
 	protected void sendMessage(SoapEnvelope soap)
 	{
-		sendMessage(soap, false);
+		sendMessage(soap, false, false);
 	}
 
-	protected void sendMessage(SoapEnvelope soap, boolean waitResponse)
+	protected void sendMessage(SoapEnvelope soap, boolean sendAsync)
+	{
+		sendMessage(soap, false, sendAsync);
+	}
+
+	protected void sendMessage(SoapEnvelope soap, boolean waitResponse, boolean sendAsync)
 	{
 		if (_ioSession != null && _ioSession.isConnected())
 		{
-			WriteFuture wf = _ioSession.write(soap);
-			//wf.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
-			wf.awaitUninterruptibly();
-			if (!wf.isWritten())
+			if (sendAsync)
 			{
-				throw new RuntimeException("Message could not be written");
+				_ioSession.write(soap);
+			}
+			else
+			{
+				WriteFuture wf = _ioSession.write(soap);
+				wf.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+				if (!wf.isWritten())
+				{
+					throw new RuntimeException("Message could not be written");
+				}
 			}
 			_waitResponse.set(waitResponse);
-
 		}
 		else
 		{

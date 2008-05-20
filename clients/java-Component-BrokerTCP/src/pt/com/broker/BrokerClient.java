@@ -108,13 +108,18 @@ public class BrokerClient
 
 	public void enqueueMessage(BrokerMessage brkmsg) throws Throwable
 	{
+		enqueueMessage(brkmsg, false);
+	}
+	
+	public void enqueueMessage(BrokerMessage brkmsg, boolean sendAsync) throws Throwable
+	{
 		if ((brkmsg != null) && (StringUtils.isNotBlank(brkmsg.destinationName)))
 		{
 			Enqueue enqreq = new Enqueue();
 			enqreq.brokerMessage = brkmsg;
 			SoapEnvelope soap = buildSoapEnvelope("http://services.sapo.pt/broker/enqueue");
 			soap.body.enqueue = enqreq;
-			_netHandler.sendMessage(soap);
+			_netHandler.sendMessage(soap, sendAsync);
 		}
 		else
 		{
@@ -151,13 +156,18 @@ public class BrokerClient
 
 	public void publishMessage(BrokerMessage brkmsg) throws Throwable
 	{
+		publishMessage(brkmsg, false);
+	}
+	
+	public void publishMessage(BrokerMessage brkmsg, boolean sendAsync) throws Throwable
+	{
 		if ((brkmsg != null) && (StringUtils.isNotBlank(brkmsg.destinationName)))
 		{
 			Publish pubreq = new Publish();
 			pubreq.brokerMessage = brkmsg;
 			SoapEnvelope soap = buildSoapEnvelope("http://services.sapo.pt/broker/publish");
 			soap.body.publish = pubreq;
-			_netHandler.sendMessage(soap);
+			_netHandler.sendMessage(soap, sendAsync);
 		}
 		else
 		{
