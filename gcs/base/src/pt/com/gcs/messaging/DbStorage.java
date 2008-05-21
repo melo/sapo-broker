@@ -141,7 +141,7 @@ class DbStorage
 			dbFile = GcsInfo.getBasePersistentDirectory().concat("/");
 			dbName = MD5.getHashString(GcsInfo.getAgentName());
 
-			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_UNDO=10000;MAX_MEMORY_ROWS=20000;WRITE_DELAY=200;CACHE_TYPE=TQ;RECOVER=1");
+			connURL = "jdbc:h2:file:" + dbFile.concat(dbName).concat(";LOG=1;MAX_MEMORY_ROWS=20000;WRITE_DELAY=2000");
 			username = "sa";
 			password = "";
 
@@ -407,7 +407,6 @@ class DbStorage
 		{
 			try
 			{
-
 				insert_prep_stmt.setString(1, msg.getMessageId());
 				insert_prep_stmt.setString(2, msg.getCorrelationId());
 				insert_prep_stmt.setString(3, msg.getDestination());
@@ -497,6 +496,7 @@ class DbStorage
 		{
 			long count = processor.getQueuedMessagesCount();
 
+			long c0 = System.currentTimeMillis();
 			PreparedStatement fetch_stmt;
 			if (count < PRIORITY_ORDERING_THRESHOLD)
 			{
@@ -509,7 +509,12 @@ class DbStorage
 
 			fetch_stmt.setString(1, processor.getDestinationName());
 			rs = fetch_stmt.executeQuery();
-			log.debug("Processing stored messages for queue '{}'", processor.getDestinationName());
+
+			long c1 = System.currentTimeMillis();
+			long d0 = (c1 - c0);
+
+
+			int i0 = 0;
 			while (rs.next() && processor.hasRecipient())
 			{
 				final Message msg = buildMessage(rs);
@@ -519,8 +524,18 @@ class DbStorage
 				if (!processor.getReservedMessages().contains(msg.getMessageId()))
 				{
 					processMessage(processor, msg, deliveryCount, localConsumersOnly);
+					i0++;
 				}
 			}
+			
+			long c2 = System.currentTimeMillis();
+			long d1 = (c2 - c1);
+			
+			if (log.isDebugEnabled())
+			{
+				log.debug(String.format("Queue '%s' processing summary; Retrieval time: %s ms; Delivery time: %s ms; Delivered messages: %s", processor.getDestinationName(), d0, d1, i0));
+			}
+			
 			batchUpdateState(processor);
 		}
 		catch (Throwable t)
@@ -555,14 +570,7 @@ class DbStorage
 
 		if ((mark <= msg.getExpiration()) && (deliveryCount <= MAX_DELIVERY_COUNT))
 		{
-			if (processor.forward(msg, localConsumersOnly))
-			{
-				if (log.isDebugEnabled())
-				{
-					log.debug("Message delivered. Dump: {}", msg.toString());
-				}
-			}
-			else
+			if (!processor.forward(msg, localConsumersOnly))
 			{
 				if (log.isDebugEnabled())
 				{
