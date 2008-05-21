@@ -62,7 +62,7 @@ public class BrokerClient
 
 			SoapEnvelope soap = buildSoapEnvelope("http://services.sapo.pt/broker/acknowledge");
 			soap.body.acknowledge = ack;
-			_netHandler.sendMessage(soap);
+			_netHandler.sendMessage(soap, true);
 		}
 		else
 		{
