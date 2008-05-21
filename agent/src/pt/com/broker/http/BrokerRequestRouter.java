@@ -8,8 +8,6 @@ import pt.com.http.RequestRouter;
 public class BrokerRequestRouter implements RequestRouter
 {
 	private final BrokerHttpAction broker_action = new BrokerHttpAction();
-
-	private final ManagementAction mng_action = new ManagementAction();
 	
 	private final StatusAction status_action = new StatusAction();
 
@@ -19,10 +17,6 @@ public class BrokerRequestRouter implements RequestRouter
 		if (path.equals("/broker/producer"))
 		{
 			return broker_action;
-		}
-		else if (path.equals("/broker/mng"))
-		{
-			return mng_action;
 		}
 		else if (path.equals("/broker/status"))
 		{

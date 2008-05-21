@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+	<jmxConfigurator />
+
 	<appender class="ch.qos.logback.core.ConsoleAppender" name="ConsoleAppender">
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
 			<level>info</level>
