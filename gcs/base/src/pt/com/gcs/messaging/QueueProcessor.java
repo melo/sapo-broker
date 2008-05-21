@@ -86,7 +86,7 @@ public class QueueProcessor
 						}
 						else
 						{
-							log.error("The maximum amount of skipped wakeups was reached. There are '{}' message(s) waiting for ACK, but the processing must proceed.", ackWaitListSize);
+							log.error("The maximum amount of skipped wakeups was reached. There are '{}' message(s) waiting for ACK, but the processing for queue '{}' must proceed.", ackWaitListSize, _destinationName);
 							msgsAwaitingAck.clear();
 						}
 					}
