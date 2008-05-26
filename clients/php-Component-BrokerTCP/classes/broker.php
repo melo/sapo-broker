@@ -15,7 +15,6 @@ class SAPO_Broker {
     
     var $parser;
     var $net;
-
     var $debug;
 
     function SAPO_Broker ($args=array())
@@ -27,7 +26,10 @@ class SAPO_Broker {
                                 'force_streams'=>FALSE,
 				                        'timeout'=>60*5, // in seconds
                                 'force_expat'=>FALSE,
+                                'locale'=>'pt_PT',
                                 'force_dom'=>FALSE),$args);
+
+        setlocale(LC_TIME, $args['locale']);
 
         // pre init()
         $this->debug = $args['debug'];
@@ -44,31 +46,25 @@ class SAPO_Broker {
         if (version_compare(phpversion(), '4.3.0', '<')) {
             die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
         }
-        
-        //
-        // Look for sockets support.
-        //
-        if ( (extension_loaded('sockets') || $args['force_sockets']) && $args['force_streams']==FALSE) {
-            SAPO_Broker::dodebug("Using SAPO_Broker_Net_Sockets()");
-            $this->net =& new SAPO_Broker_Net_Sockets($this->debug);
-        } else {
-            SAPO_Broker::dodebug("Using SAPO_Broker_Net() aka Streams");
-            $this->net =& new SAPO_Broker_Net($this->debug);
-        }
 
+        $this->net =& new SAPO_Broker_Net($this->debug);
+        
         // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
 	      $this->net->rcv_to=$args['timeout']*1000000;
 	      $this->net->snd_to=$args['timeout']*1000000;
 
+        // Health checking
+        $this->add_callback(array("sec"=>5),array('SAPO_Broker_Net','sendKeepalive'));
+          
         //
         // Look for DOM support and use appropriate Parser.
         //
         if ((!extension_loaded('dom') || $args['force_expat']) && $args['force_dom']==FALSE) {
             SAPO_Broker::dodebug("Using SAPO_Broker_Parser() aka expat");
-            $this->parser =& new SAPO_Broker_Parser($this->debug);
+            $this->parser =& new SAPO_Broker_Parser($this->debug,$this->net);
         } else {
             SAPO_Broker::dodebug("Using SAPO_Broker_Parser_DOM() aka native DOM support");
-            $this->parser =& new SAPO_Broker_Parser_DOM($this->debug);
+            $this->parser =& new SAPO_Broker_Parser_DOM($this->debug,$this->net);
         }
 
         // post init()
@@ -111,7 +107,9 @@ class SAPO_Broker {
 
         SAPO_Broker::dodebug("Initializing network.");
         $this->net->init($args['server'], $args['port']);
-
+        $this->net->latest_status_message='';
+        $this->net->latest_status_timestamp_received=0;
+        $this->net->latest_status_timestamp_sent=0;
     }
 
     function dodebug($msg) {
@@ -168,12 +166,13 @@ class SAPO_Broker {
         $msg.='<soap:Body>';
 
         switch(strtoupper($args['destination_type'])) {
-	  case 'QUEUE':
+	        case 'QUEUE':
             $msg.='<mq:Enqueue>';
-	    break;
-	  case 'TOPIC':
+	          break;
+	        case 'TOPIC':
+	        default:
             $msg.='<mq:Publish>';
-	    break;
+	          break;
           }
 
         $msg.='<mq:BrokerMessage>';
@@ -205,18 +204,19 @@ class SAPO_Broker {
         $msg .= '</mq:BrokerMessage>';
 
         switch(strtoupper($args['destination_type'])) {
-	  case 'QUEUE':
+	        case 'QUEUE':
             $msg.='</mq:Enqueue>';
-	    break;
-	  case 'TOPIC':
+	          break;
+	        case 'TOPIC':
+	        default:
             $msg.='</mq:Publish>';
-	    break;
+	          break;
           }
 
         $msg .= '</soap:Body>';
         $msg .= '</soap:Envelope>';
         SAPO_Broker::dodebug("Publishing $msg");
-	if($this->net->server=='127.0.0.1') {
+	      if($this->net->server=='127.0.0.1') {
           SAPO_Broker::dodebug("Using local dropbox");
           umask(0);
           $filename = '/servers/broker/dropbox/' . md5(microtime() . mt_rand() . getmypid());
@@ -291,10 +291,10 @@ class SAPO_Broker {
         SAPO_Broker::dodebug("Adding Callback function #".$this->net->callbacks_count." '".$callback."' periodicity ".$period);
 
         array_push($this->net->callbacks,array('id'=>$this->net->callbacks_count,'period'=>(float)$period/1000000,'name'=>$callback));
-        if(($period<$this->rcv_to || $period<$this->snd_to) && $period>0) {
-            $this->rcv_to=$period;
-            $this->snd_to=$period;
-            $this->timeouts();
+        if(($period<$this->net->rcv_to || $period<$this->net->snd_to) && $period>0) {
+            $this->net->rcv_to=$period;
+            $this->net->snd_to=$period;
+            $this->net->timeouts();
         }
         $this->net->callbacks_ts[$this->net->callbacks_count]=SAPO_Broker_Tools::utime();
     }
@@ -312,7 +312,7 @@ class SAPO_Broker {
               SAPO_Broker::dodebug("consumer() I'm about to read ".$len." bytes");
               $tmp=$this->net->netread($len);
               SAPO_Broker::dodebug("consumer() got this xml: ".$tmp."");
-              $this->parser->handleSubscriptions($tmp, $this->net->subscriptions);
+              $this->parser->handlePackets($tmp, $this->net->subscriptions);
 	      }
         } while ($this->net->con_retry_count<10);
     }
@@ -320,7 +320,6 @@ class SAPO_Broker {
 }
 
 class SAPO_Broker_Net {
-
     var $server = '127.0.0.1';
     var $port = 3322;
     var $connected = false;
@@ -333,7 +332,7 @@ class SAPO_Broker_Net {
     var $rcv_to_sec;
     var $snd_to_usec;
     var $rcv_to_usec;
-    var $php4_utime_bug_add=0.001; // php bug with microtime. see http://www.rohitab.com/discuss/lofiversion/index.php/t25344.html
+    var $php_utime_bug_add=0.01; // php bug with microtime. see http://www.rohitab.com/discuss/lofiversion/index.php/t25344.html
     var $con_retry_count = 0;
     var $initted = false;
     var $debug = false;
@@ -342,7 +341,6 @@ class SAPO_Broker_Net {
     var $callbacks = array();
     var $callbacks_count = 0;
     var $subscriptions = array();
-
 
     function SAPO_Broker_Net ($debug = false)
     {
@@ -405,7 +403,6 @@ class SAPO_Broker_Net {
                 return(false);
             }
         }
-
       }
 
     function tryConnect($server,$port,$timeout=5) {
@@ -467,6 +464,13 @@ class SAPO_Broker_Net {
         return(true);
     }
 
+    function sendKeepalive() {
+      $m="<?xml version='1.0' encoding='UTF-8'?>\n<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'><soap:Body>
+<mq:CheckStatus /></soap:Body></soap:Envelope>";
+      $this->put($m);
+      $this->latest_status_timestamp_sent=date("Y-m-d\TH:m:s\Z");
+    }
+
     function netread($len) {
         SAPO_Broker::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
         if($this->connected==false) {
@@ -497,16 +501,18 @@ class SAPO_Broker_Net {
         while($i<$len) { // read just about enough. do i hate sockets...
             $start=SAPO_Broker_Tools::utime();
             $tmp=fread($this->socket, 1024); // block read with timeout
+            $end=SAPO_Broker_Tools::utime()+$this->php_utime_bug_add; // there's a problem with php's microtime function and the tcp timeout. This 0.1 offset fixes this.
+            // Execute callbacks on subscribed topics
             foreach($this->callbacks as $callback) { // periodic callbacks here, if any
                 if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Broker_Tools::utime()) {
 		                SAPO_Broker::dodebug("SAPO_Broker_Net::Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
                     $this->callbacks_ts[$callback['id']]=SAPO_Broker_Tools::utime();
-                    call_user_func($callback['name']);
+                    call_user_func($callback['name'],$this);
                 }
             } // end callbacks
-            SAPO_Broker::dodebug("SAPO_Broker_Net::Doing socket_read() inside netread()");
-            $end=SAPO_Broker_Tools::utime();
             $l=mb_strlen($tmp,'latin1');
+            SAPO_Broker::dodebug("SAPO_Broker_Net::Doing socket_read() inside netread()");
+            SAPO_Broker::dodebug("end-start: ".($end-$start)."\nthis->rcv_to_float: ".$this->rcv_to_float."\nl: ".$l."\n");
             if((($end-$start)<((float)($this->rcv_to_float)))&&$l==0) {
                 $this->connected=false; return('');
             }
@@ -527,149 +533,15 @@ class SAPO_Broker_Net {
     
 }
 
-/*
- * Sockets mode subclass
- */
-
-class SAPO_Broker_Net_Sockets extends SAPO_Broker_Net {
-
-    function SAPO_Broker_Net_Sockets ($debug = false)
-    {
-        $this->debug = $debug;
-    }
-
-    function tryConnect($server,$port,$timeout=5) {
-      $address = gethostbyname($server);
-      $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-      if($socket < 0) return(FALSE);
-      socket_set_option($socket,SOL_SOCKET, SO_RCVTIMEO, array("usec"=>0,"sec"=>$timeout));
-      socket_set_option($socket,SOL_SOCKET, SO_SNDTIMEO, array("usec"=>0,"sec"=>$timeout));
-      socket_set_option($socket,SOL_SOCKET, SO_KEEPALIVE, 1);
-      socket_set_block($socket);
-      if(socket_connect($socket, $address, $port)) {
-        socket_close($socket);
-        return(TRUE);
-        }
-      return(FALSE);
-      }
-
-    function connect()
-    {
-        if(!$this->initted) {
-            $this->init();
-        }
-        $this->con_retry_count++;
-        SAPO_Broker::dodebug("Entering connect(".$this->server.") ".$this->con_retry_count."");
-        $address = gethostbyname($this->server);
-        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        if ($this->socket < 0) {
-            SAPO_Broker::dodebug("socket_create() failed");
-            $this->last_err = 'socket_create() failed';
-            $this->connected = false;
-        } else {
-            socket_set_option($this->socket,SOL_SOCKET, SO_RCVTIMEO, array("usec"=>$this->rcv_to_usec,"sec"=>$this->rcv_to_sec));
-            socket_set_option($this->socket,SOL_SOCKET, SO_SNDTIMEO, array("usec"=>$this->snd_to_usec,"sec"=>$this->snd_to_sec));
-            socket_set_option($this->socket,SOL_SOCKET, SO_KEEPALIVE, 1);
-            socket_set_block($this->socket);
-            if (socket_connect($this->socket, $address, $this->port)) {
-                SAPO_Broker::dodebug("Connected to server");
-                $this->connected=true;
-                $this->con_retry_count=0;
-                $this->sendSubscriptions();
-            } else {
-                SAPO_Broker::dodebug("socket_connect() failed.");
-                $this->last_err = 'socket_connect() failed';
-                $this->connected = false;
-            }
-        }
-        if($this->connected==false) SAPO_Broker::dodebug("socket_connect() failed.");
-        return $this->connected;
-    }
-
-    function put($msg)
-    {
-        if($this->connected==false) {
-            if($this->connect()==false) {
-                return(false);
-            }
-        }
-        SAPO_Broker::dodebug("put() socket_writing: ".$msg."\n");
-        if(socket_write($this->socket, pack('N',mb_strlen($msg,'latin1')).$msg, mb_strlen($msg,'latin1') + 4)===false) {
-            $this->connected = false;
-            return(false);
-        }
-        return(true);
-    }
-    
-    function netread($len) {
-        SAPO_Broker::dodebug("netread(".$len.") entering sokbuflen is ".$this->sokbuflen."");
-        if($this->connected==false) {
-            SAPO_Broker::dodebug("SAPO_Broker_Net_Sockets::netread() ups, we're not connected, let's go for ir");
-            if($this->connect()==false) {
-                return('');
-            }
-        }
-        $i=$this->sokbuflen;
-        if($this->debug) {
-            if(function_exists('memory_get_usage')) {
-                echo "PHP process memory: ".memory_get_usage()." bytes\n";
-            } else {
-                switch(php_uname('s')) {
-                    case "Darwin":
-                    $pid=getmypid();
-                    echo 'USER       PID %CPU %MEM      VSZ    RSS  TT  STAT STARTED      TIME COMMAND'."\n";
-                    ob_start();
-                    passthru('ps axu|grep '.$pid.'|grep -v grep');
-                    $var = ob_get_contents();
-                    ob_end_clean(); 
-                    echo $var;
-                    break;
-                }
-            }
-        } // end this->debug
-        while($i<$len) { // read just about enough. do i hate sockets...
-            $start=SAPO_Broker_Tools::utime();
-            $tmp=socket_read($this->socket, 1024,PHP_BINARY_READ); // block read with timeout
-            foreach($this->callbacks as $callback) { // periodic callbacks here, if any
-                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Broker_Tools::utime()) {
-		    SAPO_Broker::dodebug("Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
-                    $this->callbacks_ts[$callback['id']]=SAPO_Broker_Tools::utime();
-                    call_user_func($callback['name']);
-                }
-            } // end callbacks
-            SAPO_Broker::dodebug("Doing socket_read() inside netread()");
-            $end=SAPO_Broker_Tools::utime();
-            $l=mb_strlen($tmp,'latin1');
-
-            SAPO_Broker::dodebug("end-start: ".($end-$start)."\nthis->rcv_to_float: ".$this->rcv_to_float."\nl: ".$l."\n");
-
-            if((($end-$start+$this->php4_utime_bug_add)<((float)($this->rcv_to_float)))&&$l==0) {
-                SAPO_Broker::dodebug("netread() disconnecting socket....");
-                $this->connected=false; return('');
-            }
-            $this->sokbuf.=$tmp;
-            $this->sokbuflen+=$l;
-            $i+=$l;
-        }
-        $this->sokbuflen-=$len;
-        $r=substr($this->sokbuf,0,$len);
-        $this->sokbuf=substr($this->sokbuf,$len); // cut
-        SAPO_Broker::dodebug("netread(".$len.") leaving sokbuflen is ".$this->sokbuflen."");
-        return($r);
-    }
-        
-    function disconnect() {
-        socket_close($this->socket);
-    }    
-}
-
 class SAPO_Broker_Parser {
     
     var $debug;
+    var $pelements=array('DestinationName','TextPayload','Message','Status','Timestamp');
     
-    function SAPO_Broker_Parser ($debug = false)
+    function SAPO_Broker_Parser ($debug = false,$instance)
     {
         $this->debug = $debug;
+        $this->instance = $instance;
     }
    
     function worldmapPush($file) {
@@ -709,48 +581,59 @@ class SAPO_Broker_Parser {
         // Get elements from the XML document.
         //
         xml_parse_into_struct($xml, $msg, $values, $tags);
-        $elements['DestinationName'] = $values[$tags[$nsIdentifier . 'DestinationName'][0]]['value'];
-        $elements['TextPayload'] = $values[$tags[$nsIdentifier . 'TextPayload'][0]]['value'];
+        foreach($this->pelements as $eln) {
+          $elements[$eln] = $values[$tags[$nsIdentifier . $eln][0]]['value'];
+        }
+
         xml_parser_free($xml);
         
         return $elements;
     }
 
-    function handleSubscriptions ($msg, $subscriptions = array())
+    function handlePackets ($msg, $subscriptions = array())
     {
         //
         // Get XML elements needed to handle subscriptions.
         //
         $elements = $this->getElements($msg, 'http://services.sapo.pt/broker');
-        
-        //
-        // If the destination name wasn't found try to find it
-        // without using a namespace.
-        //
-        if (empty($elements['DestinationName'])) {
-            $elements = $this->getElements($msg);
-        }
 
-        //
-        // If a destination name was found, handle its associated callback.
-        //
-        if (!empty($elements['DestinationName'])) {
-            foreach ($subscriptions as $subscription) {
-                if ($subscription['topic'] == $elements['DestinationName']) {
-                    call_user_func($subscription['callback'], $elements['TextPayload'],$elements['DestinationName']);
-                }
-            }
+
+        // It's a status message
+        if(!empty($elements['Status'])) {
+          $this->instance->latest_status_message=$elements['Message'];
+          $this->instance->latest_status_timestamp_received=$elements['Timestamp'];          
         }
-    }
+        else // It's a payload
+        {
+          //
+          // If the destination name wasn't found try to find it
+          // without using a namespace.
+          //
+          if (empty($elements['DestinationName'])) {
+              $elements = $this->getElements($msg);
+          }
+          //
+          // If a destination name was found, handle its associated callback.
+          //
+          if (!empty($elements['DestinationName'])) {
+            foreach ($subscriptions as $subscription) {
+              if ($subscription['topic'] == $elements['DestinationName']) {
+                call_user_func($subscription['callback'], $elements['TextPayload'],$elements['DestinationName'],$this->instance);
+              }
+            }
+          }
+        }
+      } // end handlePackets()
 }
 
 class SAPO_Broker_Parser_DOM extends SAPO_Broker_Parser {
 
     var $debug;
     
-    function SAPO_Broker_Parser_DOM ($debug = false)
+    function SAPO_Broker_Parser_DOM ($debug = false,$instance)
     {
         $this->debug = $debug;
+        $this->instance = $instance;
     }
 
     function worldmapPush($file) {
@@ -781,11 +664,13 @@ class SAPO_Broker_Parser_DOM extends SAPO_Broker_Parser {
         // Obtain the node lists, with or without namespaces.
         //
         if (!empty($namespace)) {
-            $nodeLists['DestinationName'] = $dom->getElementsByTagNameNS($namespace, 'DestinationName');
-            $nodeLists['TextPayload'] = $dom->getElementsByTagNameNS($namespace, 'TextPayload');
+            foreach($this->pelements as $eln) {
+              $nodeLists[$eln] = $dom->getElementsByTagNameNS($namespace, $eln);
+            }
         } else {
-            $nodeLists['DestinationName'] = $dom->getElementsByTagName('DestinationName');
-            $nodeLists['TextPayload'] = $dom->getElementsByTagName('TextPayload');
+            foreach($this->pelements as $eln) {
+              $nodeLists[$eln] = $dom->getElementsByTagName($eln);
+            }
         }
 
         //
