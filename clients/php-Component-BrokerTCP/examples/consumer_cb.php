@@ -26,7 +26,10 @@ function periodicCalls2() {
   echo "Look mom, I'm here as well\n";
   }
 
-function processTopic1($payload) {
+function processTopic1($payload,$topic,$net) {
+  echo "latest_status_timestamp_sent: ".$net->latest_status_timestamp_sent."\n";
+  echo "latest_status_timestamp_received: ".$net->latest_status_timestamp_received."\n";
+  echo "latest_status_message: ".$net->latest_status_message."\n";
   echo "processTopic1() just got ".$payload."\n";
   }
 
