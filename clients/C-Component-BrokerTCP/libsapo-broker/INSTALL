@@ -1,0 +1,7 @@
+Instructions for building from source:
+
+run:
+$ make -f Makefile.cvs
+$ ./configure 
+$ make
+# make install
