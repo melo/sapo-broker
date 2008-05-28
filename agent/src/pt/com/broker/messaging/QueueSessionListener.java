@@ -1,8 +1,6 @@
 package pt.com.broker.messaging;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteFuture;
@@ -21,7 +19,7 @@ public class QueueSessionListener extends BrokerListener
 
 	private static final Logger log = LoggerFactory.getLogger(QueueSessionListener.class);
 
-	private final List<IoSession> _sessions = new ArrayList<IoSession>();
+	private final CopyOnWriteArrayList<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
 
 	private final String _dname;
 
@@ -41,50 +39,54 @@ public class QueueSessionListener extends BrokerListener
 		if (msg == null)
 			return true;
 
-		int retryCount = 0;
 		final IoSession ioSession = pick();
 
-		while (retryCount < 5)
+		try
 		{
-			try
+			if (ioSession != null)
 			{
-				if (ioSession != null)
+				if (ioSession.isConnected() && !ioSession.isClosing())
 				{
-					if (ioSession.isConnected() && !ioSession.isClosing())
+					final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
+
+					WriteFuture wf = ioSession.write(response).awaitUninterruptibly();
+
+					if (wf.isWritten())
 					{
-						final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
-						WriteFuture future = ioSession.write(response);
-						future.awaitUninterruptibly(15000, TimeUnit.MILLISECONDS);
-
-						if (future.isWritten())
+						if (log.isDebugEnabled())
 						{
-							if (log.isDebugEnabled())
-							{
-								log.debug("Delivered message: {}", msg.getMessageId());
-							}
-
-							return true;
+							log.debug("Delivered message: {}", msg.getMessageId());
 						}
+						return true;
 					}
 					else
 					{
-						removeConsumer(ioSession);
+						if (log.isDebugEnabled())
+						{
+							log.debug("Message could not be delivered: {}", msg.getMessageId());
+						}
+						return false;
 					}
+
 				}
-			}
-			catch (Throwable e)
-			{
-				try
+				else
 				{
-					(ioSession.getHandler()).exceptionCaught(ioSession, e);
 					removeConsumer(ioSession);
 				}
-				catch (Throwable t)
-				{
-					log.error(t.getMessage(), t);
-				}
 			}
-			retryCount++;
+		}
+		catch (Throwable e)
+		{
+
+			try
+			{
+				(ioSession.getHandler()).exceptionCaught(ioSession, e);
+				removeConsumer(ioSession);
+			}
+			catch (Throwable t)
+			{
+				log.error(t.getMessage(), t);
+			}
 		}
 
 		return false;
@@ -117,18 +119,15 @@ public class QueueSessionListener extends BrokerListener
 				return _sessions.get(currentQEP);
 			}
 		}
+
 	}
 
 	public void addConsumer(IoSession iosession)
 	{
-		synchronized (_sessions)
+		if (_sessions.addIfAbsent(iosession))
 		{
-			if (!_sessions.contains(iosession))
-			{
-				_sessions.add(iosession);
-				log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
-			}
-		}		
+			log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+		}
 	}
 
 	public void removeConsumer(IoSession iosession)
@@ -138,19 +137,11 @@ public class QueueSessionListener extends BrokerListener
 			if (_sessions.remove(iosession))
 				log.info("Remove message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 
-			if (_sessions.size() == 0)
+			if (_sessions.isEmpty())
 			{
 				Gcs.removeAsyncConsumer(this);
 				QueueSessionListenerList.removeValue(this);
 			}
-		}
-	}
-
-	public synchronized int size()
-	{
-		synchronized (_sessions)
-		{
-			return _sessions.size();
 		}
 	}
 
