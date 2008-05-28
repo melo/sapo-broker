@@ -96,11 +96,15 @@ public class ErrorHandler extends ExceptionMonitor
 	private static void exitIfUlimit(Throwable t)
 	{
 		String ul_error = "Too many open files".toLowerCase();
-		String emsg = t.getMessage().toLowerCase();
-		if (emsg.contains(ul_error))
+		if (t.getMessage()!=null)
 		{
-			Shutdown.now();
+			String emsg = t.getMessage().toLowerCase();
+			if (emsg.contains(ul_error))
+			{
+				Shutdown.now();
+			}
 		}
+
 	}
 	
 	private static void exitIfCritical(Throwable cause)
