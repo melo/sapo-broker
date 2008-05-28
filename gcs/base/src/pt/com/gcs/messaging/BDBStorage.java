@@ -175,12 +175,13 @@ class BDBStorage
 
 			while (msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS)
 			{
-				String msgId = StringBinding.entryToString(key);
+				byte[] bdata = data.getData();
+				BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
+				final Message msg = bdbm.getMessage();
+				
+				String msgId = msg.getMessageId();
 				if (!queueProcessor.getReservedMessages().contains(msgId))
 				{
-					byte[] bdata = data.getData();
-					BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
-					final Message msg = bdbm.getMessage();
 					queueProcessor.getReservedMessages().add(msgId);
 					return msg;
 				}
