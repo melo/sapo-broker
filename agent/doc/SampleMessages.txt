@@ -10,7 +10,6 @@
 			<Notify>
 				<DestinationName>SampleTopic1</DestinationName> <!-- elemento obrigatório -->
 				<DestinationType>TOPIC</DestinationType> <!-- elemento obrigatório -->
-				<AcknowledgeMode>AUTO</AcknowledgeMode> <!-- elemento opcional -->
 			</Notify>
 		</soap:Body>
 	</soap:Envelope>
@@ -29,7 +28,6 @@
 		<soap:Body>
 			<Publish xmlns="http://services.sapo.pt/broker">
 				<BrokerMessage>
-					<DeliveryMode>TRANSIENT</DeliveryMode> <!-- elemento opcional -->
 					<Priority>1</Priority> <!-- elemento opcional -->
 					<MessageId>4e982250-239c-4e25-b177-11774e8090a7</MessageId> <!-- elemento opcional -->
 					<CorrelationId>618457ff-35e6-4230-abaf-dc5a83655103</CorrelationId> <!-- elemento opcional -->
@@ -57,7 +55,6 @@
 		<soap:Body>
 			<mq:Notification>
 				<mq:BrokerMessage>
-					<mq:DeliveryMode>PERSISTENT</mq:DeliveryMode>
 					<mq:Priority>4</mq:Priority>
 					<mq:MessageId>ID:1276859168</mq:MessageId>
 					<mq:Timestamp/>
@@ -70,26 +67,11 @@
 	</soap:Envelope>
 	
 	<!--  Mensagens POINT TO POINT  -->
+
 	
-	<!-- 
-	Retirar mensagem de uma Queue
-	Parâmetros:
-	DestinationName -> Nome da Queue,
-	timeOut -> Timeout em ms. Tempo que o método está bloqueado á espera de uma mensagem, 0 <=> "for ever", (default=0)
-	-->
-	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
-		<soap:Body>
-			<Denqueue xmlns="http://services.sapo.pt/broker">
-				<DestinationName>SampleQueue1</DestinationName> <!-- elemento obrigatório -->
-				<TimeOut>100</TimeOut> <!-- elemento opcional -->
-			</Denqueue>
-		</soap:Body>
-	</soap:Envelope>
-	
-	<!-- Colocar mensagem numa Queue 
-	Parâmetros interessantes:
+	<!--
+	Colocar mensagem numa Queue:
 	DestinationName -> Nome da Queue
-	DeliveryMode -> As mensagens para uma Queue são sempre persistentes.
 	Priority -> 0 prioridade mínima até 9 prioridade máxima (default=4)
 	MessageId -> identificador único da mensagem. Opcional, se não for indicado é atribuído um aleatório.
 	CorrelationId -> identicador único que indica a que pedido corresponde a resposta. Útil num padrão de troca de mensagens Request/Reply.
@@ -100,7 +82,6 @@
 		<soap:Body>
 			<Enqueue xmlns="http://services.sapo.pt/broker">
 				<BrokerMessage>
-					<DeliveryMode>PERSISTENT</DeliveryMode> <!-- elemento opcional -->
 					<Priority>1</Priority> <!-- elemento opcional -->
 					<MessageId>4e982250-239c-4e25-b177-11774e8090a7</MessageId> <!-- elemento opcional -->
 					<CorrelationId>618457ff-35e6-4230-abaf-dc5a83655103</CorrelationId> <!-- elemento opcional -->
@@ -112,3 +93,73 @@
 			</Enqueue>
 		</soap:Body>
 	</soap:Envelope>
+
+
+	<!-- 
+		Pedido de Polling:
+		DestinationName -> Nome da Queue
+	-->
+	<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
+		<soap:Body>
+			<mq:Poll>
+				<mq:DestinationName>SampleQueue1</mq:DestinationName>
+			</mq:Poll>
+		</soap:Body>
+	</soap:Envelope>
+
+	<!-- 
+		Enviar um Acknowledge:
+		DestinationName -> Nome da Queue
+		MessageId -> identificador único da mensagem. Opcional, se não for indicado é atribuído um aleatório.
+	-->
+	<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
+		<soap:Body>
+			<mq:Acknowledge>
+				<mq:DestinationName>SampleQueue1</mq:DestinationName>
+				<mq:MessageId>4e982250-239c-4e25-b177-11774e8090a7</mq:MessageId>
+			</mq:Acknowledge>
+		</soap:Body>
+	</soap:Envelope>
+
+	<!-- 
+		Verificar o estado do agente (pode servir também para heartbeat)
+	-->
+	<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
+		<soap:Body>
+			<mq:CheckStatus />
+		</soap:Body>
+	</soap:Envelope>
+
+
+	<!-- 
+		Resposta do pedido de estado
+	-->
+	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:mq="http://services.sapo.pt/broker">
+		<soap:Header/>
+		<soap:Body>
+			<mq:Status>
+				<mq:Message>Agent 'peer1' is alive</mq:Message>
+				<mq:Timestamp>2008-04-21T10:08:00.478Z</mq:Timestamp>
+			</mq:Status>
+		</soap:Body>
+	</soap:Envelope>
+
+	<!-- 
+		Mensagem de erro enviado pelo broker
+	-->
+	<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:mq="http://services.sapo.pt/broker">
+		<soap:Header/>
+		<soap:Body>
+			<soap:Fault>
+				<soap:Code>
+					<soap:Value>soap:Sender</soap:Value>
+				</soap:Code>
+				<soap:Reason>
+					<soap:Text>'@' character not allowed in TOPIC name</soap:Text>
+				</soap:Reason>
+				<soap:Detail>java.lang.IllegalArgumentException: '@' character not allowed in TOPIC name
+				</soap:Detail>
+			</soap:Fault>
+		</soap:Body>
+	</soap:Envelope>
+
