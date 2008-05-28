@@ -2,7 +2,6 @@ package pt.com.gcs.messaging;
 
 import org.caudexorigo.concurrent.Sleep;
 
-
 class QueueAwaker implements Runnable
 {
 	@Override

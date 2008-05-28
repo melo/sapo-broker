@@ -13,9 +13,9 @@ class QueueCounter implements Runnable
 	public void run()
 	{
 		Collection<QueueProcessor> qpl = QueueProcessorList.values();
-		
+
 		log.debug("Number of registered Queues: {}", qpl.size());
-		
+
 		for (QueueProcessor qp : qpl)
 		{
 			long cnt = qp.getQueuedMessagesCount();

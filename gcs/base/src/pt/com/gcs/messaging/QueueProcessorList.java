@@ -10,14 +10,9 @@ import org.slf4j.LoggerFactory;
 public class QueueProcessorList
 {
 
+	private static final QueueProcessorList instance = new QueueProcessorList();
+
 	private static final Logger log = LoggerFactory.getLogger(QueueProcessorList.class);
-
-	// key: destinationName
-	private static final Cache<String, QueueProcessor> qpCache = new Cache<String, QueueProcessor>();
-
-	private QueueProcessorList()
-	{
-	}
 
 	private static final CacheFiller<String, QueueProcessor> qp_cf = new CacheFiller<String, QueueProcessor>()
 	{
@@ -26,7 +21,6 @@ public class QueueProcessorList
 			try
 			{
 				log.debug("Populate QueueProcessorList");
-				
 				QueueProcessor qp = new QueueProcessor(destinationName);
 				return qp;
 			}
@@ -39,8 +33,45 @@ public class QueueProcessorList
 
 	public static QueueProcessor get(String destinationName)
 	{
+		return instance.i_get(destinationName);
+	}
+
+	public static void remove(String queueName)
+	{
+		instance.i_remove(queueName);
+	}
+
+	public static void removeValue(QueueProcessor value)
+	{
+		instance.i_removeValue(value);
+	}
+
+	public static int size()
+	{
+		return instance.i_size();
+	}
+
+	public static int size(String destinationName)
+	{
+		return get(destinationName).size();
+	}
+
+	public static Collection<QueueProcessor> values()
+	{
+		return instance.i_values();
+	}
+
+	// key: destinationName
+	private Cache<String, QueueProcessor> qpCache = new Cache<String, QueueProcessor>();
+
+	private QueueProcessorList()
+	{
+	}
+
+	private QueueProcessor i_get(String destinationName)
+	{
 		log.debug("Get Queue for: {}", destinationName);
-		
+
 		try
 		{
 			return qpCache.get(destinationName, qp_cf);
@@ -52,7 +83,29 @@ public class QueueProcessorList
 		}
 	}
 
-	public static void removeValue(QueueProcessor value)
+	private void i_remove(String queueName)
+	{
+		try
+		{
+			synchronized (qpCache)
+			{
+				QueueProcessor qp = get(queueName);
+				qpCache.remove(queueName);
+				LocalQueueConsumers.delete(queueName);
+				RemoteQueueConsumers.delete(queueName);
+				qp.clearStorage();
+				DispatcherList.removeDispatcher(queueName);
+				log.info("Destination '{}' was deleted", queueName);
+			}
+		}
+		catch (InterruptedException ie)
+		{
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(ie);
+		}
+	}
+
+	private void i_removeValue(QueueProcessor value)
 	{
 		try
 		{
@@ -64,36 +117,13 @@ public class QueueProcessorList
 			throw new RuntimeException(ie);
 		}
 	}
-	
-	public static void remove(String queueName)
-	{
-		try
-		{
-			qpCache.remove(queueName);
-			LocalQueueConsumers.delete(queueName);
-			RemoteQueueConsumers.delete(queueName);			
-			DbStorage.deleteQueue(queueName);
-			DispatcherList.removeDispatcher(queueName);
-			log.info("Destination '{}' was deleted", queueName);
-		}
-		catch (InterruptedException ie)
-		{
-			Thread.currentThread().interrupt();
-			throw new RuntimeException(ie);
-		}
-	}
-	
-	public static int size()
+
+	private int i_size()
 	{
 		return qpCache.size();
 	}
-	
-	public static int size(String destinationName)
-	{
-		return get(destinationName).size();
-	}
-	
-	public static Collection<QueueProcessor> values()
+
+	private Collection<QueueProcessor> i_values()
 	{
 		try
 		{

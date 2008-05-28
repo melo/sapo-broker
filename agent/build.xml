@@ -18,6 +18,7 @@
 		<pathelement location="${sapo-broker.location}/../common-libs/slf4j-api-1.5.0.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/org.caudexorigo.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/mina2-snapshot.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/je-3.2.76.jar"/>
 	</path>
 
 
@@ -63,7 +64,7 @@
 		
 		<copy file="${gcs_src}/pt/com/gcs/conf/GcsInfo.java" tofile="${gcs_src}/pt/com/gcs/conf/GcsInfo.bak" overwrite="true"/>
 		<replace file="${gcs_src}/pt/com/gcs/conf/GcsInfo.java" token="@gcsversion@" value="${DSTAMP}${TSTAMP}"/>
-		<javac destdir="${gcs}" encoding="UTF-8">
+		<javac destdir="${gcs}" encoding="UTF-8" debug="on" debuglevel="lines,vars,source" source="1.5">
 			<src path="${gcs_src}" />
 			<classpath refid="project.classpath" />
 		</javac>
@@ -74,7 +75,7 @@
 		
 		<copy file="src/pt/com/broker/core/BrokerInfo.java" tofile="src/pt/com/broker/core/BrokerInfo.bak" overwrite="true"/>
 		<replace file="src/pt/com/broker/core/BrokerInfo.java" token="@brokerversion@" value="${DSTAMP}${TSTAMP}"/>
-		<javac destdir="bin" encoding="UTF-8" debug="true" debuglevel="lines,vars,source">
+		<javac destdir="bin" encoding="UTF-8" debug="on" debuglevel="lines,vars,source" source="1.5">
 			<src path="src" />
 			<classpath refid="project.classpath" />
 		</javac>

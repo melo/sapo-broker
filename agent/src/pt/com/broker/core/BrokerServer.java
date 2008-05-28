@@ -25,7 +25,7 @@ public class BrokerServer
 
 	private int _portNumber;
 
-	private static final int MAX_BUFFER_SIZE = 8 * 1024 * 1024;
+	private static final int MAX_BUFFER_SIZE = 16 * 1024 * 1024;
 
 	private static final int NCPU = Runtime.getRuntime().availableProcessors();
 
@@ -38,13 +38,17 @@ public class BrokerServer
 	{
 		try
 		{
-			log.info("SAPO-BROKER starting.");
+			log.info("SAPO-BROKER starting - Version: {}", BrokerInfo.VERSION);
 
 			Gcs.init();
-			SocketAcceptor acceptor = new NioSocketAcceptor(NCPU);
+			final SocketAcceptor acceptor = new NioSocketAcceptor(NCPU);
 
 			acceptor.setReuseAddress(true);
 			((SocketSessionConfig) acceptor.getSessionConfig()).setReuseAddress(true);
+			((SocketSessionConfig) acceptor.getSessionConfig()).setTcpNoDelay(false);
+			((SocketSessionConfig) acceptor.getSessionConfig()).setKeepAlive(true);
+			((SocketSessionConfig) acceptor.getSessionConfig()).setWriteTimeout(1);
+			
 
 			DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 			filterChainBuilder.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
@@ -55,6 +59,7 @@ public class BrokerServer
 			// Bind
 			acceptor.bind(new InetSocketAddress(_portNumber));
 			log.info("SAPO-BROKER Listening on: '{}'.", acceptor.getLocalAddress());
+
 		}
 		catch (Throwable e)
 		{

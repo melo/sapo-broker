@@ -16,29 +16,39 @@ public class QueueProcessor
 
 	private final String _destinationName;
 
-	private final AtomicLong _sequence = new AtomicLong(0L);
+	private final AtomicLong _sequence;
 
 	private final AtomicBoolean isWorking = new AtomicBoolean(false);
 
 	private final AtomicLong _deliverSequence = new AtomicLong(0L);
 
-	private final AtomicLong _counter;
-
-	private final AtomicInteger _skippedWakeups = new AtomicInteger(0);
-
 	protected final AtomicBoolean emptyQueueInfoDisplay = new AtomicBoolean(false);
 
-	private final Set<String> msgsAwaitingAck = new ConcurrentHashSet<String>();
-
 	private final Set<String> reservedMessages = new ConcurrentHashSet<String>();
+
+	private final BDBStorage storage;
+
+	protected AtomicInteger batchCount = new AtomicInteger(0);
 
 	protected QueueProcessor(String destinationName)
 	{
 		_destinationName = destinationName;
-		_counter = new AtomicLong(DbStorage.count(destinationName));
+
 		reservedMessages.add(UUID.randomUUID().toString());
+
+		storage = new BDBStorage(this);
+
+		if (storage.count() == 0)
+		{
+			_sequence = new AtomicLong(0L);
+		}
+		else
+		{
+			_sequence = new AtomicLong(storage.getLastSequenceValue());
+		}
+
 		log.info("Create Queue Processor for '{}'.", _destinationName);
-		log.info("Queue '{}' has {} message(s).", destinationName, _counter.get());
+		log.info("Queue '{}' has {} message(s).", destinationName, getQueuedMessagesCount());
 	}
 
 	protected void ack(final String msgId)
@@ -47,21 +57,15 @@ public class QueueProcessor
 		{
 			log.debug("Ack message . MsgId: '{}'.", msgId);
 		}
-
-		if (DbStorage.deleteMessage(msgId, _destinationName))
-		{
-			decrementMsgCounter();
-		}
-
-		msgsAwaitingAck.remove(msgId);
+		storage.deleteMessage(msgId);
 		reservedMessages.remove(msgId);
-
 	}
 
 	protected final void wakeup()
 	{
 		if (isWorking.getAndSet(true))
 		{
+			log.debug("Queue '{}' is running, skip wakeup", _destinationName);
 			return;
 		}
 		long cnt = getQueuedMessagesCount();
@@ -71,44 +75,22 @@ public class QueueProcessor
 
 			if (hasRecipient())
 			{
-				log.debug("Wakeup queue '{}'", _destinationName);
 				try
 				{
-					int ackWaitListSize = ackWaitListSize();
-
-					if (ackWaitListSize > 0)
-					{
-						if (_skippedWakeups.incrementAndGet() < 10)
-						{
-							log.warn("Processing for queue '{}' was skipped. There are '{}' message(s) waiting for ACK.", _destinationName, ackWaitListSize);
-							isWorking.set(false);
-							return;
-						}
-						else
-						{
-							log.error("The maximum amount of skipped wakeups was reached. There are '{}' message(s) waiting for ACK, but the processing for queue '{}' must proceed.", ackWaitListSize, _destinationName);
-							msgsAwaitingAck.clear();
-						}
-					}
-					_skippedWakeups.set(0);
-					DbStorage.recoverMessages(this);
+					log.debug("Wakeup queue '{}'", _destinationName);
+					storage.recoverMessages();
 				}
 				catch (Throwable t)
 				{
 					throw new RuntimeException(t);
 				}
 			}
-		}
-		else if (cnt < 0)
-		{
-			log.warn("Queue '{}' as an invalid message count: {}. Will try to fix", getDestinationName(), cnt);
-
-			synchronized (_counter)
+			else
 			{
-				_counter.set(DbStorage.count(getDestinationName()));
+				log.debug("Queue '{}' does not have asynchronous consumers", _destinationName);
 			}
-			log.info("Queue '{}' has {} message(s).", getDestinationName(), cnt);
 		}
+
 		isWorking.set(false);
 	}
 
@@ -120,7 +102,6 @@ public class QueueProcessor
 		int size = lqsize + rqsize;
 
 		boolean isDelivered = false;
-		putInAckWaitList(message.getMessageId());
 
 		if (size == 0)
 		{
@@ -150,10 +131,6 @@ public class QueueProcessor
 			}
 		}
 
-		if (!isDelivered)
-		{
-			msgsAwaitingAck.remove(message.getMessageId());
-		}
 		return isDelivered;
 	}
 
@@ -175,23 +152,12 @@ public class QueueProcessor
 		try
 		{
 			long seq_nr = _sequence.incrementAndGet();
-			DbStorage.insert(msg, seq_nr, 0, localConsumersOnly);
-			incrementMsgCounter();
+			storage.insert(msg, seq_nr, 0, localConsumersOnly);
 		}
 		catch (Throwable t)
 		{
 			throw new RuntimeException(t);
 		}
-	}
-
-	protected void putInAckWaitList(String messageId)
-	{
-		msgsAwaitingAck.add(messageId);
-	}
-
-	protected Set<String> getAckWaitList()
-	{
-		return msgsAwaitingAck;
 	}
 
 	protected Set<String> getReservedMessages()
@@ -204,24 +170,9 @@ public class QueueProcessor
 		reservedMessages.remove(messageId);
 	}
 
-	protected int ackWaitListSize()
-	{
-		return msgsAwaitingAck.size();
-	}
-
 	public long getQueuedMessagesCount()
 	{
-		return _counter.get();
-	}
-
-	protected void incrementMsgCounter()
-	{
-		_counter.incrementAndGet();
-	}
-
-	protected void decrementMsgCounter()
-	{
-		_counter.decrementAndGet();
+		return storage.count();
 	}
 
 	protected String getDestinationName()
@@ -234,11 +185,6 @@ public class QueueProcessor
 		return RemoteQueueConsumers.size(_destinationName) + LocalQueueConsumers.size(_destinationName);
 	}
 
-	protected void incrementDeliveryCount(String msg_id)
-	{
-		DbStorage.incrementDeliveryCount(msg_id, _destinationName);
-	}
-
 	protected Message poll()
 	{
 		int lqsize = LocalQueueConsumers.size(_destinationName);
@@ -246,7 +192,12 @@ public class QueueProcessor
 		{
 			throw new IllegalStateException("An async consumer already exists, it's not possible to mix sync and async consumers for the same Queue on the same peer.");
 		}
-		return DbStorage.poll(this);
+		return storage.poll();
+	}
+
+	public synchronized void clearStorage()
+	{
+		storage.deleteQueue();
 	}
 
 }

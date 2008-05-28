@@ -67,7 +67,7 @@ public class Gcs
 	{
 		String message = "Connecting to '{}'.";
 		log.info(message, address.toString());
-		
+
 		ConnectFuture cf = instance.connector.connect(address).awaitUninterruptibly();
 
 		if (!cf.isConnected())
@@ -95,14 +95,14 @@ public class Gcs
 	{
 		return WorldMap.getPeerList();
 	}
-	
+
 	public static void init()
 	{
 		instance.iinit();
 	}
 
 	public static Message poll(final String queueName)
-	{	
+	{
 		return instance.ipoll(queueName);
 	}
 
@@ -110,7 +110,7 @@ public class Gcs
 	{
 		instance.ipublish(message);
 	}
-	
+
 	public static void releaseMessage(String queueName, String messageId)
 	{
 		QueueProcessorList.get(queueName).removeFromReservedMessages(messageId);
@@ -146,9 +146,27 @@ public class Gcs
 			startAcceptor(GcsInfo.getAgentPort());
 			startConnector();
 
-			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 2500, 2500, TimeUnit.MILLISECONDS);
+			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 1500, 1500, TimeUnit.MILLISECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new QueueCounter(), 20, 20, TimeUnit.SECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 120, 120, TimeUnit.SECONDS);
+
+			Thread sync_hook = new Thread()
+			{
+				public void run()
+				{
+					try
+					{
+						log.info("Flush buffers");
+						BDBEnviroment.sync();
+					}
+					catch (Throwable te)
+					{
+						log.error(te.getMessage(), te);
+					}
+				}
+			};
+
+			Runtime.getRuntime().addShutdownHook(sync_hook);
 		}
 		catch (Throwable t)
 		{
@@ -169,12 +187,12 @@ public class Gcs
 			connect(addr);
 		}
 	}
-	
+
 	private void iackMessage(String queueName, final String msgId)
 	{
 		QueueProcessorList.get(queueName).ack(msgId);
 	}
-	
+
 	private void iaddQueueConsumer(String queueName, MessageListener listener)
 	{
 		QueueProcessorList.get(queueName);
@@ -188,7 +206,7 @@ public class Gcs
 		{
 			LocalQueueConsumers.add(queueName, listener);
 		}
-	}	
+	}
 
 	private void iaddTopicConsumer(String topicName, MessageListener listener)
 	{
@@ -205,16 +223,16 @@ public class Gcs
 
 	private void iinit()
 	{
-		String[] virtual_queues = DbStorage.getVirtualQueuesNames();
+		String[] virtual_queues = VirtualQueueStorage.getQueuesNames();
 
 		for (String vqueue : virtual_queues)
 		{
 			log.debug("Add VirtualQueue '{}' from storage", vqueue);
 			iaddQueueConsumer(vqueue, null);
 		}
-		
+
 		connectToAllPeers();
-		
+
 		log.info("{} initialized.", SERVICE_NAME);
 	}
 
@@ -230,7 +248,7 @@ public class Gcs
 		LocalTopicConsumers.notify(message);
 		RemoteTopicConsumers.notify(message);
 	}
-	
+
 	private void startAcceptor(int portNumber) throws IOException
 	{
 		acceptor = new NioSocketAcceptor(IO_THREADS);
@@ -248,7 +266,7 @@ public class Gcs
 		// Add CPU-bound job first,
 		filterChainBuilder.addLast("GCS_CODEC", new ProtocolCodecFilter(new GcsCodec()));
 		// and then a thread pool.
-		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor( 0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
+		filterChainBuilder.addLast("executor", new ExecutorFilter(new OrderedThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS, new IoEventQueueThrottle())));
 
 		acceptor.setHandler(new GcsAcceptorProtocolHandler());
 
@@ -258,7 +276,7 @@ public class Gcs
 		String localAddr = acceptor.getLocalAddress().toString();
 		log.info("{} listening on: '{}'.", SERVICE_NAME, localAddr);
 	}
-	
+
 	private void startConnector()
 	{
 		connector = new NioSocketConnector(IO_THREADS);

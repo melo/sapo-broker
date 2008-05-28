@@ -6,7 +6,6 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class DispatcherList
 {
 
@@ -30,7 +29,7 @@ public class DispatcherList
 				TopicToQueueDispatcher qp = new TopicToQueueDispatcher(queueName);
 				String topicName = StringUtils.substringAfter(queueName, "@");
 				LocalTopicConsumers.add(topicName, qp, false);
-				DbStorage.saveVirtualQueue(queueName);
+				VirtualQueueStorage.saveVirtualQueue(queueName);
 				return qp;
 			}
 			catch (Throwable e)
@@ -42,7 +41,7 @@ public class DispatcherList
 
 	public static void create(String queueName)
 	{
-		log.debug("Get Dispatcher for: {}", queueName);
+		log.info("Get Dispatcher for: {}", queueName);
 
 		try
 		{
@@ -54,22 +53,18 @@ public class DispatcherList
 			throw new RuntimeException(ie);
 		}
 	}
-	
-	
-	
-
 
 	public static void removeDispatcher(String queueName)
 	{
 		try
-		{			
+		{
 			if (_dCache.containsKey(queueName))
 			{
 				TopicToQueueDispatcher listener = _dCache.get(queueName, qp_cf);
 				_dCache.remove(queueName);
 				Gcs.removeAsyncConsumer(listener);
 			}
-			DbStorage.deleteVirtualQueue(queueName);
+			VirtualQueueStorage.deleteVirtualQueue(queueName);
 		}
 		catch (InterruptedException ie)
 		{
