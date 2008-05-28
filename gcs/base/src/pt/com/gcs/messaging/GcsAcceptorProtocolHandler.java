@@ -63,12 +63,12 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 		else if ((msg.getType() == MessageType.SYSTEM_TOPIC) || (msg.getType() == MessageType.SYSTEM_QUEUE))
 		{
 			String payload = msg.getContent();
-			
+
 			final String action = extract(payload, "<action>", "</action>");
-//			final String src_name = extract(payload, "<source-name>", "</source-name>");
-//			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
+			// final String src_name = extract(payload, "<source-name>", "</source-name>");
+			// final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
 			final String destinationName = extract(payload, "<destination>", "</destination>");
-			
+
 			log.info("Action: '{}' Consumer. Destination: '{}'", action, destinationName);
 
 			if (msg.getType() == MessageType.SYSTEM_TOPIC)
@@ -91,7 +91,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 					{
 						DispatcherList.create(msg.getDestination());
 					}
-					
+
 					RemoteQueueConsumers.add(msg.getDestination(), iosession);
 					QueueProcessorList.get(destinationName);
 				}
@@ -131,7 +131,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 		if (log.isDebugEnabled())
 		{
 			log.debug("Session Created: '{}'", IoSessionHelper.getRemoteAddress(iosession));
-		}	
+		}
 	}
 
 	@Override
@@ -173,7 +173,6 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 
 		iosession.setAttribute("GcsAcceptorProtocolHandler.ISVALID", false);
 	}
-
 
 	private String extract(String ins, String prefix, String sufix)
 	{

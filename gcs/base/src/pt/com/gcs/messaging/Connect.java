@@ -2,7 +2,6 @@ package pt.com.gcs.messaging;
 
 import java.net.SocketAddress;
 
-
 public class Connect implements Runnable
 {
 	private SocketAddress _address;

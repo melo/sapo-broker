@@ -18,14 +18,15 @@ public class WorldMapMonitor implements Runnable
 	public void run()
 	{
 		log.debug("Checking world map file for modifications.");
-		
+
 		String worldMapPath = GcsInfo.getWorldMapPath();
 		File worldMapFile = new File(worldMapPath);
-		
-		if (worldMapFile.lastModified()!=WorldMap.lastModified())
+
+		if (worldMapFile.lastModified() != WorldMap.lastModified())
 		{
-			// Temporary "solution". The agent will be restarted by external monitoring services (e.g.: supervise)
-			
+			// Temporary "solution". The agent will be restarted by external
+			// monitoring services (e.g.: supervise)
+
 			log.warn("WorlMap has changed. The agent will restart");
 			Shutdown.now();
 		}

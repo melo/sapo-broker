@@ -22,7 +22,7 @@ public class IoSessionHelper
 		}
 		return remoteClient;
 	}
-	
+
 	public static SocketAddress getRemoteInetAddress(IoSession iosession)
 	{
 		SocketAddress remoteClient;

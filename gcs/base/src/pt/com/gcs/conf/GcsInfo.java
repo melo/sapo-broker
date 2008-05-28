@@ -12,12 +12,11 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class GcsInfo
 {
 	private static Logger log = LoggerFactory.getLogger(GcsInfo.class);
 
-	public static final String VERSION = "@gcsversion@";
+	public static final String VERSION = "200805261343";
 
 	private static final GcsInfo instance = new GcsInfo();
 
@@ -122,23 +121,23 @@ public class GcsInfo
 		int iprop = instance.conf.getNet().getBrokerHttpPort();
 		return iprop;
 	}
-	
+
 	public static int getBrokerPort()
 	{
 		int iprop = instance.conf.getNet().getBrokerPort();
 		return iprop;
 	}
-	
+
 	public static boolean isDropboxEnabled()
 	{
 		return instance.conf.getMessaging().getDropbox().isEnabled();
 	}
-	
+
 	public static String getDropBoxDir()
 	{
 		return instance.conf.getMessaging().getDropbox().getDir();
 	}
-	
+
 	public static int getDropBoxCheckInterval()
 	{
 		return instance.conf.getMessaging().getDropbox().getCheckInterval();

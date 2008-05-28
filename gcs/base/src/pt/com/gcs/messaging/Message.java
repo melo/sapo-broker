@@ -65,7 +65,7 @@ public class Message implements Externalizable
 	{
 		checkArg(id);
 		checkArg(destination);
-		checkArg(content);		
+		checkArg(content);
 		_id = id;
 		_destination = destination;
 		_content = content;

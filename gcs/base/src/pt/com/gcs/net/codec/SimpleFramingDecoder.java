@@ -68,13 +68,14 @@ public abstract class SimpleFramingDecoder extends CumulativeProtocolDecoder
 
 			// We have the all message body, unmarshal the gathered bytes and
 			// forward the message.
-//			System.out.println("SimpleFramingDecoder.doDecode().start: " + start);
-//
-//			out.write(processBody(in.position(start + HEADER_LENGTH)));
+			// System.out.println("SimpleFramingDecoder.doDecode().start: " +
+			// start);
+			//
+			// out.write(processBody(in.position(start + HEADER_LENGTH)));
 
-			 byte[] packet = new byte[msize];
-			 in.get(packet);
-			 out.write(processBody(packet));
+			byte[] packet = new byte[msize];
+			in.get(packet);
+			out.write(processBody(packet));
 
 			return true;
 

@@ -42,13 +42,13 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 
 		if (msg.getType() == (MessageType.COM_TOPIC))
 		{
-			LocalTopicConsumers.notify(msg);		
-			
+			LocalTopicConsumers.notify(msg);
+
 		}
 		else if (msg.getType() == (MessageType.COM_QUEUE))
 		{
 			QueueProcessorList.get(msg.getDestination()).store(msg, true);
-			LocalQueueConsumers.acknowledgeMessage(msg, iosession);			
+			LocalQueueConsumers.acknowledgeMessage(msg, iosession);
 		}
 		else
 		{
@@ -68,7 +68,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 	@Override
 	public void sessionClosed(final IoSession iosession) throws Exception
 	{
-		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(iosession));	
+		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(iosession));
 		GcsExecutor.schedule(new Connect((SocketAddress) IoSessionHelper.getRemoteInetAddress(iosession)), 5000, TimeUnit.MILLISECONDS);
 	}
 
@@ -79,7 +79,7 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		if (log.isDebugEnabled())
 		{
 			log.debug("Session Created: '{}'", IoSessionHelper.getRemoteAddress(iosession));
-		}		
+		}
 	}
 
 	@Override

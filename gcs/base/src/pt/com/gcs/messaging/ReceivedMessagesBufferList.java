@@ -24,7 +24,7 @@ public class ReceivedMessagesBufferList
 			try
 			{
 				log.debug("Populate ReceivedMessagesBufferList");
-				
+
 				ReceivedMessagesBuffer qp = new ReceivedMessagesBuffer();
 				return qp;
 			}
@@ -38,7 +38,7 @@ public class ReceivedMessagesBufferList
 	public static ReceivedMessagesBuffer get(String destinationName)
 	{
 		log.debug("Get ReceivedMessagesBuffer for: {}", destinationName);
-		
+
 		try
 		{
 			return qpCache.get(destinationName, qp_cf);
@@ -62,7 +62,7 @@ public class ReceivedMessagesBufferList
 			throw new RuntimeException(ie);
 		}
 	}
-	
+
 	public static int size()
 	{
 		return qpCache.size();

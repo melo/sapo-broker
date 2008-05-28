@@ -16,7 +16,7 @@ public class GcsExecutor
 
 	private GcsExecutor()
 	{
-		exec_srv = CustomExecutors.newThreadPool(16 , "GCS-Async");
+		exec_srv = CustomExecutors.newThreadPool(16, "GCS-Async");
 
 		shed_exec_srv = CustomExecutors.newScheduledThreadPool(10, "GCS-Sched");
 	}

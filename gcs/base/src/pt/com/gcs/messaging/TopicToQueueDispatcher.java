@@ -1,6 +1,5 @@
 package pt.com.gcs.messaging;
 
-
 class TopicToQueueDispatcher implements MessageListener
 {
 
@@ -10,7 +9,7 @@ class TopicToQueueDispatcher implements MessageListener
 	{
 		_queueName = queueName;
 	}
-	
+
 	@Override
 	public DestinationType getDestinationType()
 	{
@@ -23,7 +22,7 @@ class TopicToQueueDispatcher implements MessageListener
 		Gcs.enqueue(message);
 		return true;
 	}
-	
+
 	public String getDestinationName()
 	{
 		return _queueName;

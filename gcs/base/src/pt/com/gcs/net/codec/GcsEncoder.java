@@ -29,6 +29,6 @@ public class GcsEncoder extends SimpleFramingEncoder
 
 		wbuf.flip();
 
-		pout.write(wbuf);		
+		pout.write(wbuf);
 	}
 }

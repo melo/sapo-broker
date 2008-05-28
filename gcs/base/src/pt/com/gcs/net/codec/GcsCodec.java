@@ -5,12 +5,11 @@ import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolEncoder;
 
-
 /**
  * The network protocol is as simple as could be:
  * 
  * <pre>
- *  ----------- 
+ * ----------- 
  *  | Length  | -&gt; integer in network order: message:length
  *  -----------
  *  | Payload | -&gt; message payload
@@ -21,9 +20,9 @@ import org.apache.mina.filter.codec.ProtocolEncoder;
  */
 public class GcsCodec implements ProtocolCodecFactory
 {
-	
+
 	public static final int DEFAULT_MAX_MESSAGE_SIZE = 256 * 1024;
-	
+
 	private GcsEncoder encoder;
 
 	private GcsDecoder decoder;
@@ -34,15 +33,15 @@ public class GcsCodec implements ProtocolCodecFactory
 		decoder = new GcsDecoder(DEFAULT_MAX_MESSAGE_SIZE);
 	}
 
-//	public ProtocolEncoder getEncoder()
-//	{
-//		return encoder;
-//	}
-//
-//	public ProtocolDecoder getDecoder()
-//	{
-//		return decoder;
-//	}
+	// public ProtocolEncoder getEncoder()
+	// {
+	// return encoder;
+	// }
+	//
+	// public ProtocolDecoder getDecoder()
+	// {
+	// return decoder;
+	// }
 
 	@Override
 	public ProtocolDecoder getDecoder(IoSession arg0) throws Exception

@@ -24,17 +24,16 @@ public class WorldMap
 	private static final Logger log = LoggerFactory.getLogger(WorldMap.class);
 
 	private final List<Peer> peerList = new ArrayList<Peer>();
-	
-	private static final WorldMap instance = new WorldMap();
-	
-	private AtomicLong last_modified = new AtomicLong(0L);
 
+	private static final WorldMap instance = new WorldMap();
+
+	private AtomicLong last_modified = new AtomicLong(0L);
 
 	private WorldMap()
 	{
 		populateWorldMap();
 	}
-	
+
 	private synchronized void populateWorldMap()
 	{
 		String selfName = GcsInfo.getAgentName();
@@ -62,11 +61,11 @@ public class WorldMap
 		String[] names = extractPeerInfo(doc, "name");
 		String[] hosts = extractPeerInfo(doc, "ip");
 		String[] ports = extractPeerInfo(doc, "port");
-		
-		//System.out.println("_selfName: " + _selfName);
-		
+
+		// System.out.println("_selfName: " + _selfName);
+
 		boolean isSelfPeerInWorldMap = false;
-		
+
 		peerList.clear();
 
 		for (int i = 0; i < npeers; i++)
@@ -77,17 +76,17 @@ public class WorldMap
 				{
 					if (selfPort == Integer.parseInt(ports[i]))
 					{
-						isSelfPeerInWorldMap =  true;
+						isSelfPeerInWorldMap = true;
 					}
 				}
 			}
 			else
 			{
-				//System.out.println("names[i]: " + names[i]);
+				// System.out.println("names[i]: " + names[i]);
 				peerList.add(new Peer(names[i], hosts[i], Integer.parseInt(ports[i])));
 			}
 		}
-		
+
 		if (!isSelfPeerInWorldMap)
 		{
 			System.err.println("This peer it's not in the world map.");
@@ -133,7 +132,7 @@ public class WorldMap
 	{
 		return Collections.unmodifiableList(instance.peerList);
 	}
-	
+
 	public static long lastModified()
 	{
 		return instance.last_modified.get();

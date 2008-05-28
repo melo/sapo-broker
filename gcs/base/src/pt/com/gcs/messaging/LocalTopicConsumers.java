@@ -129,7 +129,7 @@ class LocalTopicConsumers
 		{
 			return;
 		}
-		
+
 		if (action.equals("CREATE"))
 		{
 			log.info("Tell '{}' about new topic consumer for: '{}'", ioSession.getRemoteAddress().toString(), destinationName);

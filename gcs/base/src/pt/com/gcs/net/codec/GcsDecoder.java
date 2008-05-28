@@ -19,7 +19,7 @@ public class GcsDecoder extends SimpleFramingDecoder
 		Object msg = SerializerHelper.fromStream(bin);
 		return msg;
 	}
-	
+
 	@Override
 	public Object processBody(IoBuffer in)
 	{
