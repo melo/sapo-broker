@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.apache.mina.common.IoHandlerAdapter;
 import org.apache.mina.common.IoSession;
+import org.apache.mina.common.WriteTimeoutException;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,22 +65,57 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	{
 		ErrorHandler.WTF wtf = ErrorHandler.buildSoapFault(cause);
 		SoapEnvelope ex_msg = wtf.Message;
-
-		iosession.write(ex_msg);
-		iosession.close();
+		String client = IoSessionHelper.getRemoteAddress(iosession);
 
 		if (!(wtf.Cause instanceof IOException))
 		{
-			if (iosession == null)
-				return;
+			try
+			{
+				iosession.write(ex_msg);
+			}
+			catch (Throwable t)
+			{
+				log.error("The error information could not be delivered to the client", t);
+			}
+		}
 
-			String client = IoSessionHelper.getRemoteAddress(iosession);
+		try
+		{
+			iosession.close();
+		}
+		catch (Throwable t)
+		{
+			log.error("Error closing client connection", t);
+		}
 
+		try
+		{
 			String msg = "";
-			String emsg = wtf.Cause.getMessage();
-			msg = "Client: " + client + ". Message: " + emsg;
 
-			log.info(msg, wtf.Cause);
+			if (wtf.Cause instanceof WriteTimeoutException)
+			{
+				String emsg = "Connection was closed because client was too slow! Slow queue consumers should use polling.";
+				msg = "Client: " + client + ". Message: " + emsg;
+			}
+			else
+			{
+				String emsg = wtf.Cause.getMessage();
+				msg = "Client: " + client + ". Message: " + emsg;
+			}
+			
+			if (wtf.Cause instanceof IOException)
+			{
+				log.error(msg);
+			}
+			else
+			{
+				log.error(msg, wtf.Cause);
+			}
+			
+		}
+		catch (Throwable t)
+		{
+			log.error("Unspecified error", t);
 		}
 	}
 
