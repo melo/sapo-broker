@@ -1,4 +1,4 @@
-	<!-- Mensagens PUB/SUB -->
+﻿	<!-- Mensagens PUB/SUB -->
 	
 	<!-- Subscrever um tópico 
 	DestinationName -> Nome do tópico
