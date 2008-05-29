@@ -69,6 +69,7 @@ import threading
 import re
 
 from datetime import datetime
+import types
 
 import xml.sax.saxutils
 
@@ -86,8 +87,15 @@ NS = {
     'broker' : 'http://services.sapo.pt/broker'
     }
 
-#just an alias
-escape_xml = xml.sax.saxutils.escape
+def escape_xml(data):
+    if type(data)==types.UnicodeType:
+        data = data.encode('utf-8')
+
+    if not type(data)==types.StringType:
+        log.warn("serializing non string type %s", type(data))
+        data = str(data)
+    
+    return xml.sax.saxutils.escape(data)
 
 DEFAULT_KIND  = 'TOPIC'
 DEFAULT_PORT  = 3322
@@ -166,7 +174,7 @@ def date_cast(date):
         return date
     elif isinstance( date, basestring ):
         return iso8601.parse_date(date)
-    elif type(date) in (type(0), type(0.0)):
+    elif type(date) in (types.IntType, types.FloatType):
         return datetime.utcfromtimestamp(date)
 
 date_clean_rx = re.compile(r'\.\d+\D')
@@ -180,15 +188,23 @@ def date2iso(date):
     return date_clean_rx.sub('', ret)
 
 try:
+    set()
+except NameError:
+    log.info("No set defined using Set from sets")
+    from sets import Set as set
+
+try:
     try:
-        import cElementTree as ElementTree
-        log.info("Using cElementTree as XML backend")
-    except ImportError:
-        #comment the next line if you want to consider using the pure python ElementTree parser.
-        #my benchmarks show that this is actually slower than the fallback xml.sax parser so I just don't see the point of using it
+        from lxml import etree as ElementTree
+        log.info("Using lxml as XML backend")
         raise ImportError()
-        from elementtree import ElementTree
-        log.info("Using ElementTree as XML backend")
+    except ImportError:
+        try:
+            import xml.etree.cElementTree as ElementTree
+            log.info("Using builtin cElementTree as XML backend")
+        except ImportError:
+            import cElementTree as ElementTree
+            log.info("Using cElementTree as XML backend")
 
     #so simple it almost hurts
     #just as lax as the sax parser
@@ -558,8 +574,6 @@ class Client:
         check_kind(kind)
         check_msg(message)
         msg_xml = message.toXML()
-        if type(u'')==type(msg_xml):
-            msg_xml=msg_xml.encode('utf-8')
         name = {'TOPIC': 'publish', 'QUEUE': 'enqueue'}[kind]
         self.__write_raw(build_msg(name, msg_xml))
 
