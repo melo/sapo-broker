@@ -197,7 +197,6 @@ try:
     try:
         from lxml import etree as ElementTree
         log.info("Using lxml as XML backend")
-        raise ImportError()
     except ImportError:
         try:
             import xml.etree.cElementTree as ElementTree
