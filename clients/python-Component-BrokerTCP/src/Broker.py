@@ -13,8 +13,8 @@
 #
 #
 #  * Thread safety:
-#   * All IO should be thread safe. 2 mutexes are used, one for reading and another for writting.
-#   * Reading in one thread while writting in another is possible.
+#   * All IO should be thread safe. 2 mutexes are used, one for reading and another for writing.
+#   * Reading in one thread while writing in another is possible.
 #   * All other operations done in python are assumed to be thread safe.
 #   * Thread safety status of XML parsing is unknown to me since several backends can be used. This could be a problem.
 #
@@ -80,7 +80,7 @@ log = logging.getLogger("Broker")
 
 __all__ = ['Client', 'Message']
 
-#namespaces for xml
+#namespaces for XML
 NS = {
     'soap'   : 'http://www.w3.org/2003/05/soap-envelope',
     'wsa'    : 'http://www.w3.org/2005/08/addressing',
@@ -156,7 +156,7 @@ def request_msg(destination):
 #aux function for debugging
 def str2hex(raw):
     """
-    Given raw binary data outputs a string will all octets in hexadecimal notation.
+    Given raw binary data outputs a string with all octets in hexadecimal notation.
     """
     return string.join( ["%02X" % ord(c) for c in raw ], ':')
 
@@ -180,7 +180,7 @@ def date_cast(date):
 date_clean_rx = re.compile(r'\.\d+\D')
 def date2iso(date):
     ret = date.isoformat()
-    #check whether ther is time information
+    #check whether there is time information
     if date.tzinfo is None:
         ret += 'Z'
 
@@ -200,7 +200,7 @@ try:
     except ImportError:
         try:
             import xml.etree.cElementTree as ElementTree
-            log.info("Using builtin cElementTree as XML backend")
+            log.info("Using built-in cElementTree as XML backend")
         except ImportError:
             import cElementTree as ElementTree
             log.info("Using cElementTree as XML backend")
@@ -223,7 +223,7 @@ try:
         return msgfromFields(fields)
 
 except ImportError:
-    #since 2.3 an xml sax parser is shipped with python so sax is both faster than dom and always available in all reasonable versions
+    #since 2.3 an XML sax parser is shipped with python so sax is both faster than DOM and always available in all reasonable versions
     import xml.sax
 
     log.info("Using fallback xml.sax as XML backend")
@@ -231,7 +231,7 @@ except ImportError:
     class SaxHandler(xml.sax.ContentHandler):
         """
         Handler for sax events while parsing a Broker notification.
-        Very lax since as it stands there could be extra tags between the tags we are expecting until reaching the actual broker message and it would still give meaningfull results.
+        Very lax since as it stands there could be extra tags between the tags we are expecting until reaching the actual broker message and it would still give meaningful results.
         """
         def startDocument(self):
             self.__fields  = {}
@@ -246,7 +246,7 @@ except ImportError:
         def fields(self):
             return self.__fields
 
-        #For some unkown reason, this can't be changed at run time by the parser.
+        #For some unknown reason, this can't be changed at run time by the parser.
         #The original method is the one that is always called. (pretty dumb and sloppy)
         def characters(self, data):
             if self.__consume:
@@ -428,7 +428,7 @@ class Client:
     def __read_len(self, msglen):
         """
         Reads msglen bytes from the server.
-        Threadsafe but not EINTR safe (like all python IO?)
+        Thread safe but not EINTR safe (like all python IO?)
         """
         read = ''
         while msglen:
@@ -469,7 +469,7 @@ class Client:
         else:
             #try to cleanup as nicely as possible
             try:
-                #signal end of reading and writting to socket
+                #signal end of reading and writing to socket
                 self.__socket.shutdown(socket.SHUT_RDWR)
                 self.__socket.close()
             except Exception, e:
@@ -493,7 +493,7 @@ class Client:
 
         auto_acknowledge determines whether the client needs to acknowledge the received messages.
             By default auto_acknowledge is True meaning acknowledge is done automatically each time a message is consumed.
-            A False value requires the user to call acknowledge for the received message explicitelly when he sees fit.
+            A False value requires the user to call acknowledge for the received message explicitly when he sees fit.
         """
         log.info("Client.subscribe (%s, %s)", destination, kind)
 
@@ -620,12 +620,12 @@ class Message:
         This object should be constructed to send an event notification to the Server and is returned by the Client object when a new event is received.
 
         Notice regarding Unicode and all text fields (payload, destination, id, and correlationId):
-            All text fields may either be unicode strings (preferably) or regular strings (byte arrays).
-            If these fields are unicode strings, then its content is encoded into utf-8 bytes, xml escaped and sent through the network.
-            If the fields are regular strings they are only xml-escaped and apart from that are sent "ipis verbis". This can be problematic in case one wishes to sent raw binary information (no character semantics) because this strem might no be valid utf-8 and a decent XML browser will throw an error.
+            All text fields may either be Unicode strings (preferably) or regular strings (byte arrays).
+            If these fields are Unicode strings, then its content is encoded into utf-8 bytes, xml escaped and sent through the network.
+            If the fields are regular strings they are only XML-escaped and apart from that are sent "ipis verbis". This can be problematic in case one wishes to sent raw binary information (no character semantics) because this stream might no be valid utf-8 and a decent XML browser will throw an error.
 
         Bottom line:
-            If you don't use unicode strings as input make sure you know what you are doing (utf-8 encode everything)
+            If you don't use Unicode strings as input make sure you know what you are doing (utf-8 encode everything)
             If you want to send binary data consider first encoding it to an ASCII string (base64 or uuencode) and then send these characters.
         """
 
