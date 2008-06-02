@@ -90,6 +90,22 @@ NS = {
     'broker' : 'http://services.sapo.pt/broker'
     }
 
+try:
+    packer = struct.Struct("!L")
+    def pack(s):
+        return packer.pack(len(s))
+    def unpack(s):
+        return packer.unpack(s)[0]
+
+    log.info("using new pack/unpack interface (compile format only once)")
+except:
+    log.info("using old pack/unpack interface")
+    def pack(s):
+        return struct.pack("!L", len(s))
+
+    def unpack(s):
+        return struct.unpack("!L", s)[0]
+
 def escape_xml(data):
     if type(data)==types.UnicodeType:
         data = data.encode('utf-8')
@@ -421,7 +437,7 @@ class Client:
         if TRACE:
             log.debug("Sending raw message [%r]", msg)
         
-        l = struct.pack("!L", len(msg))
+        l = pack(msg)
 
         if TRACE:
             log.debug("hexlen [%s]", str2hex(l))
@@ -467,7 +483,7 @@ class Client:
             log.debug("Reading raw message")
         self.__lock_r()
         try:
-            msg_len = struct.unpack("!L", self.__read_len(4))[0]
+            msg_len = unpack(self.__read_len(4))
             if TRACE:
                 log.debug("len = %d", msg_len)
             msg = self.__read_len(msg_len)
