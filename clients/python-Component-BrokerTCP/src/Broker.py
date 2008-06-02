@@ -81,6 +81,8 @@ log = logging.getLogger("Broker")
 
 __all__ = ['Client', 'Message']
 
+TRACE = False
+
 #namespaces for XML
 NS = {
     'soap'   : 'http://www.w3.org/2003/05/soap-envelope',
@@ -376,42 +378,53 @@ class Client:
         """
         Locks the object's write mutex.
         """
-        log.debug("Thread write locking")
+        if TRACE:
+            log.debug("Thread write locking")
         self.__mutex_w.acquire()
-        log.debug("Thread write locked")
+        if TRACE:
+            log.debug("Thread write locked")
 
     def __unlock_w(self):
         """
         Unlocks the object's write mutex.
         """
-        log.debug("Thread write unlocking")
+        if TRACE:
+            log.debug("Thread write unlocking")
         self.__mutex_w.release()
-        log.debug("Thread write unlocked")
+        if TRACE:
+            log.debug("Thread write unlocked")
 
     def __lock_r(self):
         """
         Locks the object's read mutex.
         """
-        log.debug("Thread read locking")
+        if TRACE:
+            log.debug("Thread read locking")
         self.__mutex_r.acquire()
-        log.debug("Thread read locked")
+        if TRACE:
+            log.debug("Thread read locked")
 
     def __unlock_r(self):
         """
         Unlocks the object's read mutex.
         """
-        log.debug("Thread read unlocking")
+        if TRACE:
+            log.debug("Thread read unlocking")
         self.__mutex_r.release()
-        log.debug("Thread read unlocked")
+        if TRACE:
+            log.debug("Thread read unlocked")
 
     def __write_raw(self, msg):
         """
         Sends a raw message to the broker.
         """
-        log.debug("Sending raw message [%r]", msg)
+        if TRACE:
+            log.debug("Sending raw message [%r]", msg)
         
         l = struct.pack("!L", len(msg))
-        log.debug("hexlen [%s]", str2hex(l))
+
+        if TRACE:
+            log.debug("hexlen [%s]", str2hex(l))
 
         try:
             self.__lock_w()
@@ -433,13 +446,15 @@ class Client:
         """
         read = ''
         while msglen:
-            log.debug("Trying to read %d bytes", msglen)
+            if TRACE:
+                log.debug("Trying to read %d bytes", msglen)
             ret = self.__socket.recv(msglen)
             if '' == ret:
                 raise Client.DisconnectedError("""Broker server at %s is dead. Can't read message data.""" % self.endpoint)
             else:
                 l = len(ret)
-                log.debug('Read %d bytes.', l)
+                if TRACE:
+                    log.debug('Read %d bytes.', l)
                 read = read + ret
                 msglen = msglen - l
         return read
@@ -448,13 +463,16 @@ class Client:
         """
         Reads and returns the raw message broker notification. (without the length header)
         """
-        log.debug("Reading raw message")
+        if TRACE:
+            log.debug("Reading raw message")
         self.__lock_r()
         try:
             msg_len = struct.unpack("!L", self.__read_len(4))[0]
-            log.debug("len = %d", msg_len)
+            if TRACE:
+                log.debug("len = %d", msg_len)
             msg = self.__read_len(msg_len)
-            log.debug("Message read = [%s]", msg)
+            if TRACE:
+                log.debug("Message read = [%s]", msg)
         finally:
             self.__unlock_r()
 
