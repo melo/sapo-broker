@@ -3,7 +3,6 @@ package pt.com.gcs.messaging;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mina.util.ConcurrentHashSet;
@@ -27,8 +26,6 @@ public class QueueProcessor
 	private final Set<String> reservedMessages = new ConcurrentHashSet<String>();
 
 	private final BDBStorage storage;
-
-	protected AtomicInteger batchCount = new AtomicInteger(0);
 
 	protected QueueProcessor(String destinationName)
 	{
@@ -57,8 +54,9 @@ public class QueueProcessor
 		{
 			log.debug("Ack message . MsgId: '{}'.", msgId);
 		}
-		storage.deleteMessage(msgId);
+		
 		reservedMessages.remove(msgId);
+		storage.deleteMessage(msgId);
 	}
 
 	protected final void wakeup()
@@ -82,7 +80,12 @@ public class QueueProcessor
 				}
 				catch (Throwable t)
 				{
+					log.error(t.getMessage(), t);
 					throw new RuntimeException(t);
+				}
+				finally
+				{
+					isWorking.set(false);
 				}
 			}
 			else
@@ -90,25 +93,27 @@ public class QueueProcessor
 				log.debug("Queue '{}' does not have asynchronous consumers", _destinationName);
 			}
 		}
-
-		isWorking.set(false);
+		isWorking.set(false);	
 	}
 
-	protected boolean forward(Message message, boolean localConsumersOnly)
+	protected boolean forward(Message message, boolean localConsumersOnly) throws IllegalStateException
 	{
 		message.setType((MessageType.COM_QUEUE));
 		int lqsize = LocalQueueConsumers.size(_destinationName);
 		int rqsize = RemoteQueueConsumers.size(_destinationName);
 		int size = lqsize + rqsize;
+		
+		//log.info("lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
 
 		boolean isDelivered = false;
 
 		if (size == 0)
 		{
-			isDelivered = false;
+			throw new IllegalStateException("There are no consumers.");
 		}
 		else
 		{
+			//log.info("before: lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
 			if ((lqsize != 0) && localConsumersOnly)
 			{
 				isDelivered = LocalQueueConsumers.notify(message);
@@ -129,6 +134,7 @@ public class QueueProcessor
 				else
 					isDelivered = RemoteQueueConsumers.notify(message);
 			}
+			//log.info("after: lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
 		}
 
 		return isDelivered;
@@ -159,10 +165,15 @@ public class QueueProcessor
 			throw new RuntimeException(t);
 		}
 	}
-
-	protected Set<String> getReservedMessages()
+	
+	protected boolean isMessageReserved(String messageId)
 	{
-		return reservedMessages;
+		return reservedMessages.contains(messageId);
+	}
+	
+	protected boolean reserveMessage(String messageId)
+	{
+		return reservedMessages.add(messageId);
 	}
 
 	protected void removeFromReservedMessages(String messageId)

@@ -221,8 +221,16 @@ class LocalQueueConsumers
 			}
 			catch (Exception e)
 			{
-				currentQEP = 0;
-				return listeners.get(currentQEP);
+				try
+				{
+					currentQEP = 0;
+					return listeners.get(currentQEP);
+				}
+				catch (Throwable t)
+				{
+					return null;
+				}
+
 			}
 		}
 	}

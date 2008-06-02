@@ -38,12 +38,12 @@ class LocalTopicConsumers
 		}
 	}
 
-	public static Set<String> getBroadcastableTopics()
+	protected static Set<String> getBroadcastableTopics()
 	{
 		return Collections.unmodifiableSet(instance.broadCastableTopics);
 	}
 
-	public static void notify(Message message)
+	protected static void notify(Message message)
 	{
 		if (instance.localTopicConsumers.size() > 0)
 		{
@@ -53,6 +53,7 @@ class LocalTopicConsumers
 			Set<String> matches = new HashSet<String>();
 			for (String sname : subscriptionNames)
 			{
+
 				if (sname.equals(topicName))
 				{
 					matches.add(topicName);
@@ -72,15 +73,17 @@ class LocalTopicConsumers
 		}
 	}
 
-	public void doNotify(Message message)
+	private void doNotify(Message message)
 	{
-		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(message.getDestination());
+		String topicName = message.getDestination();
+		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(topicName);
 		if (listeners != null)
 		{
 			for (MessageListener messageListener : listeners)
 			{
 				if (messageListener != null)
 				{
+					message.setDestination(topicName); // set the name again because topic dispatchers change the destination
 					messageListener.onMessage(message);
 				}
 			}
@@ -91,7 +94,7 @@ class LocalTopicConsumers
 		}
 	}
 
-	public static void remove(MessageListener listener)
+	protected static void remove(MessageListener listener)
 	{
 		if (listener != null)
 		{
@@ -123,7 +126,7 @@ class LocalTopicConsumers
 		}
 	}
 
-	public static void broadCastTopicInfo(String destinationName, String action, IoSession ioSession)
+	protected static void broadCastTopicInfo(String destinationName, String action, IoSession ioSession)
 	{
 		if (StringUtils.isBlank(destinationName))
 		{
@@ -159,12 +162,12 @@ class LocalTopicConsumers
 		broadCastActionTopicConsumer(topicName, "DELETE");
 	}
 
-	public static int size()
+	protected static int size()
 	{
 		return instance.localTopicConsumers.size();
 	}
 
-	public static int size(String destinationName)
+	protected static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(destinationName);
 		if (listeners != null)

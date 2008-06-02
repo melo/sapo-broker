@@ -59,6 +59,18 @@ public class QueueSessionListenerList
 		}
 	}
 
+	public static void remove(String queueName)
+	{
+		try
+		{
+			queueSessionListener.remove(queueName);
+		}
+		catch (InterruptedException ie)
+		{
+			Thread.currentThread().interrupt();
+		}
+	}
+	
 	public static void removeSession(IoSession iosession)
 	{
 		try

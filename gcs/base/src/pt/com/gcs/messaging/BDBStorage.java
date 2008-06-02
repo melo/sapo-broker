@@ -3,6 +3,7 @@ package pt.com.gcs.messaging;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
@@ -14,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import com.sleepycat.bind.ByteArrayBinding;
 import com.sleepycat.bind.tuple.LongBinding;
-import com.sleepycat.bind.tuple.StringBinding;
 import com.sleepycat.je.Cursor;
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
@@ -22,8 +22,6 @@ import com.sleepycat.je.DatabaseEntry;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.OperationStatus;
-import com.sleepycat.je.SecondaryConfig;
-import com.sleepycat.je.SecondaryDatabase;
 
 class BDBStorage
 {
@@ -35,20 +33,20 @@ class BDBStorage
 
 	private Database messageDb;
 
-	private SecondaryDatabase midDb;
-
-	private String dbName;
+	private String primaryDbName;
 
 	private QueueProcessor queueProcessor;
 
 	private final AtomicBoolean isMarkedForDeletion = new AtomicBoolean(false);
+
+	private AtomicInteger batchCount = new AtomicInteger(0);
 
 	public BDBStorage(QueueProcessor qp)
 	{
 		try
 		{
 			queueProcessor = qp;
-			dbName = MD5.getHashString(queueProcessor.getDestinationName());
+			primaryDbName = MD5.getHashString(queueProcessor.getDestinationName());
 
 			env = BDBEnviroment.get();
 
@@ -57,15 +55,7 @@ class BDBStorage
 			dbConfig.setAllowCreate(true);
 			dbConfig.setSortedDuplicates(false);
 			dbConfig.setBtreeComparator(BDBMessageComparator.class);
-			messageDb = env.openDatabase(null, dbName, dbConfig);
-
-			SecondaryConfig secConfig = new SecondaryConfig();
-			secConfig.setTransactional(false);
-			secConfig.setAllowCreate(true);
-			secConfig.setSortedDuplicates(false);
-			secConfig.setKeyCreator(new BDBMessageKeyCreator());
-
-			midDb = env.openSecondaryDatabase(null, "sec:" + dbName, messageDb, secConfig);
+			messageDb = env.openDatabase(null, primaryDbName, dbConfig);
 
 			log.info("Storage for queue '{}' is ready.", queueProcessor.getDestinationName());
 		}
@@ -82,10 +72,12 @@ class BDBStorage
 			return false;
 
 		DatabaseEntry key = new DatabaseEntry();
-		StringBinding.stringToEntry(msgId, key);
+		long k = Long.parseLong(msgId.substring(33));
+		LongBinding.longToEntry(k, key);
+		
 		try
 		{
-			OperationStatus op = midDb.delete(null, key);
+			OperationStatus op = messageDb.delete(null, key);
 
 			if (op.equals(OperationStatus.SUCCESS))
 			{
@@ -177,12 +169,15 @@ class BDBStorage
 			{
 				byte[] bdata = data.getData();
 				BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
-				final Message msg = bdbm.getMessage();
-				
-				String msgId = msg.getMessageId();
-				if (!queueProcessor.getReservedMessages().contains(msgId))
+				final int deliveryCount = bdbm.getDeliveryCount();
+
+				if (deliveryCount == 0)
 				{
-					queueProcessor.getReservedMessages().add(msgId);
+					final Message msg = bdbm.getMessage();
+					long k = LongBinding.entryToLong(key);
+					msg.setMessageId(Message.getBaseMessageId() + k);
+					bdbm.setDeliveryCount(deliveryCount + 1);
+					msg_cursor.put(key, buildDatabaseEntry(bdbm));
 					return msg;
 				}
 			}
@@ -256,12 +251,11 @@ class BDBStorage
 		long c0 = System.currentTimeMillis();
 
 		Cursor msg_cursor = null;
-		int batchCount = queueProcessor.batchCount.incrementAndGet();
-		boolean redelivery = ((batchCount % 10) == 0);
+		boolean redelivery = ((batchCount.incrementAndGet() % 10) == 0);
 
 		if (redelivery)
 		{
-			queueProcessor.batchCount.set(0);
+			batchCount.set(0);
 		}
 
 		try
@@ -285,25 +279,57 @@ class BDBStorage
 				byte[] bdata = data.getData();
 				BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
 				final Message msg = bdbm.getMessage();
+				long k = LongBinding.entryToLong(key);
+				msg.setMessageId(Message.getBaseMessageId() + k);
 				final int deliveryCount = bdbm.getDeliveryCount();
 				final boolean localConsumersOnly = bdbm.isLocalConsumersOnly();
 
 				if ((deliveryCount < 1) || redelivery)
 				{
-					if (!queueProcessor.getReservedMessages().contains(msg.getMessageId()))
+					if (!queueProcessor.isMessageReserved(msg.getMessageId()))
 					{
+
 						bdbm.setDeliveryCount(deliveryCount + 1);
 						msg_cursor.put(key, buildDatabaseEntry(bdbm));
 
-						if (processMessage(msg, deliveryCount, localConsumersOnly))
+						long mark = System.currentTimeMillis();
+
+						if (deliveryCount > MAX_DELIVERY_COUNT)
 						{
-							i0++;
+							j0++;
+							msg_cursor.delete();
+							log.warn("Overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+							dumpMessage(msg);
+						}
+						else if (mark > msg.getExpiration())
+						{
+							j0++;
+							msg_cursor.delete();
+							log.warn("Expired message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+							dumpMessage(msg);
 						}
 						else
 						{
-							j0++;
-							bdbm.setDeliveryCount(deliveryCount);
-							msg_cursor.put(key, buildDatabaseEntry(bdbm));
+							try
+							{
+								if (!queueProcessor.forward(msg, localConsumersOnly))
+								{
+									j0++;
+									bdbm.setDeliveryCount(deliveryCount);
+									msg_cursor.put(key, buildDatabaseEntry(bdbm));
+									dumpMessage(msg);
+								}
+								else
+								{
+									i0++;
+								}
+							}
+							catch (Throwable t)
+							{
+								log.error(t.getMessage());
+								break;
+							}
+
 						}
 					}
 				}
@@ -337,6 +363,14 @@ class BDBStorage
 		}
 	}
 
+	private void dumpMessage(final Message msg)
+	{
+		if (log.isDebugEnabled())
+		{
+			log.debug("Could not deliver message. Dump: {}", msg.toString());
+		}
+	}
+
 	private void dealWithError(Throwable t, boolean rethrow)
 	{
 		Throwable rt = ErrorAnalyser.findRootCause(t);
@@ -348,68 +382,25 @@ class BDBStorage
 		}
 	}
 
-	private boolean processMessage(final Message msg, int deliveryCount, final boolean localConsumersOnly)
-	{
-		long mark = System.currentTimeMillis();
-
-		if ((mark <= msg.getExpiration()) && (deliveryCount <= MAX_DELIVERY_COUNT))
-		{
-			if (!queueProcessor.forward(msg, localConsumersOnly))
-			{
-				if (log.isDebugEnabled())
-				{
-					log.debug("Could not deliver message. Dump: {}", msg.toString());
-				}
-				return false;
-			}
-			return true;
-		}
-		else
-		{
-			log.warn("Expired or overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
-			deleteMessage(msg.getMessageId());
-			return false;
-		}
-	}
-
 	protected void deleteQueue()
 	{
 		isMarkedForDeletion.set(true);
 		Sleep.time(2500);
-		truncateDatabase();
-	}
+		closeDatabase(messageDb);
 
-	private void truncateDatabase()
-	{
-		long cnt = -1;
+		BDBEnviroment.sync();
 
-		while (cnt < 0)
-		{
-			try
-			{
-				closeDatabase(messageDb);
-				closeDatabase(midDb);
-				BDBEnviroment.sync();
-				// cnt = env.truncateDatabase(null, dbName, true);
-				// log.info("Discard {} records for queue '{}'", cnt,
-				// queueProcessor.getDestinationName());
-				cnt = 10L;
-			}
-			catch (Throwable t)
-			{
-				System.err.println("truncateDatabase.ERROR: " + t.getMessage());
-				Sleep.time(2500);
-			}
-		}
-
-		removeDatabase();
+		removeDatabase(primaryDbName);
 	}
 
 	private void closeDatabase(Database db)
 	{
 		try
 		{
+			String dbName = db.getDatabaseName();
+			log.info("Try to close db '{}'", dbName);
 			db.close();
+			log.info("Closed db '{}'", dbName);
 		}
 		catch (Throwable t)
 		{
@@ -417,18 +408,31 @@ class BDBStorage
 		}
 	}
 
-	private void removeDatabase()
+	private void removeDatabase(String dbName)
 	{
-		try
+		int retryCount = 0;
+
+		while (retryCount < 5)
 		{
-			env.removeDatabase(null, dbName);
-			BDBEnviroment.sync();
-			log.info("Storage for queue '{}' was removed", queueProcessor.getDestinationName());
+			try
+			{
+				log.info("Try to remove db '{}'", dbName);
+				env.removeDatabase(null, dbName);
+				log.info("Removed db '{}'", dbName);
+				BDBEnviroment.sync();
+				log.info("Storage for queue '{}' was removed", queueProcessor.getDestinationName());
+
+				break;
+
+			}
+			catch (Throwable t)
+			{
+				retryCount++;
+				log.error(t.getMessage());
+				Sleep.time(2500);
+			}
 		}
-		catch (Throwable t)
-		{
-			dealWithError(t, false);
-		}
+
 	}
 
 }

@@ -21,7 +21,7 @@ public class TopicSubscriber extends BrokerListener
 
 	private final String _dname;
 
-	private final static int MAX_SESSION_BUFFER_SIZE = 1024 * 1024;
+	private final static int MAX_SESSION_BUFFER_SIZE = 2 * 1024 * 1024;
 
 	public TopicSubscriber(String destinationName)
 	{
@@ -47,7 +47,6 @@ public class TopicSubscriber extends BrokerListener
 				{
 					if (ios.isConnected() && !ios.isClosing())
 					{
-
 						if (ios.getScheduledWriteBytes() > (MAX_SESSION_BUFFER_SIZE))
 						{
 							if (log.isDebugEnabled())
@@ -59,14 +58,6 @@ public class TopicSubscriber extends BrokerListener
 
 						final SoapEnvelope response = BrokerListener.buildNotification(amsg, "topic");
 						ios.write(response);
-
-						if (log.isDebugEnabled())
-						{
-							if (!true)
-							{
-								log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
-							}
-						}
 					}
 					else
 					{

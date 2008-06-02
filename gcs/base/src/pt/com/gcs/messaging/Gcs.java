@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -83,12 +85,32 @@ public class Gcs
 
 	protected static Set<IoSession> getManagedAcceptorSessions()
 	{
-		return Collections.unmodifiableSet(instance.acceptor.getManagedSessions());
+		//return Collections.unmodifiableSet(instance.acceptor.getManagedSessions());
+		Set<IoSession> acceptSessions = new HashSet<IoSession>();
+		Map<Long, IoSession> mngSessions = instance.acceptor.getManagedSessions();
+		
+		Set<Long> keys = mngSessions.keySet();
+		
+		for (Long key : keys)
+		{
+			acceptSessions.add(mngSessions.get(key));
+		}
+		return acceptSessions;
 	}
 
 	protected static Set<IoSession> getManagedConnectorSessions()
 	{
-		return Collections.unmodifiableSet(instance.connector.getManagedSessions());
+		//return Collections.unmodifiableSet(instance.connector.getManagedSessions());
+		Set<IoSession> connectSessions = new HashSet<IoSession>();
+		Map<Long, IoSession> mngSessions = instance.connector.getManagedSessions();
+		
+		Set<Long> keys = mngSessions.keySet();
+		
+		for (Long key : keys)
+		{
+			connectSessions.add(mngSessions.get(key));
+		}
+		return connectSessions;
 	}
 
 	protected static List<Peer> getPeerList()
@@ -238,8 +260,11 @@ public class Gcs
 
 	private Message ipoll(final String queueName)
 	{
+		
 		LocalQueueConsumers.addSyncConsumer(queueName);
-		return QueueProcessorList.get(queueName).poll();
+		Message m = QueueProcessorList.get(queueName).poll();
+
+		return m;
 	}
 
 	private void ipublish(final Message message)

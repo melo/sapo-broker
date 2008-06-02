@@ -30,8 +30,6 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 
 	private static final BrokerConsumer _brokerConsumer = BrokerConsumer.getInstance();
 
-	private Object mutex = new Object();
-
 	public BrokerProtocolHandler()
 	{
 	}
@@ -182,17 +180,12 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		else if (request.body.poll != null)
 		{
 			Poll poll = request.body.poll;
-			synchronized (mutex)
-			{
-				BrokerSyncConsumer.poll(poll, session);
-			}
-
+			BrokerSyncConsumer.poll(poll, session);
 			return;
 		}
 		else if (request.body.acknowledge != null)
 		{
 			_brokerProducer.acknowledge(request.body.acknowledge);
-
 			return;
 		}
 		else if (request.body.unsubscribe != null)

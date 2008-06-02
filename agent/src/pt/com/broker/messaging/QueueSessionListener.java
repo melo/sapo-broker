@@ -1,9 +1,12 @@
 package pt.com.broker.messaging;
 
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
+import org.apache.mina.common.WriteRequest;
+import org.apache.mina.common.WriteTimeoutException;
+import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,13 +18,17 @@ import pt.com.gcs.net.IoSessionHelper;
 
 public class QueueSessionListener extends BrokerListener
 {
+	private final static int MAX_SESSION_BUFFER_SIZE = 2 * 1024 * 1024;
+
 	private int currentQEP = 0;
 
 	private static final Logger log = LoggerFactory.getLogger(QueueSessionListener.class);
 
-	private final CopyOnWriteArrayList<IoSession> _sessions = new CopyOnWriteArrayList<IoSession>();
+	private final List<IoSession> _sessions = new ArrayList<IoSession>();
 
 	private final String _dname;
+
+	private final Object mutex = new Object();
 
 	public QueueSessionListener(String destinationName)
 	{
@@ -49,29 +56,29 @@ public class QueueSessionListener extends BrokerListener
 				{
 					final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
 
-					WriteFuture wf = ioSession.write(response).awaitUninterruptibly();
+					ioSession.write(response);
 
-					if (wf.isWritten())
+					if (ioSession.getScheduledWriteBytes() > MAX_SESSION_BUFFER_SIZE)
 					{
-						if (log.isDebugEnabled())
+						int sleepCount = 0;
+						boolean isWriteTimeout = false;
+						while (ioSession.getScheduledWriteBytes() > MAX_SESSION_BUFFER_SIZE && !isWriteTimeout)
 						{
-							log.debug("Delivered message: {}", msg.getMessageId());
+							Sleep.time(1);
+							sleepCount++;
+							if (sleepCount > 2500)
+							{
+								isWriteTimeout = true;
+							}
 						}
-						return true;
-					}
-					else
-					{
-						if (log.isDebugEnabled())
-						{
-							log.debug("Message could not be delivered: {}", msg.getMessageId());
-						}
-						return false;
-					}
 
-				}
-				else
-				{
-					removeConsumer(ioSession);
+						if (isWriteTimeout)
+						{
+							WriteRequest wreq = ioSession.getCurrentWriteRequest();
+							throw new WriteTimeoutException(wreq);
+						}
+					}
+					return true;
 				}
 			}
 		}
@@ -81,7 +88,6 @@ public class QueueSessionListener extends BrokerListener
 			try
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);
-				removeConsumer(ioSession);
 			}
 			catch (Throwable t)
 			{
@@ -94,7 +100,7 @@ public class QueueSessionListener extends BrokerListener
 
 	private IoSession pick()
 	{
-		synchronized (_sessions)
+		synchronized (mutex)
 		{
 			int n = _sessions.size();
 			if (n == 0)
@@ -115,32 +121,44 @@ public class QueueSessionListener extends BrokerListener
 			}
 			catch (Exception e)
 			{
-				currentQEP = 0;
-				return _sessions.get(currentQEP);
+				e.printStackTrace();
+				try
+				{
+					currentQEP = 0;
+					return _sessions.get(currentQEP);
+				}
+				catch (Exception e2)
+				{
+					e2.printStackTrace();
+					return null;
+				}
 			}
 		}
-
 	}
 
 	public void addConsumer(IoSession iosession)
 	{
-		if (_sessions.addIfAbsent(iosession))
+		synchronized (mutex)
 		{
-			log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+			if (!_sessions.contains(iosession))
+			{
+				_sessions.add(iosession);
+				log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
+			}
 		}
 	}
 
 	public void removeConsumer(IoSession iosession)
 	{
-		synchronized (_sessions)
+		synchronized (mutex)
 		{
 			if (_sessions.remove(iosession))
 				log.info("Remove message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 
 			if (_sessions.isEmpty())
 			{
+				QueueSessionListenerList.remove(_dname);
 				Gcs.removeAsyncConsumer(this);
-				QueueSessionListenerList.removeValue(this);
 			}
 		}
 	}

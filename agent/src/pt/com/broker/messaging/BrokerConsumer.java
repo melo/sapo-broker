@@ -16,7 +16,7 @@ public class BrokerConsumer
 	{
 	}
 
-	public synchronized void listen(Notify sb, IoSession ios)
+	public void listen(Notify sb, IoSession ios)
 	{
 		try
 		{
@@ -30,7 +30,7 @@ public class BrokerConsumer
 	}
 	
 
-	public synchronized void subscribe(Notify sb, IoSession ios)
+	public void subscribe(Notify sb, IoSession ios)
 	{
 		if (StringUtils.contains(sb.destinationName, "@"))
 		{

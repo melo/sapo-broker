@@ -24,19 +24,18 @@ public class BrokerSyncConsumer
 		}
 
 		try
-		{
+		{	
 			Message m = Gcs.poll(poll.destinationName);
 			if (m == null)
 			{
 				BrokerExecutor.schedule(new QueuePoller(poll, ios), 1000, TimeUnit.MILLISECONDS);
 				return;
 			}
-
+			
 			if ((ios != null) && ios.isConnected() && !ios.isClosing())
 			{
 				final SoapEnvelope response = BrokerListener.buildNotification(m, "queue");
-				WriteFuture future = ios.write(response);
-				future.awaitUninterruptibly(5000, TimeUnit.MILLISECONDS);
+				WriteFuture future = ios.write(response).awaitUninterruptibly();
 
 				if (future.isWritten())
 				{
@@ -64,5 +63,4 @@ public class BrokerSyncConsumer
 			throw new RuntimeException(e);
 		}
 	}
-
 }

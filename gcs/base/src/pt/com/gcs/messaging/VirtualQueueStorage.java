@@ -63,8 +63,7 @@ public class VirtualQueueStorage
 			StringBinding.stringToEntry(queueName, data);
 
 			Transaction txn = env.beginTransaction(null, null);
-			OperationStatus ops = vqStorage.put(txn, key, data);
-			System.out.println("VirtualQueueStorage.i_saveVirtualQueue.ops: " + ops.toString());
+			vqStorage.put(txn, key, data);
 			txn.commitSync();
 		}
 		catch (Throwable t)
@@ -97,7 +96,6 @@ public class VirtualQueueStorage
 
 	public static void saveVirtualQueue(String queueName)
 	{
-		System.out.println("VirtualQueueStorage.saveVirtualQueue(): " + queueName);
 		instance.i_saveVirtualQueue(queueName);
 	}
 
@@ -122,7 +120,6 @@ public class VirtualQueueStorage
 			{
 
 				String qname = StringBinding.entryToString(data);
-				System.out.println("VirtualQueueStorage.i_getQueuesNames.qname: " + qname);
 				lst.add(qname);
 			}
 

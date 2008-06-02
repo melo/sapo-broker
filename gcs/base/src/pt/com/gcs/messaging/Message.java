@@ -41,10 +41,17 @@ public class Message implements Externalizable
 	private static final String SEPARATOR = "<#>";
 
 	private static final String BASE_MESSAGE_ID;
+	
+	
 
 	static
 	{
 		BASE_MESSAGE_ID = MD5.getHashString(UUID.randomUUID().toString());
+	}
+	
+	protected static String getBaseMessageId()
+	{
+		return BASE_MESSAGE_ID + "#";
 	}
 
 	public Message()

@@ -60,7 +60,7 @@ public class SoapSerializer
 		{
 
 			JibxActors.reload();
-			
+
 			try
 			{
 				String invalidMessage = slurp(in);
@@ -70,7 +70,7 @@ public class SoapSerializer
 			{
 				// ignore this exception
 			}
-			
+
 			throw new RuntimeException(e);
 		}
 	}

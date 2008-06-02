@@ -41,7 +41,6 @@ public class BDBEnviroment
 			EnvironmentConfig envConfig = new EnvironmentConfig();
 			envConfig.setAllowCreate(true);
 			envConfig.setTransactional(true);
-			// envConfig.setCacheSize(100 * 1024 * 1024);
 			envConfig.setTxnWriteNoSync(true);
 			envConfig.setTxnNoSync(true);
 			env = new Environment(new File(dbDir), envConfig);

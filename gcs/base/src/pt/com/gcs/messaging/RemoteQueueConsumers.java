@@ -138,10 +138,18 @@ class RemoteQueueConsumers
 			{
 				return sessions.get(currentQEP);
 			}
-			catch (Exception e)
+			catch (Throwable t)
 			{
-				currentQEP = 0;
-				return sessions.get(currentQEP);
+				try
+				{
+					currentQEP = 0;
+					return sessions.get(currentQEP);
+				}
+				catch (Throwable t2)
+				{
+					return null;
+				}
+
 			}
 		}
 	}
