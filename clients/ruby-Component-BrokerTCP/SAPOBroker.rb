@@ -1,3 +1,4 @@
+# -*- coding: iso-8859-1 -*-
 # Ruby module to interact with the SAPO Broker
 # Author: André Cruz <andre.cruz@co.sapo.pt>
 
@@ -258,7 +259,7 @@ END_ACK
             subscribe(destination, params[:type], params[:ack_mode])
             @logger.debug("Subscribed to to #{destination}")
           end
-          @sub_map.each_key {|queue| poll(queue)}
+          @poll_map.each_key {|queue| poll(queue)}
           return
         rescue StandardError => ex
           @logger.warn("Problems (#{server}): #{ex.message}")
