@@ -11,6 +11,10 @@
 #
 #  * All IO is blocking with no timeout
 #
+#  * XML parsing is made using several backends:
+#   * If available lxml is used since it's by far the fastest implementation
+#   * As an alternative cElementTree is used (both the version shipped with python and external versions)
+#   * If everything fails, xml.sax is used and this should be OK for any python with version > 2.3
 #
 #  * Thread safety:
 #   * All IO should be thread safe. 2 mutexes are used, one for reading and another for writing.
@@ -58,9 +62,6 @@ import socket
 
 #for pack/unpack
 import struct
-
-#for hexlen (debugging for the pack/unpack routines)
-import string
 
 #for locking
 import threading
@@ -114,7 +115,7 @@ def check_msg(msg):
     Checks whether its argument is a subclass of a broker message.
     """
     if not isinstance(msg, Message):
-        raise TypeError("%s is not a subclass of %s.%s" % (repr(msg), Message.__module__, Message.__name__))
+        raise TypeError("%r is not a subclass of %s.%s" % (msg, Message.__module__, Message.__name__))
 
 soap_open       = """<soap:Envelope xmlns:soap="%s"><soap:Body>""" % (escape_xml(NS['soap']))
 soap_close      = """</soap:Body></soap:Envelope>"""
@@ -128,12 +129,12 @@ def prod_tags(tagname, ns='broker'):
     return (otag, ctag)
 
 taglist = (
-    ('publish', 'Publish'),
-    ('enqueue', 'Enqueue'),
-    ('subscribe', 'Notify'),
+    ('publish',     'Publish'),
+    ('enqueue',     'Enqueue'),
+    ('subscribe',   'Notify'),
     ('unsubscribe', 'Unsubscribe'),
     ('acknowledge', 'Acknowledge'),
-    ('request', 'Poll')
+    ('request',     'Poll')
 )
 
 #pre-built tags
@@ -146,8 +147,8 @@ def build_msg(name, payload):
 def subscribe_msg(destination, kind):
     check_kind(kind)
     return """<DestinationName>%s</DestinationName>\n<DestinationType>%s</DestinationType>""" % (
-    escape_xml(destination),
-    escape_xml(kind)
+        escape_xml(destination),
+        escape_xml(kind)
     )
 
 def request_msg(destination):
@@ -158,7 +159,7 @@ def str2hex(raw):
     """
     Given raw binary data outputs a string with all octets in hexadecimal notation.
     """
-    return string.join( ["%02X" % ord(c) for c in raw ], ':')
+    return ':'.join(["%02X" % ord(c) for c in raw ])
 
 def safe_cast(function, value):
     """
@@ -206,7 +207,7 @@ try:
             log.info("Using cElementTree as XML backend")
 
     #so simple it almost hurts
-    #just as lax as the sax parser
+    #just as lax as the SAX parser
     def fromXML(raw):
         """Constructs a broker message from its XML representation. ((c)ElementTree backend)"""
         tree = ElementTree.fromstring(raw)
@@ -223,7 +224,7 @@ try:
         return msgfromFields(fields)
 
 except ImportError:
-    #since 2.3 an XML sax parser is shipped with python so sax is both faster than DOM and always available in all reasonable versions
+    #since 2.3 an XML SAX parser is shipped with python so sax is both faster than DOM and always available in all reasonable versions
     import xml.sax
 
     log.info("Using fallback xml.sax as XML backend")
@@ -319,12 +320,12 @@ except ImportError:
 def msgfromFields(fields):
     priority = safe_cast(int, fields['Priority']) 
     return Message(
-        payload=fields['TextPayload'],
-        destination=fields['DestinationName'],
-        id=fields['MessageId'],
-        priority=priority,
-        expiration=fields.get('Expiration'),
-        timestamp=fields.get('Timestamp')
+        payload     = fields['TextPayload'],
+        destination = fields['DestinationName'],
+        id          = fields['MessageId'],
+        priority    = priority,
+        expiration  = fields.get('Expiration'),
+        timestamp   = fields.get('Timestamp')
     )
 
 
@@ -367,7 +368,7 @@ class Client:
             #see also  SOL_TCP integer parameters TCP_KEEPIDLE, TCP_KEEPINTVL,and TCP_KEEPCNT
         except Exception, e:
             log.exception(e)
-        log.debug("Socket timeout  %s s", str(self.__socket.gettimeout()))
+        log.debug("Socket timeout  %s s", self.__socket.gettimeout())
         #connect to host:port
         self.__socket.connect((host, port))
 
@@ -407,7 +408,7 @@ class Client:
         """
         Sends a raw message to the broker.
         """
-        log.debug("Sending raw message [%s]", msg)
+        log.debug("Sending raw message [%r]", msg)
         
         l = struct.pack("!L", len(msg))
         log.debug("hexlen [%s]", str2hex(l))
@@ -569,7 +570,7 @@ class Client:
         message must be a Message object.
         Blocking call (no timeout).
         """
-        log.info("Client.produce(%s, %s)", repr(message), kind)
+        log.info("Client.produce(%r, %s)", message, kind)
         check_kind(kind)
         check_msg(message)
         msg_xml = message.toXML()
@@ -579,10 +580,10 @@ class Client:
     def acknowledge(self, message):
         """
         Acknowledge that the client did receive/process a message.
-        message must either be a Message object.
+        message must be a Message object.
         Blocking call (no timeout).
         """
-        log.info("Client.acknowledge(%s)", repr(message))
+        log.info("Client.acknowledge(%r)", message)
         check_msg(message)
 
         msg_xml = """<MessageId>%s</MessageId><DestinationName>%s</DestinationName>""" % (escape_xml(message.id), escape_xml(message.destination))
@@ -621,7 +622,7 @@ class Message:
 
         Notice regarding Unicode and all text fields (payload, destination, id, and correlationId):
             All text fields may either be Unicode strings (preferably) or regular strings (byte arrays).
-            If these fields are Unicode strings, then its content is encoded into utf-8 bytes, xml escaped and sent through the network.
+            If these fields are Unicode strings, then their content is xml escaped, encoded into utf-8 bytes and sent through the network.
             If the fields are regular strings they are only XML-escaped and apart from that are sent "ipis verbis". This can be problematic in case one wishes to sent raw binary information (no character semantics) because this stream might no be valid utf-8 and a decent XML browser will throw an error.
 
         Bottom line:
@@ -647,13 +648,13 @@ class Message:
         ret = '<BrokerMessage>\n'
 
         for(tname, attr, fun) in ( 
-            ('DestinationName', 'destination', None),
-            ('MessageId', 'id', None),
-            ('TextPayload', 'payload', None),
-            ('Priority', 'priority', lambda x : str(x)),
-            ('CorrelationId', 'correlationId', None),
-            ('Timestamp', 'timestamp', date2iso),
-            ('Expiration', 'expiration', date2iso),
+            ('DestinationName', 'destination',   None),
+            ('MessageId',       'id',            None),
+            ('TextPayload',     'payload',       None),
+            ('Priority',        'priority',      str),
+            ('CorrelationId',   'correlationId', None),
+            ('Timestamp',       'timestamp',     date2iso),
+            ('Expiration',      'expiration',    date2iso),
         ):
             content = getattr(self, attr, None)
 
@@ -665,7 +666,7 @@ class Message:
                 if fun is not None:
                     content = safe_cast(fun, content)
                 if content is not None:
-                    ret+= "\t<%(tname)s>%(content)s</%(tname)s>\n" % {'tname':tname, 'content':escape_xml(content)}
+                    ret += "\t<%(tname)s>%(content)s</%(tname)s>\n" % {'tname':tname, 'content':escape_xml(content)}
 
         ret += '</BrokerMessage>'
         return ret
@@ -675,7 +676,7 @@ class Message:
         Just returns its id.
         Subclasses should probably add more relevant data for their usage.
         """
-        return """<%s{ id : %s }>""" % (self.__class__, repr(self.id))
+        return """<%s{ id : %r }>""" % (self.__class__, self.id)
 
     #just return the actual payload
     def __unicode__(self):
