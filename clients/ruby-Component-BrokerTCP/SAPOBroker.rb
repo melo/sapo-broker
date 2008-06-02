@@ -40,16 +40,25 @@
 module SAPOBroker
 
   require 'socket'
-  require 'rexml/document'
+  require 'rubygems'
+  require 'xml/libxml'
 
   class Message
     attr_accessor(:destination, :payload, :id, :correlation_id, :timestamp, :expiration, :priority)
 
-    def xml_escape(text)
-      t = REXML::Text.new('')
-      str = ''
-      t.write_with_substitution(str, text)
-      str
+    def xml_escape(input)
+
+      specials = [ /&(?!#?[\w-]+;)/u, /</u, />/u, /"/u, /'/u, /\r/u ]
+      substitutes = ['&amp;', '&lt;', '&gt;', '&quot;', '&apos;', '&#13;']
+      copy = input.clone
+      # Doing it like this rather than in a loop improves the speed
+      copy.gsub!( specials[0], substitutes[0] )
+      copy.gsub!( specials[1], substitutes[1] )
+      copy.gsub!( specials[2], substitutes[2] )
+      copy.gsub!( specials[3], substitutes[3] )
+      copy.gsub!( specials[4], substitutes[4] )
+      copy.gsub!( specials[5], substitutes[5] )
+      copy
     end
 
     def to_xml()
@@ -67,25 +76,28 @@ module SAPOBroker
     end
     
     def from_xml(xml)
+
       begin
-        doc = REXML::Document.new(xml)
-      rescue REXML::ParseException
-        raise ArgumentError
-      end
-      
-      REXML::XPath.each(doc, "//mq:BrokerMessage/*", {'mq' => 'http://services.sapo.pt/broker'}) do |elem|
-        case elem.name
-        when 'Priority' then self.priority = elem.text
-        when 'MessageId' then self.id = elem.text
-        when 'Timestamp' then self.timestamp = elem.text
-        when 'Expiration' then self.expiration = elem.text
-        when 'DestinationName' then self.destination = elem.text
-        when 'TextPayload' then self.payload = elem.text
-        when 'CorrelationId' then self.correlation_id = elem.text
+        xp = XML::Parser.new
+        xp.string = xml
+        doc = xp.parse
+
+        doc.find('//mq:BrokerMessage/*', 'mq:http://services.sapo.pt/broker').each do |elem|
+          case elem.name
+          when 'Priority' then self.priority = elem.content
+          when 'MessageId' then self.id = elem.content
+          when 'Timestamp' then self.timestamp = elem.content
+          when 'Expiration' then self.expiration = elem.content
+          when 'DestinationName' then self.destination = elem.content
+          when 'TextPayload' then self.payload = elem.content
+          when 'CorrelationId' then self.correlation_id = elem.content
+          end
         end
+      rescue Exception => ex
+        raise ArgumentError, ex.message
       end
       
-      raise ArgumentError unless self.id && self.destination
+      raise ArgumentError, "ID and destination not present" unless self.id && self.destination
       self
     end
 
@@ -236,8 +248,8 @@ END_ACK
         @logger.error("Problems receiving event: #{ex.message}")
         reconnect
         retry
-      rescue ArgumentError
-        @logger.error('Problems parsing message')
+      rescue ArgumentError => ex
+        @logger.error("Problems parsing message: #{ex.message}")
         reconnect
         retry
       end
