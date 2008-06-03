@@ -2,6 +2,8 @@ package pt.com.gcs.messaging;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,6 +43,10 @@ class BDBStorage
 
 	private AtomicInteger batchCount = new AtomicInteger(0);
 
+	private Object mutex = new Object();
+
+	private Queue<Message> _syncConsumerQueue = new ConcurrentLinkedQueue<Message>();
+
 	public BDBStorage(QueueProcessor qp)
 	{
 		try
@@ -74,7 +80,7 @@ class BDBStorage
 		DatabaseEntry key = new DatabaseEntry();
 		long k = Long.parseLong(msgId.substring(33));
 		LongBinding.longToEntry(k, key);
-		
+
 		try
 		{
 			OperationStatus op = messageDb.delete(null, key);
@@ -156,51 +162,63 @@ class BDBStorage
 		if (isMarkedForDeletion.get())
 			return null;
 
-		Cursor msg_cursor = null;
-
-		try
+		synchronized (mutex)
 		{
-			msg_cursor = messageDb.openCursor(null, null);
-
-			DatabaseEntry key = new DatabaseEntry();
-			DatabaseEntry data = new DatabaseEntry();
-
-			while (msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS)
+			if (!_syncConsumerQueue.isEmpty())
 			{
-				byte[] bdata = data.getData();
-				BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
-				final int deliveryCount = bdbm.getDeliveryCount();
-
-				if (deliveryCount == 0)
-				{
-					final Message msg = bdbm.getMessage();
-					long k = LongBinding.entryToLong(key);
-					msg.setMessageId(Message.getBaseMessageId() + k);
-					bdbm.setDeliveryCount(deliveryCount + 1);
-					msg_cursor.put(key, buildDatabaseEntry(bdbm));
-					return msg;
-				}
+				return _syncConsumerQueue.poll();
 			}
-		}
-		catch (Throwable t)
-		{
-			dealWithError(t, false);
-		}
-		finally
-		{
-			if (msg_cursor != null)
+			else
 			{
+				Cursor msg_cursor = null;
+
 				try
 				{
-					msg_cursor.close();
+					msg_cursor = messageDb.openCursor(null, null);
+
+					DatabaseEntry key = new DatabaseEntry();
+					DatabaseEntry data = new DatabaseEntry();
+
+					int counter = 0;
+					while ((msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS) && counter < 250)
+					{
+						byte[] bdata = data.getData();
+						BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
+						final int deliveryCount = bdbm.getDeliveryCount();
+
+						if (deliveryCount == 0)
+						{
+							final Message msg = bdbm.getMessage();
+							long k = LongBinding.entryToLong(key);
+							msg.setMessageId(Message.getBaseMessageId() + k);
+							bdbm.setDeliveryCount(deliveryCount + 1);
+							msg_cursor.put(key, buildDatabaseEntry(bdbm));
+							_syncConsumerQueue.offer(msg);
+						}
+						counter++;
+					}
 				}
 				catch (Throwable t)
 				{
 					dealWithError(t, false);
 				}
+				finally
+				{
+					if (msg_cursor != null)
+					{
+						try
+						{
+							msg_cursor.close();
+						}
+						catch (Throwable t)
+						{
+							dealWithError(t, false);
+						}
+					}
+				}
+				return _syncConsumerQueue.poll();
 			}
 		}
-		return null;
 	}
 
 	protected long getLastSequenceValue()
