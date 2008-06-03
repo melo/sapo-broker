@@ -173,7 +173,7 @@ END_SUB
 </Acknowledge>
 </soapenv:Body></soapenv:Envelope>
 END_ACK
-      @logger.debug("Will send ACK %s" % ack_msg)
+      @logger.debug("Will send ACK %s" % ack_msg) if @logger.debug?
       ack_msg = [ack_msg.length].pack('N') + ack_msg
       @sock.write(ack_msg)
     end
@@ -222,7 +222,7 @@ END_ACK
       begin
         msg_len = @sock.recv(4).unpack('N')[0]
         sick_socket?(msg_len)
-        @logger.debug("Will receive message of %i bytes" % msg_len)
+        @logger.debug("Will receive message of %i bytes" % msg_len) if @logger.debug?
 
         xml = ""
         while msg_len > 0
@@ -237,7 +237,7 @@ END_ACK
           raise Errno::EAGAIN, msg
         end
         
-        @logger.debug("Got message %s" % xml)
+        @logger.debug("Got message %s" % xml) if @logger.debug?
         message = Message.new.from_xml(xml)
         ack(message) unless @sub_map.has_key?(message.destination) && 
           @sub_map[message.destination][:type] != 'TOPIC' &&
@@ -290,7 +290,7 @@ END_ACK
 </soapenv:Body></soapenv:Envelope>
 END_EVT
 
-      @logger.debug("Will send message %s" % evt_msg)
+      @logger.debug("Will send message %s" % evt_msg) if @logger.debug?
       evt_msg = [evt_msg.length].pack('N') + evt_msg
       begin
         @sock.write(evt_msg)
