@@ -3,6 +3,7 @@ package pt.com.broker.messaging;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.mina.common.DefaultWriteRequest;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.WriteRequest;
 import org.apache.mina.common.WriteTimeoutException;
@@ -56,8 +57,6 @@ public class QueueSessionListener extends BrokerListener
 				{
 					final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
 
-					ioSession.write(response);
-
 					if (ioSession.getScheduledWriteBytes() > MAX_SESSION_BUFFER_SIZE)
 					{
 						int sleepCount = 0;
@@ -74,17 +73,17 @@ public class QueueSessionListener extends BrokerListener
 
 						if (isWriteTimeout)
 						{
-							WriteRequest wreq = ioSession.getCurrentWriteRequest();
+							WriteRequest wreq = new DefaultWriteRequest(response);
 							throw new WriteTimeoutException(wreq);
 						}
 					}
+					ioSession.write(response);
 					return true;
 				}
 			}
 		}
 		catch (Throwable e)
 		{
-
 			try
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);

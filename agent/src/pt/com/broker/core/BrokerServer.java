@@ -47,8 +47,7 @@ public class BrokerServer
 			((SocketSessionConfig) acceptor.getSessionConfig()).setReuseAddress(true);
 			((SocketSessionConfig) acceptor.getSessionConfig()).setTcpNoDelay(false);
 			((SocketSessionConfig) acceptor.getSessionConfig()).setKeepAlive(true);
-			((SocketSessionConfig) acceptor.getSessionConfig()).setWriteTimeout(5);
-			
+
 
 			DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
 			filterChainBuilder.addLast("SOAP_CODEC", new ProtocolCodecFilter(new SoapCodec()));
