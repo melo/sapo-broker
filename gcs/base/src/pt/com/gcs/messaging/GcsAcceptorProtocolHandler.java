@@ -151,6 +151,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 
 	private void validatePeer(IoSession iosession, String helloMessage)
 	{
+		log.debug("\"Hello\" message received: '{}'", helloMessage);
 		try
 		{
 			String peerName = StringUtils.substringBefore(helloMessage, "@");
@@ -161,6 +162,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			Peer peer = new Peer(peerName, peerHost, peerPort);
 			if (Gcs.getPeerList().contains(peer))
 			{
+				log.debug("Peer '{}' exists in the world map'", peer.toString());
 				iosession.setAttribute("GcsAcceptorProtocolHandler.ISVALID", true);
 				return;
 			}

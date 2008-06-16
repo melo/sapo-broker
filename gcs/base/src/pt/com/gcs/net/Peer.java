@@ -74,7 +74,6 @@ public class Peer
 	@Override
 	public String toString()
 	{
-		// TODO Auto-generated method stub
 		return _name + "#" + _host + ":" + _port;
 	}
 }

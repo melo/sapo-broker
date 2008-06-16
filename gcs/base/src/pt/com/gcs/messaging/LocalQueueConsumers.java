@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.conf.GcsInfo;
+import pt.com.gcs.net.IoSessionHelper;
 
 class LocalQueueConsumers
 {
@@ -83,11 +84,11 @@ class LocalQueueConsumers
 
 		if (action.equals("CREATE"))
 		{
-			log.info("Tell {} about new queue consumer for: {}.", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell {} about new queue consumer for: {}.", IoSessionHelper.getRemoteAddress(ioSession), destinationName);
 		}
 		else if (action.equals("DELETE"))
 		{
-			log.info("Tell {} about deleted queue consumer of: {}.", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell {} about deleted queue consumer of: {}.", IoSessionHelper.getRemoteAddress(ioSession), destinationName);
 		}
 
 		Message m = new Message();
@@ -160,7 +161,23 @@ class LocalQueueConsumers
 
 		for (IoSession ioSession : sessions)
 		{
-			broadCastQueueInfo(destinationName, action, ioSession);
+			try
+			{
+				broadCastQueueInfo(destinationName, action, ioSession);
+			}
+			catch (Throwable t)
+			{
+				log.error(t.getMessage(), t);
+
+				try
+				{
+					ioSession.close();
+				}
+				catch (Throwable ct)
+				{
+					log.error(ct.getMessage(), ct);
+				}
+			}
 		}
 	}
 

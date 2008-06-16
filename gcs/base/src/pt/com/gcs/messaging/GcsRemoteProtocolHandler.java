@@ -27,7 +27,15 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		{
 			log.error("STACKTRACE", rootCause);
 		}
-		iosession.close();
+		
+		try
+		{
+			iosession.close();
+		}
+		catch (Throwable t)
+		{
+			log.error("STACKTRACE", t);
+		}		
 	}
 
 	@Override
@@ -125,7 +133,14 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 		Set<String> queueNameSet = LocalQueueConsumers.getBroadcastableQueues();
 		for (String queueName : queueNameSet)
 		{
-			LocalQueueConsumers.broadCastQueueInfo(queueName, "CREATE", iosession);
+			try
+			{
+				LocalQueueConsumers.broadCastQueueInfo(queueName, "CREATE", iosession);
+			}
+			catch (Throwable t)
+			{
+				iosession.close();
+			}			
 		}
 	}
 }

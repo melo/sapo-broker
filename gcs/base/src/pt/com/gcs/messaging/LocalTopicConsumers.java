@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.conf.GcsInfo;
+import pt.com.gcs.net.IoSessionHelper;
 
 class LocalTopicConsumers
 {
@@ -122,7 +123,23 @@ class LocalTopicConsumers
 
 		for (IoSession ioSession : sessions)
 		{
-			broadCastTopicInfo(destinationName, action, ioSession);
+			try
+			{
+				broadCastTopicInfo(destinationName, action, ioSession);
+			}
+			catch (Throwable t)
+			{
+				log.error(t.getMessage(), t);
+
+				try
+				{
+					ioSession.close();
+				}
+				catch (Throwable ct)
+				{
+					log.error(ct.getMessage(), ct);
+				}
+			}
 		}
 	}
 
@@ -135,11 +152,11 @@ class LocalTopicConsumers
 
 		if (action.equals("CREATE"))
 		{
-			log.info("Tell '{}' about new topic consumer for: '{}'", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell '{}' about new topic consumer for: '{}'", IoSessionHelper.getRemoteAddress(ioSession), destinationName);
 		}
 		else if (action.equals("DELETE"))
 		{
-			log.info("Tell '{}' about deleted topic consumer of: '{}'", ioSession.getRemoteAddress().toString(), destinationName);
+			log.info("Tell '{}' about deleted topic consumer of: '{}'", IoSessionHelper.getRemoteAddress(ioSession), destinationName);
 		}
 
 		Message m = new Message();
