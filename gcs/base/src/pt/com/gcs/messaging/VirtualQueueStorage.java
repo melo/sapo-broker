@@ -104,7 +104,7 @@ public class VirtualQueueStorage
 		instance.i_deleteVirtualQueue(queueName);
 	}
 
-	public String[] i_getQueuesNames()
+	public String[] i_getVirtualQueueNames()
 	{
 		Cursor cursor = null;
 		try
@@ -148,8 +148,8 @@ public class VirtualQueueStorage
 		}
 	}
 
-	public static String[] getQueuesNames()
+	public static String[] getVirtualQueueNames()
 	{
-		return instance.i_getQueuesNames();
+		return instance.i_getVirtualQueueNames();
 	}
 }

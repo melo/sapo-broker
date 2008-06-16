@@ -1,6 +1,8 @@
 package pt.com.gcs.messaging;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
@@ -44,7 +46,6 @@ public class BDBEnviroment
 			envConfig.setTxnWriteNoSync(true);
 			envConfig.setTxnNoSync(true);
 			env = new Environment(new File(dbDir), envConfig);
-
 		}
 		catch (Throwable t)
 		{
@@ -70,5 +71,36 @@ public class BDBEnviroment
 		{
 			log.error(e.getMessage(), e);
 		}
+	}
+
+	public static String[] getQueueNames()
+	{
+		try
+		{
+			List<String> in_lst;
+
+			in_lst = instance.env.getDatabaseNames();
+
+			List<String> out_lst = new ArrayList<String>();
+			String nonQueue = MD5.getHashString("VirtualQueueStorage");
+
+			for (String dbName : in_lst)
+			{
+				if (!dbName.equals(nonQueue))
+				{
+					out_lst.add(dbName);
+				}
+			}
+
+			return out_lst.toArray(new String[out_lst.size()]);
+
+		}
+		catch (Throwable t)
+		{
+			Throwable rt = ErrorAnalyser.findRootCause(t);
+			log.error(rt.getMessage(), rt);
+			return new String[0];
+		}
+
 	}
 }

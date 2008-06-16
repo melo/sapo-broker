@@ -245,15 +245,22 @@ public class Gcs
 
 	private void iinit()
 	{
-		String[] virtual_queues = VirtualQueueStorage.getQueuesNames();
+		String[] virtual_queues = VirtualQueueStorage.getVirtualQueueNames();
 
 		for (String vqueue : virtual_queues)
 		{
 			log.debug("Add VirtualQueue '{}' from storage", vqueue);
 			iaddQueueConsumer(vqueue, null);
-		}
+		}		
+		
+		String[] queues = BDBEnviroment.getQueueNames();
+		
+		for (String queueName : queues)
+		{
+			QueueProcessorList.get(queueName);
+		}		
 
-		connectToAllPeers();
+		connectToAllPeers();		
 
 		log.info("{} initialized.", SERVICE_NAME);
 	}

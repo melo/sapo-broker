@@ -2,6 +2,7 @@ package pt.com.gcs.messaging;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,7 +53,8 @@ class BDBStorage
 		try
 		{
 			queueProcessor = qp;
-			primaryDbName = MD5.getHashString(queueProcessor.getDestinationName());
+			//primaryDbName = MD5.getHashString(queueProcessor.getDestinationName());
+			primaryDbName = queueProcessor.getDestinationName();
 
 			env = BDBEnviroment.get();
 
@@ -62,6 +64,7 @@ class BDBStorage
 			dbConfig.setSortedDuplicates(false);
 			dbConfig.setBtreeComparator(BDBMessageComparator.class);
 			messageDb = env.openDatabase(null, primaryDbName, dbConfig);
+			
 
 			log.info("Storage for queue '{}' is ready.", queueProcessor.getDestinationName());
 		}
