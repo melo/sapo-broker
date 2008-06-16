@@ -5,6 +5,7 @@ import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.gcs.conf.GcsInfo;
 import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.messaging.MessageType;
@@ -24,7 +25,7 @@ public class BrokerProducer
 	{
 	}
 
-	private Message prepareForSending(BrokerMessage brkMessage, String messageSource)
+	private Message prepareForSending(BrokerMessage brkMessage)
 	{
 		try
 		{
@@ -50,7 +51,6 @@ public class BrokerProducer
 			}
 
 			message.setContent(brkMessage.textPayload);
-			message.setSourceApp(messageSource);
 			message.setPriority(brkMessage.priority);
 
 			if (log.isDebugEnabled())
@@ -69,7 +69,9 @@ public class BrokerProducer
 	public void enqueueMessage(Enqueue enqreq, String messageSource)
 	{
 		BrokerMessage brkm = enqreq.brokerMessage;
-		Message msg = prepareForSending(brkm, messageSource);
+		Message msg = prepareForSending(brkm);
+		String source = StringUtils.isBlank(messageSource) ? "queue@" + GcsInfo.getAgentName() + "://" + brkm.destinationName : messageSource;
+		msg.setSourceApp(source);
 		msg.setType(MessageType.COM_QUEUE);
 
 		Gcs.enqueue(msg);
@@ -79,8 +81,10 @@ public class BrokerProducer
 	{
 		final BrokerMessage brkm = pubreq.brokerMessage;
 
-		Message msg = prepareForSending(brkm, messageSource);
-		msg.setType(MessageType.COM_TOPIC);
+		Message msg = prepareForSending(brkm);		
+		String source = StringUtils.isBlank(messageSource) ? "topic@" + GcsInfo.getAgentName() + "://" + brkm.destinationName : messageSource;
+		msg.setSourceApp(source);
+		msg.setType(MessageType.COM_TOPIC);		
 		Gcs.publish(msg);
 	}
 

@@ -33,7 +33,7 @@ public class BrokerSyncConsumer
 
 			if ((ios != null) && ios.isConnected() && !ios.isClosing())
 			{
-				final SoapEnvelope response = BrokerListener.buildNotification(m, "queue");
+				final SoapEnvelope response = BrokerListener.buildNotification(m);
 				ios.write(response);
 			}
 			else

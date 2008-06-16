@@ -131,7 +131,6 @@ public class FilePublisher
 			{
 				log.error(e.getMessage(), e);
 			}
-
 		}
 	};
 

@@ -3,7 +3,11 @@ package pt.com.broker.messaging;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import org.apache.mina.common.DefaultWriteRequest;
 import org.apache.mina.common.IoSession;
+import org.apache.mina.common.WriteRequest;
+import org.apache.mina.common.WriteTimeoutException;
+import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +25,7 @@ public class TopicSubscriber extends BrokerListener
 
 	private final String _dname;
 
-	private final static int MAX_SESSION_BUFFER_SIZE = 2 * 1024 * 1024;
+	private final static int MAX_SESSION_BUFFER_SIZE = 512 * 1024;
 
 	public TopicSubscriber(String destinationName)
 	{
@@ -53,11 +57,13 @@ public class TopicSubscriber extends BrokerListener
 							{
 								log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
 							}
+							Sleep.time(1);
+						
 							return false;
 						}
 
-						final SoapEnvelope response = BrokerListener.buildNotification(amsg, "topic");
-						ios.write(response);
+						final SoapEnvelope response = BrokerListener.buildNotification(amsg);
+						ios.write(response);						
 					}
 					else
 					{
@@ -77,8 +83,6 @@ public class TopicSubscriber extends BrokerListener
 					}
 				}
 			}
-
-			return true;
 		}
 		catch (Throwable e)
 		{
