@@ -55,7 +55,7 @@ public class QueueSessionListener extends BrokerListener
 			{
 				if (ioSession.isConnected() && !ioSession.isClosing())
 				{
-					final SoapEnvelope response = BrokerListener.buildNotification(msg, "queue");
+					final SoapEnvelope response = BrokerListener.buildNotification(msg);
 
 					if (ioSession.getScheduledWriteBytes() > MAX_SESSION_BUFFER_SIZE)
 					{
