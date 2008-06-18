@@ -216,7 +216,7 @@ class SAPO_Broker {
         $msg .= '</soap:Body>';
         $msg .= '</soap:Envelope>';
         SAPO_Broker::dodebug("Publishing $msg");
-	      if($this->net->server=='127.0.0.1') {
+        if($this->net->server=='127.0.0.1') {
           SAPO_Broker::dodebug("Using local dropbox");
           umask(0);
           $filename = '/servers/broker/dropbox/' . md5(microtime() . mt_rand() . getmypid());
@@ -312,7 +312,12 @@ class SAPO_Broker {
               SAPO_Broker::dodebug("consumer() I'm about to read ".$len." bytes");
               $tmp=$this->net->netread($len);
               SAPO_Broker::dodebug("consumer() got this xml: ".$tmp."");
-              $this->parser->handlePackets($tmp, $this->net->subscriptions);
+              list($dtype,$dname,$mid)=$this->parser->handlePackets($tmp, $this->net->subscriptions);
+              if($dtype=='QUEUE') {
+                SAPO_Broker::dodebug("consumer() Got QUEUE message. Acknowledging $dname with id $mid");
+                $msg="<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'><soap:Body><mq:Acknowledge><mq:DestinationName>".$dname."</mq:DestinationName><mq:MessageId>".$mid."</mq:MessageId></mq:Acknowledge></soap:Body></soap:Envelope>";
+                $this->net->put($msg);
+                }
 	      }
         } while ($this->net->con_retry_count<10);
     }
@@ -536,7 +541,7 @@ class SAPO_Broker_Net {
 class SAPO_Broker_Parser {
     
     var $debug;
-    var $pelements=array('DestinationName','TextPayload','Message','Status','Timestamp');
+    var $pelements=array('DestinationName','TextPayload','Message','Status','Timestamp','MessageId');
     
     function SAPO_Broker_Parser ($debug = false,$instance)
     {
@@ -619,10 +624,13 @@ class SAPO_Broker_Parser {
             foreach ($subscriptions as $subscription) {
               if ($subscription['topic'] == $elements['DestinationName']) {
                 call_user_func($subscription['callback'], $elements['TextPayload'],$elements['DestinationName'],$this->instance);
+              // only one callback per subscribed topic, only one subscription per topic
+              return(array($subscription['args']['destination_type'],$elements['DestinationName'],$elements['MessageId']));
               }
             }
           }
         }
+      return(array(null,null,null));
       } // end handlePackets()
 }
 
