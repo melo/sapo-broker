@@ -1,103 +1,135 @@
 package pt.com.broker;
 
-import java.net.SocketAddress;
-import java.util.concurrent.TimeUnit;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.UnknownHostException;
 
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoHandler;
-import org.apache.mina.common.IoSession;
-import org.caudexorigo.ErrorAnalyser;
+import org.caudexorigo.io.UnsynchByteArrayInputStream;
+import org.caudexorigo.io.UnsynchByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.com.broker.net.IoSessionHelper;
+import pt.com.broker.messaging.BrokerMessage;
+import pt.com.broker.messaging.Status;
+import pt.com.broker.net.ProtocolHandler;
 import pt.com.broker.xml.SoapEnvelope;
+import pt.com.broker.xml.SoapFault;
+import pt.com.broker.xml.SoapSerializer;
 
-public class BrokerProtocolHandler implements IoHandler
+public class BrokerProtocolHandler extends ProtocolHandler<SoapEnvelope>
 {
-	private static Logger log = LoggerFactory.getLogger(BrokerProtocolHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(BrokerProtocolHandler.class);
 
-	private final NetworkHandler _netHandler;
+	private final BrokerClient _brokerClient;
 
-	public BrokerProtocolHandler(NetworkHandler netHandler)
+	private final NetworkConnector _connector;
+
+	public BrokerProtocolHandler(BrokerClient brokerClient) throws UnknownHostException, IOException
 	{
-		super();
-		_netHandler = netHandler;
+		_brokerClient = brokerClient;
+
+		_connector = new NetworkConnector(brokerClient.getHost(), brokerClient.getPort());
+	}
+
+	public SoapEnvelope unmarshal(byte[] message)
+	{
+		UnsynchByteArrayInputStream bin = new UnsynchByteArrayInputStream(message);
+		SoapEnvelope msg = SoapSerializer.FromXml(bin);
+		return msg;
 	}
 
 	@Override
-	public void exceptionCaught(IoSession ioSession, Throwable error) throws Exception
+	public NetworkConnector getConnector()
 	{
-		Throwable rootCause = ErrorAnalyser.findRootCause(error);
-		log.error("Exception Caught:{}, {}", IoSessionHelper.getRemoteAddress(ioSession), rootCause.getMessage());
-		if (ioSession.isConnected() && !ioSession.isClosing())
-		{
-			log.error("STACKTRACE", rootCause);
-		}
-		ioSession.close();
-
+		return _connector;
 	}
 
 	@Override
-	public void messageReceived(IoSession ioSession, Object message) throws Exception
+	public void onConnectionClose()
 	{
-		if (!(message instanceof SoapEnvelope))
-		{
-			return;
-		}
+		log.debug("Connection Closed");
+		
+	}
 
-		final SoapEnvelope request = (SoapEnvelope) message;
-
+	@Override
+	public void onConnectionOpen()
+	{
+		log.debug("Connection Opened");
 		try
 		{
-			_netHandler.handleReceivedMessage(ioSession, request);
+			_brokerClient.sendSubscriptions();
 		}
-		catch (Throwable e)
+		catch (Throwable t)
 		{
-			throw new RuntimeException(e);
-		}
+			log.error(t.getMessage(), t);
+		}		
 	}
 
 	@Override
-	public void messageSent(IoSession ioSession, Object message) throws Exception
+	public void onError(Throwable error)
 	{
-		if (log.isDebugEnabled())
+		log.error(error.getMessage(), error);		
+	}
+
+	@Override
+	protected void handleReceivedMessage(SoapEnvelope request)
+	{
+		if (request.body.notification != null)
 		{
-			log.debug("Message Sent: '{}', '{}'", IoSessionHelper.getRemoteAddress(ioSession), message.toString());
+			BrokerMessage msg = request.body.notification.brokerMessage;
+
+			if (msg != null)
+			{
+				SyncConsumer sc = SyncConsumerList.get(msg.destinationName);
+				if (sc.count() > 0)
+				{
+					sc.offer(msg);
+					sc.decrement();
+				}
+				else
+				{
+					_brokerClient.notifyListener(msg);
+				}
+			}
 		}
-	}
-
-	@Override
-	public void sessionClosed(IoSession ioSession) throws Exception
-	{
-		log.info("Session Closed: '{}'", IoSessionHelper.getRemoteAddress(ioSession));
-		BrokerClientExecutor.schedule(new Connect(_netHandler, (SocketAddress) IoSessionHelper.getRemoteInetAddress(ioSession)), 5000, TimeUnit.MILLISECONDS);
-
-	}
-
-	@Override
-	public void sessionCreated(IoSession iosession) throws Exception
-	{
-		IoSessionHelper.tagWithRemoteAddress(iosession);
-		if (log.isDebugEnabled())
+		else if (request.body.status != null)
 		{
-			log.debug("Session Created: '{}'", IoSessionHelper.getRemoteAddress(iosession));
+			Status status = request.body.status;
+			try
+			{
+				_brokerClient.feedStatusConsumer(status);
+			}
+			catch (Throwable t)
+			{
+				log.error(t.getMessage(), t);
+			}
 		}
-	}
-
-	@Override
-	public void sessionIdle(IoSession iosession, IdleStatus status) throws Exception
-	{
-		if (log.isDebugEnabled())
+		else if (request.body.fault != null)
 		{
-			log.debug("Session Idle:'{}'", IoSessionHelper.getRemoteAddress(iosession));
+			SoapFault fault = request.body.fault;
+			log.error(fault.toString());
+			throw new RuntimeException(fault.faultReason.text);
 		}
 	}
 
 	@Override
-	public void sessionOpened(IoSession iosession) throws Exception
+	public SoapEnvelope decode(DataInputStream in) throws IOException
 	{
-		log.info("Session Opened: '{}'", IoSessionHelper.getRemoteAddress(iosession));
+		int len = in.readInt();
+		byte[] buf = new byte[len];
+		in.readFully(buf);
+		UnsynchByteArrayInputStream holder = new UnsynchByteArrayInputStream(buf);
+		return SoapSerializer.FromXml(holder);
 	}
 
+	@Override
+	public void encode(SoapEnvelope message, DataOutputStream out) throws IOException
+	{
+		UnsynchByteArrayOutputStream holder = new UnsynchByteArrayOutputStream();
+		SoapSerializer.ToXml(message, holder);
+		byte[] buf = holder.toByteArray();
+		out.writeInt(buf.length);
+		out.write(buf);
+	}
 }
