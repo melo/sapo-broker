@@ -144,6 +144,11 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		if (request.body.notify != null)
 		{
 			Notify sb = request.body.notify;
+			
+			if (StringUtils.isBlank(sb.destinationName))
+			{
+				throw new IllegalArgumentException("Must provide a valid destination");
+			}
 
 			if (sb.destinationType.equals("TOPIC"))
 			{

@@ -31,6 +31,11 @@ public class BrokerSyncConsumer
 				return;
 			}
 
+			if (!m.getDestination().equals(poll.destinationName))
+			{
+				throw new IllegalStateException("Poll.destinationName != Message.getDestination()");
+			}
+
 			if ((ios != null) && ios.isConnected() && !ios.isClosing())
 			{
 				final SoapEnvelope response = BrokerListener.buildNotification(m);
@@ -43,7 +48,14 @@ public class BrokerSyncConsumer
 		}
 		catch (Throwable e)
 		{
-			throw new RuntimeException(e);
+			try
+			{
+				(ios.getHandler()).exceptionCaught(ios, e);
+			}
+			catch (Throwable t)
+			{
+				throw new RuntimeException(t);
+			}
 		}
 	}
 }

@@ -120,7 +120,6 @@ public class QueueSessionListener extends BrokerListener
 			}
 			catch (Exception e)
 			{
-				e.printStackTrace();
 				try
 				{
 					currentQEP = 0;
@@ -128,7 +127,6 @@ public class QueueSessionListener extends BrokerListener
 				}
 				catch (Exception e2)
 				{
-					e2.printStackTrace();
 					return null;
 				}
 			}
