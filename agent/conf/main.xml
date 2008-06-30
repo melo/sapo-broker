@@ -6,7 +6,7 @@
 		<port>@PEER_PORT@</port>
 		<setTcpNoDelay>false</setTcpNoDelay>
 		<!--
-		A delay time (in milliseconds) that allows Broker peers to detect
+		A delay time (in milliseconds) that allows Sapo-Broker peers to detect
 		new producers and make sure that they are ready to receive messages.
 		Valid values: Positive integer Default value: 100
 		-->
@@ -20,7 +20,7 @@
 	<persistency>
 		<!--		
 		The persistency directory where the persistency files will be created. 
-		By default the directory is under the MantaRay installation folder. 
+		By default the directory is under the Sapo-Broker installation folder. 
 		Valid values: A Valid path (relative/full) to the directory Default 
 		value: ./persistent
 		-->
