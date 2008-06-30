@@ -64,12 +64,12 @@ class TopicMatcher
 			}
 
 			return false;
-
 		}
-		catch (Throwable error)
+		catch (Throwable t)
 		{
-			log.error("wildcardMatch -> subscriptionName: '{}' ;topicName: '{}'", subscriptionName, topicName);
-			throw new RuntimeException(error);
+			String message = String.format("wildcardMatch-> subscriptionName: '%s'; topicName: '%s'", subscriptionName, topicName);
+			log.error(message, t);
+			return false;
 		}
 	}
 
@@ -77,11 +77,6 @@ class TopicMatcher
 	{
 		try
 		{
-			if (!StringUtils.contains(subscriptionName, '>'))
-			{
-				return false;
-			}
-
 			if (!subscriptionName.endsWith("/>"))
 			{
 				return false;
@@ -89,7 +84,7 @@ class TopicMatcher
 
 			String[] sub_parts = subscriptionName.split("/");
 			String[] topic_parts = topicName.split("/");
-			
+
 			if (topic_parts.length < sub_parts.length)
 			{
 				return false;
@@ -119,11 +114,11 @@ class TopicMatcher
 
 			return false;
 		}
-		catch (Throwable error)
+		catch (Throwable t)
 		{
-			log.error("recursiveMatch -> subscriptionName: '{}' ;topicName: '{}'", subscriptionName, topicName);
-			throw new RuntimeException(error);
+			String message = String.format("recursiveMatch-> subscriptionName: '%s'; topicName: '%s'", subscriptionName, topicName);
+			log.error(message, t);
+			return false;
 		}
-
 	}
 }
