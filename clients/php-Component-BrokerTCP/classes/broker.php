@@ -37,7 +37,7 @@ class SAPO_Broker {
         // Check for Multibyte functions
         //
         if(extension_loaded('mbstring')==FALSE) {
-          die ("SAPO_Broker requires Multibyte String Functions support.\nPlease upgrade...\n\n");
+          die ("SAPO_Broker requires Multibyte String Functions support.\nPlease upgrade your php installation...\nSee http://pt2.php.net/manual/en/mbstring.installation.php\n\n");
         }
 
         //
@@ -45,6 +45,9 @@ class SAPO_Broker {
         //
         if (version_compare(phpversion(), '4.3.0', '<')) {
             die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
+        }
+        if (version_compare(phpversion(), '5.0.0', '<')) {
+            echo "SAPO_Broker works a whole lot better with php >5.0.0.\nYou should upgrade...\n\n";
         }
 
         $this->net =& new SAPO_Broker_Net($this->debug);
@@ -54,8 +57,10 @@ class SAPO_Broker {
 	      $this->net->snd_to=$args['timeout']*1000000;
 
         // Health checking
-        $this->add_callback(array("sec"=>5),array('SAPO_Broker_Net','sendKeepalive'));
-          
+        if (version_compare(phpversion(), '5.0.0', '>')) {
+          // this doesn not work with php4
+          $this->add_callback(array("sec"=>5),array('SAPO_Broker_Net','sendKeepalive'));
+          } 
         //
         // Look for DOM support and use appropriate Parser.
         //
@@ -313,10 +318,13 @@ class SAPO_Broker {
               $tmp=$this->net->netread($len);
               SAPO_Broker::dodebug("consumer() got this xml: ".$tmp."");
               list($dtype,$dname,$mid)=$this->parser->handlePackets($tmp, $this->net->subscriptions);
-              if($dtype=='QUEUE') {
-                SAPO_Broker::dodebug("consumer() Got QUEUE message. Acknowledging $dname with id $mid");
-                $msg="<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'><soap:Body><mq:Acknowledge><mq:DestinationName>".$dname."</mq:DestinationName><mq:MessageId>".$mid."</mq:MessageId></mq:Acknowledge></soap:Body></soap:Envelope>";
-                $this->net->put($msg);
+              switch($dtype) {
+                case "QUEUE":
+                case "TOPIC_AS_QUEUE":
+                  SAPO_Broker::dodebug("consumer() Got QUEUE message. Acknowledging $dname with id $mid");
+                  $msg="<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'><soap:Body><mq:Acknowledge><mq:DestinationName>".$dname."</mq:DestinationName><mq:MessageId>".$mid."</mq:MessageId></mq:Acknowledge></soap:Body></soap:Envelope>";
+                  $this->net->put($msg);
+                  break;
                 }
 	      }
         } while ($this->net->con_retry_count<10);
@@ -403,6 +411,7 @@ class SAPO_Broker_Net {
             $msg .= '</mq:Notify>';
             $msg .= '</soap:Body>';
             $msg .= '</soap:Envelope>';
+echo $msg;
             $ret = $this->put($msg);
             if ($ret==false) {
                 return(false);
