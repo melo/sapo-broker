@@ -5,7 +5,7 @@ set_time_limit(0);
 error_reporting(1);
 
 if(!$argv[1]) {
-  echo "Usage $argv[0] path [QUEUE|TOPIC]\n";
+  echo "Usage $argv[0] topic [QUEUE|TOPIC|TOPIC_AS_QUEUE]\n";
   exit;
   }
 
@@ -13,8 +13,8 @@ if(!$argv[1]) {
 $broker=new SAPO_Broker;
 
 // consumer example
-if(strtoupper(strtoupper($argv[2]))=='QUEUE') {
-  $broker->subscribe($argv[1],array('destination_type'=>'QUEUE'),"processExceptions");
+if($argv[2]) {
+  $broker->subscribe($argv[1],array('destination_type'=>$argv[2]),"processExceptions");
   }
   else
   {

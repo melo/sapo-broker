@@ -7,20 +7,21 @@
  * to build consumers and producers.
  *
  * @package Broker
- * @version 0.2  
+ * @version 0.4  
  * @author Celso Martinho <celso@co.sapo.pt>
  * @author Bruno Pedro <bpedro@co.sapo.pt>
+ * @author Pedro Eugenio <peugenio@co.sapo.pt>
  **/
 class SAPO_Broker {
     
-    var $parser;
-    var $net;
-    var $debug;
+    var $parser; // xml parser
+    var $net; // sockets handler
+    var $debug; // global debug
 
     function SAPO_Broker ($args=array())
     {
         // args defaults 
-        $args=array_merge(array('port'=>3322,
+        $this->args=array_merge(array('port'=>3322,
                                 'debug'=>FALSE,
                                 'force_sockets'=>FALSE,
                                 'force_streams'=>FALSE,
@@ -29,92 +30,91 @@ class SAPO_Broker {
                                 'locale'=>'pt_PT',
                                 'force_dom'=>FALSE),$args);
 
-        setlocale(LC_TIME, $args['locale']);
-
-        // pre init()
-        $this->debug = $args['debug'];
-        //
-        // Check for Multibyte functions
-        //
-        if(extension_loaded('mbstring')==FALSE) {
-          die ("SAPO_Broker requires Multibyte String Functions support.\nPlease upgrade your php installation...\nSee http://pt2.php.net/manual/en/mbstring.installation.php\n\n");
-        }
-
-        //
-        // Check for supported PHP version.
-        //
-        if (version_compare(phpversion(), '4.3.0', '<')) {
-            die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
-        }
-        if (version_compare(phpversion(), '5.0.0', '<')) {
-            echo "SAPO_Broker works a whole lot better with php >5.0.0.\nYou should upgrade...\n\n";
-        }
-
-        $this->net =& new SAPO_Broker_Net($this->debug);
+        setlocale(LC_TIME, $this->args['locale']);
+        $this->debug = $this->args['debug'];
         
-        // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
-	      $this->net->rcv_to=$args['timeout']*1000000;
-	      $this->net->snd_to=$args['timeout']*1000000;
-
-        // Health checking
-        if (version_compare(phpversion(), '5.0.0', '>')) {
-          // this doesn not work with php4
-          $this->add_callback(array("sec"=>5),array('SAPO_Broker_Net','sendKeepalive'));
-          } 
-        //
+        // checks for minimum requirements
+        $this->checkRequirements();
+                  
         // Look for DOM support and use appropriate Parser.
-        //
-        if ((!extension_loaded('dom') || $args['force_expat']) && $args['force_dom']==FALSE) {
-            SAPO_Broker::dodebug("Using SAPO_Broker_Parser() aka expat");
-            $this->parser =& new SAPO_Broker_Parser($this->debug,$this->net);
-        } else {
-            SAPO_Broker::dodebug("Using SAPO_Broker_Parser_DOM() aka native DOM support");
-            $this->parser =& new SAPO_Broker_Parser_DOM($this->debug,$this->net);
-        }
+        $this->initParser();
 
         // post init()
+        $this->initNetwork();
+    }
 
-        if(!$args['server']) {
-          SAPO_Broker::dodebug("No server defined. Doing auto-discovery.");
-          if(getenv('SAPO_BROKER_SERVER')) {
-            SAPO_Broker::dodebug("Trying to use SAPO_BROKER_SERVER");
-            if($this->net->tryConnect(getenv('SAPO_BROKER_SERVER'),$args['port'])) {
-              $args['server']=getenv('SAPO_BROKER_SERVER');
-              }
-              else
-              {
-              SAPO_Broker::dodebug("Couldn't connect to SAPO_BROKER_SERVER: ".getenv('SAPO_BROKER_SERVER'));
-              }
-            }
-          if(!$args['server'] && $this->net->tryConnect('127.0.0.1',$args['port'])) {
-            SAPO_Broker::dodebug("Using 127.0.0.1. Local agent seems present.");
-            $args['server']='127.0.0.1';
-            }
-          if(!$args['server'] && @file_exists('/etc/world_map.xml')) {
-            SAPO_Broker::dodebug("Picking random agent from /etc/world_map.xml.");
-            $i=0;
-            while($i<3) {
-              $server=$this->parser->worldmapPush('/etc/world_map.xml');
-              SAPO_Broker::dodebug("Picked ".$server." (".($i+1)."). Testing connection.");
-              if($this->net->tryConnect($server,$args['port'])) {
-                $args['server']=$server;
-                break;
-                }
-              $i++;
-              }
-            if($args['server']) SAPO_Broker::dodebug("Will use ".$args['server']);
-            }
-          if(!$args['server']) {
-            SAPO_Broker::dodebug("Usign last resort round-robin DNS broker.bk.sapo.pt");
-            $args['server']='broker.bk.sapo.pt';
-            }
+    function initNetwork() {
+      // instanciate network handler
+      $this->net =& new SAPO_Broker_Net($this->debug);
+        
+      // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
+	    $this->net->rcv_to=$this->args['timeout']*1000000;
+	    $this->net->snd_to=$this->args['timeout']*1000000;
+
+      if(!$this->args['server']) {
+        SAPO_Broker::dodebug("No server defined. Doing auto-discovery.");
+        if(getenv('SAPO_BROKER_SERVER')) {
+          SAPO_Broker::dodebug("Trying to use SAPO_BROKER_SERVER");
+          if($this->net->tryConnect(getenv('SAPO_BROKER_SERVER'),$this->args['port'])) {
+            $this->args['server']=getenv('SAPO_BROKER_SERVER');
           }
+          else
+          {
+            SAPO_Broker::dodebug("Couldn't connect to SAPO_BROKER_SERVER: ".getenv('SAPO_BROKER_SERVER'));
+          }
+        }
+        if(!$this->args['server'] && $this->net->tryConnect('127.0.0.1',$this->args['port'])) {
+          SAPO_Broker::dodebug("Using 127.0.0.1. Local agent seems present.");
+          $this->args['server']='127.0.0.1';
+        }
+        if(!$this->args['server'] && @file_exists('/etc/world_map.xml')) {
+          SAPO_Broker::dodebug("Picking random agent from /etc/world_map.xml.");
+          $i=0;
+          while($i<3) {
+            $server=$this->parser->worldmapPush('/etc/world_map.xml');
+            SAPO_Broker::dodebug("Picked ".$server." (".($i+1)."). Testing connection.");
+            if($this->net->tryConnect($server,$this->args['port'])) {
+              $this->args['server']=$server;
+              break;
+            }
+            $i++;
+          }
+          if($this->args['server']) SAPO_Broker::dodebug("Will use ".$this->args['server']);
+        }
+        if(!$this->args['server']) {
+          SAPO_Broker::dodebug("Usign last resort round-robin DNS broker.bk.sapo.pt");
+          $this->args['server']='broker.bk.sapo.pt';
+        }
 
-        SAPO_Broker::dodebug("Initializing network.");
-        $this->net->init($args['server'], $args['port']);
-        $this->net->latest_status_message='';
-        $this->net->latest_status_timestamp_received=0;
-        $this->net->latest_status_timestamp_sent=0;
+      }
+
+      SAPO_Broker::dodebug("Initializing network.");
+      $this->net->init($this->args['server'], $this->args['port']);
+      $this->net->latest_status_message='';
+      $this->net->latest_status_timestamp_received=0;
+      $this->net->latest_status_timestamp_sent=0;
+      $this->add_callback(array("sec"=>5),array('SAPO_Broker_Net','sendKeepalive'));
+    }
+
+    function initParser() {
+      if ((!extension_loaded('dom') || $args['force_expat']) && $args['force_dom']==FALSE) {
+        SAPO_Broker::dodebug("Using SAPO_Broker_Parser() aka expat");
+        $this->parser =& new SAPO_Broker_Parser($this->debug,$this->net);
+      } else {
+        SAPO_Broker::dodebug("Using SAPO_Broker_Parser_DOM() aka native DOM support");
+        $this->parser =& new SAPO_Broker_Parser_DOM($this->debug,$this->net);
+      }
+    }
+
+    function checkRequirements() {
+      // Check for Multibyte functions
+      if(extension_loaded('mbstring')==FALSE) {
+        die ("SAPO_Broker requires Multibyte String Functions support.\nPlease upgrade your php installation...\nSee http://pt2.php.net/manual/en/mbstring.installation.php\n\n");
+      }
+      // Check for supported PHP version.
+      if (version_compare(phpversion(), '4.3.0', '<')) {
+        die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
+      }
     }
 
     function dodebug($msg) {
@@ -233,7 +233,7 @@ class SAPO_Broker {
             } else { return false; }
           return true;
 	  }
-        return $this->net->put($msg);
+        return $this->net->write($msg);
     }
 
     function subscribe($topic, $args, $callback)
@@ -269,7 +269,7 @@ class SAPO_Broker {
         $msg .= '</mq:Unsubscribe>';
         $msg .= '</soap:Body>';
         $msg .= '</soap:Envelope>';
-        return $this->net->put($msg);
+        return $this->net->write($msg);
         }
         else
         {
@@ -323,7 +323,7 @@ class SAPO_Broker {
                 case "TOPIC_AS_QUEUE":
                   SAPO_Broker::dodebug("consumer() Got QUEUE message. Acknowledging $dname with id $mid");
                   $msg="<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'><soap:Body><mq:Acknowledge><mq:DestinationName>".$dname."</mq:DestinationName><mq:MessageId>".$mid."</mq:MessageId></mq:Acknowledge></soap:Body></soap:Envelope>";
-                  $this->net->put($msg);
+                  $this->net->write($msg);
                   break;
                 }
 	      }
@@ -411,8 +411,7 @@ class SAPO_Broker_Net {
             $msg .= '</mq:Notify>';
             $msg .= '</soap:Body>';
             $msg .= '</soap:Envelope>';
-echo $msg;
-            $ret = $this->put($msg);
+            $ret = $this->write($msg);
             if ($ret==false) {
                 return(false);
             }
@@ -433,12 +432,11 @@ echo $msg;
             $this->init();
         }
         $this->con_retry_count++;
-        SAPO_Broker::dodebug("SAPO_Broker_Net::Entering connect(".$this->server.") ".$this->con_retry_count."");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::Entering connect(".$this->server.":".$this->port.") ".$this->con_retry_count."");
         
         $address = gethostbyname($this->server);
         $this->socket = fsockopen($address, $this->port, $errno, $errstr);
-        
-        
+
         if (!$this->socket) {
             SAPO_Broker::dodebug($errstr);
             $this->last_err = $errstr;
@@ -461,16 +459,16 @@ echo $msg;
         return $this->connected;
     }
     
-    function put($msg)
+    function write($msg)
     {
         if($this->connected==false) {
-            SAPO_Broker::dodebug("SAPO_Broker_Net::put() ups, we're not connected, let's go for ir");
+            SAPO_Broker::dodebug("SAPO_Broker_Net::write() ups, we're not connected, let's go for ir");
 
             if($this->connect()==false) {
                 return(false);
             }
         }
-        SAPO_Broker::dodebug("SAPO_Broker_Net::put() socket_writing: ".$msg."\n");
+        SAPO_Broker::dodebug("SAPO_Broker_Net::write() socket_writing: ".$msg."\n");
         if(fwrite($this->socket, pack('N',mb_strlen($msg,'latin1')).$msg, mb_strlen($msg,'latin1') + 4)===false) {
             $this->connected = false;
             return(false);
@@ -478,11 +476,11 @@ echo $msg;
         return(true);
     }
 
-    function sendKeepalive() {
+    function sendKeepalive($net) {
       $m="<?xml version='1.0' encoding='UTF-8'?>\n<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'><soap:Body>
 <mq:CheckStatus /></soap:Body></soap:Envelope>";
-      $this->put($m);
-      $this->latest_status_timestamp_sent=date("Y-m-d\TH:m:s\Z");
+      $net->write($m);
+      $net->latest_status_timestamp_sent=date("Y-m-d\TH:m:s\Z");
     }
 
     function netread($len) {
@@ -548,10 +546,8 @@ echo $msg;
 }
 
 class SAPO_Broker_Parser {
-    
-    var $debug;
     var $pelements=array('DestinationName','TextPayload','Message','Status','Timestamp','MessageId');
-    
+        
     function SAPO_Broker_Parser ($debug = false,$instance)
     {
         $this->debug = $debug;
@@ -644,8 +640,6 @@ class SAPO_Broker_Parser {
 }
 
 class SAPO_Broker_Parser_DOM extends SAPO_Broker_Parser {
-
-    var $debug;
     
     function SAPO_Broker_Parser_DOM ($debug = false,$instance)
     {
@@ -671,9 +665,7 @@ class SAPO_Broker_Parser_DOM extends SAPO_Broker_Parser {
 
     function getElements ($msg, $namespace = null)
     {
-        //
         // Create a new DOM document.
-        //
         $dom =& new DOMDocument;
         $dom->loadXML($msg);
         
