@@ -2,8 +2,8 @@
 /**
  * SAPO Broker access abstraction class.
  *
- * The Broker class abstracts all the low-level complexity and
- * Mataray agents and gives the developers a simple to use high-level API
+ * The Broker class abstracts all the low-level complexity of the
+ * SAPO Broker and gives the developers a simple to use high-level API
  * to build consumers and producers.
  *
  * @package Broker
@@ -23,9 +23,7 @@ class SAPO_Broker {
         // args defaults 
         $this->args=array_merge(array('port'=>3322,
                                 'debug'=>FALSE,
-                                'force_sockets'=>FALSE,
-                                'force_streams'=>FALSE,
-				                        'timeout'=>60*5, // in seconds
+		                'timeout'=>60*5, // in seconds
                                 'force_expat'=>FALSE,
                                 'locale'=>'pt_PT',
                                 'force_dom'=>FALSE),$args);
@@ -48,8 +46,8 @@ class SAPO_Broker {
       $this->net =& new SAPO_Broker_Net($this->debug);
         
       // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
-	    $this->net->rcv_to=$this->args['timeout']*1000000;
-	    $this->net->snd_to=$this->args['timeout']*1000000;
+      $this->net->rcv_to=$this->args['timeout']*1000000;
+      $this->net->snd_to=$this->args['timeout']*1000000;
 
       if(!$this->args['server']) {
         SAPO_Broker::dodebug("No server defined. Doing auto-discovery.");

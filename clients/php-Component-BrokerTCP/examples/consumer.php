@@ -11,7 +11,7 @@ $broker=new SAPO_Broker;
 echo "Subscribing topics\n";
 $broker->subscribe('/sapo/tags/feeds/urls',NULL,"processUrls");
 $broker->subscribe('/sapo/pesquisa/queries',NULL,"processSearch");
-$broker->subscribe('/sapo/developer/tests',NULL,"processTests");
+$broker->subscribe('/sapo/web/homepage/>',NULL,array("Test_Class","processTests"));
 echo "Entering consumer() loop now\n";
 $broker->consumer();
 
@@ -25,8 +25,12 @@ function processSearch($payload) {
   echo "processSearch() just got ".$payload."\n";
   }
 
-function processTests($payload) {
-  echo "processTests() just got ".$payload."\n";
+class Test_Class {
+
+  function processTests($payload) {
+    echo "processTests() just got ".$payload."\n";
+    }
+
   }
 
 ?>

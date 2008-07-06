@@ -14,5 +14,5 @@ Nos exemplos producer.php e consumer.php mudem o #!/servers/lighty/bin/php -q pa
 
 Mais informações aqui:
 
-http://trac.intra.sapo.pt/projects/broker/wiki/PHPComponent
+http://softwarelivre.sapo.pt/broker/wiki/Clients/PHP
 
