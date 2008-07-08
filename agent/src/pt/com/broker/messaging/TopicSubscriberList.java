@@ -1,59 +1,90 @@
 package pt.com.broker.messaging;
 
-import org.caudexorigo.ds.Cache;
-import org.caudexorigo.ds.CacheFiller;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import pt.com.gcs.messaging.Gcs;
 
 public class TopicSubscriberList
 {
 	// key: destinationName
-	private static final Cache<String, TopicSubscriber> topicSubscribersCache = new Cache<String, TopicSubscriber>();
+	private final Map<String, TopicSubscriber> topicSubscribersCache = new HashMap<String, TopicSubscriber>();
+	
+	private static final Logger log = LoggerFactory.getLogger(TopicSubscriberList.class);
+
+	private static final TopicSubscriberList instance = new TopicSubscriberList();
 
 	private TopicSubscriberList()
 	{
 	}
 
-	private static final CacheFiller<String, TopicSubscriber> topic_subscribers_cf = new CacheFiller<String, TopicSubscriber>()
-	{
-		public TopicSubscriber populate(String destinationName)
-		{
-			try
-			{
-				TopicSubscriber subscriber = new TopicSubscriber(destinationName);
-				Gcs.addAsyncConsumer(destinationName, subscriber);
-				return subscriber;
-			}
-			catch (Throwable e)
-			{
-				throw new RuntimeException(e);
-			}
-		}
-	};
-
-	public static TopicSubscriber get(String destinationName)
+	private TopicSubscriber getSubscriber(String destinationName)
 	{
 		try
 		{
-			return topicSubscribersCache.get(destinationName, topic_subscribers_cf);
+			synchronized (topicSubscribersCache)
+			{
+				TopicSubscriber subscriber = null;
+
+				if (topicSubscribersCache.containsKey(destinationName))
+				{
+					subscriber = topicSubscribersCache.get(destinationName);
+
+					if (subscriber == null)
+					{
+						subscriber = createSubscriber(destinationName);
+					}
+				}
+				else
+				{
+					subscriber = createSubscriber(destinationName);
+				}
+
+				return subscriber;
+			}
 		}
-		catch (InterruptedException ie)
+		catch (Throwable t)
 		{
-			Thread.currentThread().interrupt();
-			throw new RuntimeException(ie);
+			throw new RuntimeException(t);
 		}
 	}
 
-	public static void removeValue(TopicSubscriber value)
+	private TopicSubscriber createSubscriber(String destinationName)
+	{
+		log.info("Create subscription for: '{}'", destinationName);
+		TopicSubscriber subscriber = new TopicSubscriber(destinationName);
+		Gcs.addAsyncConsumer(destinationName, subscriber);
+		topicSubscribersCache.put(destinationName, subscriber);
+		return subscriber;
+	}
+
+	private void removeSubscriber(String destinationName)
 	{
 		try
 		{
-			topicSubscribersCache.removeValue(value);
+			synchronized (topicSubscribersCache)
+			{
+				TopicSubscriber subscriber = topicSubscribersCache.remove(destinationName);
+				Gcs.removeAsyncConsumer(subscriber);
+			}
 		}
-		catch (InterruptedException ie)
+		catch (Throwable t)
 		{
-			Thread.currentThread().interrupt();
-			throw new RuntimeException(ie);
+			throw new RuntimeException(t);
 		}
+	}
+
+	public static void remove(String destinationName)
+	{
+		log.info("Delete subscription for: '{}'", destinationName);
+		instance.removeSubscriber(destinationName);
+	}
+
+	public static TopicSubscriber get(String destinationName)
+	{
+		return instance.getSubscriber(destinationName);
 	}
 }

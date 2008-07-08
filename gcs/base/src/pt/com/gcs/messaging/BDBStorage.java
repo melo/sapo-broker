@@ -2,7 +2,6 @@ package pt.com.gcs.messaging;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -11,7 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
 import org.caudexorigo.concurrent.Sleep;
-import org.caudexorigo.cryto.MD5;
 import org.caudexorigo.io.UnsynchByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

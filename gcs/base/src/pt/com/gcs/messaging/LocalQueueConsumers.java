@@ -38,7 +38,7 @@ class LocalQueueConsumers
 		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
 	}
 
-	public static void add(String queueName, MessageListener listener)
+	public synchronized static void add(String queueName, MessageListener listener)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
 		if (listeners == null)
@@ -72,7 +72,6 @@ class LocalQueueConsumers
 				instance.broadCastRemovedQueueConsumer(queueName);
 			}
 		}
-
 	}
 
 	public static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
@@ -116,7 +115,7 @@ class LocalQueueConsumers
 		return instance.doNotify(message);
 	}
 
-	public static void remove(MessageListener listener)
+	public synchronized static void remove(MessageListener listener)
 	{
 		if (listener != null)
 		{
@@ -128,11 +127,6 @@ class LocalQueueConsumers
 			instance.localQueueConsumers.remove(listeners);
 			instance.broadCastRemovedQueueConsumer(listener.getDestinationName());
 		}
-	}
-
-	public static int size()
-	{
-		return instance.localQueueConsumers.size();
 	}
 
 	public static int size(String destinationName)

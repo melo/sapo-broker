@@ -94,7 +94,7 @@ public class VirtualQueueStorage
 
 	}
 
-	public static void saveVirtualQueue(String queueName)
+	public synchronized static void saveVirtualQueue(String queueName)
 	{
 		instance.i_saveVirtualQueue(queueName);
 	}

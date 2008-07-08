@@ -23,8 +23,9 @@ class LocalTopicConsumers
 
 	private static final LocalTopicConsumers instance = new LocalTopicConsumers();
 
-	public static void add(String topicName, MessageListener listener, boolean broadcast)
+	public synchronized static void add(String topicName, MessageListener listener, boolean broadcast)
 	{
+
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
 		if (listeners == null)
 		{
@@ -95,7 +96,7 @@ class LocalTopicConsumers
 		}
 	}
 
-	protected static void remove(MessageListener listener)
+	protected synchronized static void remove(MessageListener listener)
 	{
 		if (listener != null)
 		{
@@ -106,6 +107,10 @@ class LocalTopicConsumers
 			}
 			instance.localTopicConsumers.remove(listeners);
 			instance.broadCastRemovedTopicConsumer(listener.getDestinationName());
+			if (listeners.size() == 0)
+			{
+				instance.broadCastableTopics.remove(listener.getDestinationName());
+			}
 		}
 	}
 

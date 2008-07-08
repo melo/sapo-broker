@@ -3,17 +3,13 @@ package pt.com.broker.messaging;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.apache.mina.common.DefaultWriteRequest;
 import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteRequest;
-import org.apache.mina.common.WriteTimeoutException;
 import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.gcs.messaging.DestinationType;
-import pt.com.gcs.messaging.Gcs;
 import pt.com.gcs.messaging.Message;
 import pt.com.gcs.net.IoSessionHelper;
 
@@ -26,11 +22,14 @@ public class TopicSubscriber extends BrokerListener
 	private final String _dname;
 
 	private final static int MAX_SESSION_BUFFER_SIZE = 512 * 1024;
+	
+	private Object slock = new Object();
 
 	public TopicSubscriber(String destinationName)
 	{
 		_dname = destinationName;
 	}
+	
 
 	@Override
 	public DestinationType getDestinationType()
@@ -42,6 +41,7 @@ public class TopicSubscriber extends BrokerListener
 	{
 		if (amsg == null)
 			return true;
+	
 
 		try
 		{
@@ -93,22 +93,28 @@ public class TopicSubscriber extends BrokerListener
 
 	public void removeConsumer(IoSession iosession)
 	{
-		if (_sessions.remove(iosession))
+		synchronized (slock)
 		{
-			log.info("Remove message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
-		}
-		if (_sessions.size() == 0)
-		{
-			Gcs.removeAsyncConsumer(this);
-			TopicSubscriberList.removeValue(this);
+			if (_sessions.remove(iosession))
+			{
+				log.info("Remove 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+				
+				if (_sessions.size() == 0)
+				{
+					TopicSubscriberList.remove(_dname);
+				}
+			}
 		}
 	}
 
 	public void addConsumer(IoSession iosession)
 	{
-		if (_sessions.add(iosession))
+		synchronized (slock)
 		{
-			log.info("Create message consumer for topic: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+			if (_sessions.add(iosession))
+			{
+				log.info("Create 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+			}
 		}
 	}
 
