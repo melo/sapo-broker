@@ -658,6 +658,58 @@ class Client:
         while True:
             yield self.consume()
 
+class DropBox:
+    """
+    Abstracts access to a broker server using file system.
+    """
+
+    def __init__(self, directory, good=".good", tmp="_py"):
+        """
+        Constructs a client object to send messages to a broker using the file system.
+        good is the extension messages should have to signal they should be sent.
+        tmp is the extension messages have while they are being written to disk.
+        """
+
+        log.info("DropBox for %s", directory)
+
+        if good == tmp:
+            raise ValueError ("good and tmp must be different (%r == %r)" % good, tmp)
+        else:
+            self.__directory = directory
+            self.__good      = good
+            self.__tmp       = tmp
+
+            if os.path.isdir( directory ):
+                log.debug("directory %r already exists.")
+            else:
+                log.info("directory %r doesn't exist. Creating it")
+                #What should the access mode be?
+                os.makedirs(directory) 
+
+    def produce(self, message, kind=DEFAULT_KIND):
+        """
+        Send a notification to the broker.
+        message must be a Message object.
+        """
+
+        log.info("DropBox.produce(%r, %s)", message, kind)
+        check_kind(kind)
+        check_msg(message)
+        name = {'TOPIC': 'publish', 'QUEUE': 'enqueue'}[kind]
+        raw_msg = (build_msg(name, message.toXML()))
+
+        #create temporary file
+        (tmpfd, tmpname) = tempfile.mkstemp(prefix='brk_', suffix=self.__tmp, dir=self.__directory)
+        tmpfile = os.fdopen(tmpfd, 'w')
+        tmpfile.write(raw_msg)
+        tmpfile.close()
+
+        #move to destination
+        destname = tmpname + self.__good
+        shutil.move(tmpname, destname)
+
+        return self
+
 class Message:
     __all__ = ['__init__', 'toXML', 'fromXML']
     def __init__(self, payload, destination, id=None, correlationId=None, timestamp=None, expiration=None, priority=None):
