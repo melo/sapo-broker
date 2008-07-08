@@ -76,10 +76,12 @@ import xml.sax.saxutils
 
 import iso8601
 
+import os, os.path, tempfile, shutil
+
 import logging
 log = logging.getLogger("Broker")
 
-__all__ = ['Client', 'Message']
+__all__ = ['Client', 'DropBox', 'Message']
 
 TRACE = False
 
@@ -349,7 +351,7 @@ def msgfromFields(fields):
 
 class Client:
     """
-    Abstracts access to a broker server.
+    Abstracts access to a broker server using TCP.
     """
 
     class DisconnectedError(EOFError):
@@ -365,7 +367,7 @@ class Client:
         Constructs a client object to connect to a broker at host:port using the binary TCP protocol.
         """
 
-        log.info("Server for %s:%s", host, port)
+        log.info("Client for %s:%s", host, port)
         self.__mutex_r  = threading.RLock()
         self.__mutex_w  = threading.RLock()
         self.host       = host
@@ -400,6 +402,8 @@ class Client:
         if TRACE:
             log.debug("Thread write locked")
 
+        return self
+
     def __unlock_w(self):
         """
         Unlocks the object's write mutex.
@@ -409,6 +413,8 @@ class Client:
         self.__mutex_w.release()
         if TRACE:
             log.debug("Thread write unlocked")
+
+        return self
 
     def __lock_r(self):
         """
@@ -420,6 +426,8 @@ class Client:
         if TRACE:
             log.debug("Thread read locked")
 
+        return self
+
     def __unlock_r(self):
         """
         Unlocks the object's read mutex.
@@ -429,6 +437,8 @@ class Client:
         self.__mutex_r.release()
         if TRACE:
             log.debug("Thread read unlocked")
+
+        return self
 
     def __write_raw(self, msg):
         """
@@ -454,6 +464,8 @@ class Client:
         except socket.error:
             raise Client.DisconnectedError("""Broker server at %s is dead. Can't write message data""" % self.endpoint)
 
+        return self
+
     #XXX this function doesn't handle EINTR gracefully, but neither do python's own IO functions so not sure whether it's coherent to do it here
     def __read_len(self, msglen):
         """
@@ -473,6 +485,7 @@ class Client:
                     log.debug('Read %d bytes.', l)
                 read = read + ret
                 msglen = msglen - l
+
         return read
 
     def __read_raw(self):
@@ -512,6 +525,8 @@ class Client:
 
             self.__closed = True
 
+        return self
+
     def __del__(self):
         """
         "Destructor". Tries to do fallback cleanup.
@@ -545,6 +560,8 @@ class Client:
             log.debug('Using client auto-acknowledgement on consume')
             self.__auto_ack.add(destination)
 
+        return self
+
     def unsubscribe(self, destination, kind=DEFAULT_KIND):
         """
         Unsubscribes notifications for destination and kind
@@ -555,6 +572,8 @@ class Client:
             self.subscribed.remove( (destination, kind) )
         else:
             log.warn("destination (%s, %s) not subscribed. Can't unsubscribe." %(destination, kind))
+
+        return self
 
     def request(self, destination):
         """
@@ -568,6 +587,8 @@ class Client:
             self.__request_ack[destination] = self.__request_ack.get(destination, 0)+1
         finally:
             self.__unlock_w()
+
+        return self
 
     def consume(self):
         """
@@ -610,6 +631,7 @@ class Client:
         msg_xml = message.toXML()
         name = {'TOPIC': 'publish', 'QUEUE': 'enqueue'}[kind]
         self.__write_raw(build_msg(name, msg_xml))
+        return self
 
     def acknowledge(self, message):
         """
@@ -622,6 +644,7 @@ class Client:
 
         msg_xml = """<MessageId>%s</MessageId><DestinationName>%s</DestinationName>""" % (escape_xml(message.id), escape_xml(message.destination))
         self.__write_raw(build_msg('acknowledge', msg_xml))
+        return self
 
     def __iter__(self):
         """
@@ -732,9 +755,11 @@ class Message:
 
     def __set_expiration(self, value):
         self.__expiration = value
+        return self
 
     def __set_timestamp(self, value):
         self.__timeout = value
+        return self
 
     timestamp  = property(fget=__get_timestamp, fset=__set_timestamp)
     expiration = property(fget=__get_expiration, fset=__set_expiration)
