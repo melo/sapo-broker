@@ -110,7 +110,16 @@ public class FilePublisher
 
 						if (isFileValid)
 						{
-							BrokerProducer.getInstance().publishMessage(soap.body.publish, MQ.requestSource(soap));
+							
+							if (soap.body.publish != null)
+							{
+								BrokerProducer.getInstance().publishMessage(soap.body.publish, MQ.requestSource(soap));
+							}
+							else if (soap.body.enqueue != null)
+							{
+								BrokerProducer.getInstance().enqueueMessage(soap.body.enqueue, MQ.requestSource(soap));
+							}
+							
 							fis.close();
 							msgf.delete();
 						}
