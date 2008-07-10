@@ -4,12 +4,12 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.caudexorigo.ErrorAnalyser;
+import org.caudexorigo.concurrent.CustomExecutors;
 import org.caudexorigo.concurrent.Sleep;
 
 import pt.com.broker.NetworkConnector;
@@ -18,9 +18,9 @@ public abstract class ProtocolHandler<T>
 {
 	private final AtomicBoolean _isReconnecting = new AtomicBoolean(false);
 
-	private final ExecutorService exec = Executors.newSingleThreadExecutor();
+	private final ExecutorService exec = CustomExecutors.newScheduledThreadPool(1, "protocol-handler");
 
-	private final ScheduledExecutorService shed_exec = Executors.newSingleThreadScheduledExecutor();
+	private final ScheduledExecutorService shed_exec = CustomExecutors.newScheduledThreadPool(1, "sched-protocol-handler");
 
 	private Object rlock = new Object();
 
@@ -33,7 +33,7 @@ public abstract class ProtocolHandler<T>
 	public abstract void onConnectionClose();
 
 	public abstract void onConnectionOpen();
-	
+
 	public abstract void onError(Throwable error);
 
 	public abstract NetworkConnector getConnector();
@@ -49,7 +49,7 @@ public abstract class ProtocolHandler<T>
 
 			while (true)
 			{
-				
+
 				try
 				{
 					T message = doDecode(in);
@@ -75,7 +75,7 @@ public abstract class ProtocolHandler<T>
 						{
 							// ignore
 						}
-					}					
+					}
 				}
 			}
 		}
@@ -154,6 +154,5 @@ public abstract class ProtocolHandler<T>
 		{
 			// ignore
 		}
-
 	}
 }
