@@ -34,18 +34,11 @@ public class BrokerHttpAction extends HttpAction
 
 	private IoBuffer BAD_REQUEST_RESPONSE;
 
-	private IoBuffer OK_RESPONSE;
-
 	public BrokerHttpAction()
 	{
 		super();
 		try
 		{
-			byte[] ok_arr = "<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope'>\n<soap:Body>\n</soap:Body>\n</soap:Envelope>\n".getBytes("UTF-8");
-			OK_RESPONSE = IoBuffer.allocate(ok_arr.length);
-			OK_RESPONSE.put(ok_arr);
-			OK_RESPONSE.flip();
-
 			byte[] bad_arr = "<p>Only the POST verb is supported</p>".getBytes("UTF-8");
 			BAD_REQUEST_RESPONSE = IoBuffer.allocate(bad_arr.length);
 			BAD_REQUEST_RESPONSE.put(bad_arr);
@@ -56,7 +49,6 @@ public class BrokerHttpAction extends HttpAction
 			log.error("Fatal JVM error!", error);
 			Shutdown.now();
 		}
-
 	}
 
 	@Override
@@ -93,14 +85,12 @@ public class BrokerHttpAction extends HttpAction
 								String queueName = StringUtils.substringAfter(payload, ":");
 								QueueProcessorList.remove(queueName);
 							}
-							
 						}
 					}
 					else
 					{
 						_http_broker.publishMessage(req_message.body.publish, requestSource);
 					}
-					
 				}
 				else if (req_message.body.enqueue != null)
 				{
@@ -113,9 +103,7 @@ public class BrokerHttpAction extends HttpAction
 					return;
 				}
 
-				response.setStatus(HttpResponseStatus.OK);
-				response.setContentType(content_type);
-				response.setContent(OK_RESPONSE.duplicate());
+				response.setStatus(HttpResponseStatus.ACCEPTED);
 			}
 			else
 			{
@@ -132,7 +120,6 @@ public class BrokerHttpAction extends HttpAction
 				log.error("HTTP Service error, cause:" + e.getMessage() + ". Client address:" + session.getRemoteAddress());
 			}
 		}
-
 	}
 
 	public void fault(String faultCode, Throwable cause, MutableHttpResponse response)
