@@ -4,6 +4,7 @@
 	<property name="dist" value="../dist" />
 	<property name="gcs" value="../gcs/base/bin" />
 	<property name="gcs_src" value="../gcs/base/src" />
+	<property name="clients" value="../clients" />
 	
 
 	<path id="project.classpath">
@@ -117,9 +118,36 @@
 		<copy todir="${dist}/conf">
 			<fileset dir="conf"/>
  		</copy>
-		
-		<copy file="broker.bat" todir="${dist}" />
-		<copy file="broker.sh" todir="${dist}" />
+
+		<copy todir="${dist}/license">
+			<fileset dir="../license"/>
+ 		</copy>
+
+		<exec executable="ant">
+			<arg value="-f"/>
+			<arg value="../clients/java-Component-BrokerTCP/build.xml"/>
+			<arg value="package"/>
+		</exec>
+
+		<copy file="${clients}/java-Component-BrokerTCP/dist/lib/java-Component-BrokerTCP.jar" tofile="${dist}/lib/java-Component-BrokerTCP.jar" overwrite="true"/>
+
+		<exec executable="ant">
+			<arg value="-f"/>
+			<arg value="../clients/java-Component-BrokerTCP/build.xml"/>
+			<arg value="clean"/>
+		</exec>
+
+		<copy todir="${dist}/clients">
+			<fileset dir="${clients}" excludes="**/.*"/>
+ 		</copy>
+
+		<copy todir="${dist}">
+			<fileset dir="${sapo-broker.location}">
+				<include name="*.sh"/>
+				<include name="*.bat"/>
+			</fileset>
+		</copy>
+
 		<tar tarfile="../sapo-broker.tar" >
 			<tarfileset dir="${dist}" prefix="sapo-broker"></tarfileset>
 		</tar>
