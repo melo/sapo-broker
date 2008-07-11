@@ -5,12 +5,12 @@
 	<namespace uri="http://www.w3.org/2005/08/addressing" prefix="wsa" />
 	<namespace uri="http://services.sapo.pt/broker" prefix="mq" />
 
-	<mapping name="Envelope" class="pt.com.broker.xml.SoapEnvelope" ns="http://www.w3.org/2003/05/soap-envelope">
+	<mapping name="Envelope" class="pt.com.broker.client.xml.SoapEnvelope" ns="http://www.w3.org/2003/05/soap-envelope">
 		<structure field="header" usage="optional" />
 		<structure field="body" usage="required" />
 	</mapping>
 
-	<mapping name="Header" class="pt.com.broker.xml.SoapHeader" ns="http://www.w3.org/2003/05/soap-envelope" ordered="false" flexible="true">
+	<mapping name="Header" class="pt.com.broker.client.xml.SoapHeader" ns="http://www.w3.org/2003/05/soap-envelope" ordered="false" flexible="true">
 		<value name="To" field="wsaTo" usage="optional" ns="http://www.w3.org/2005/08/addressing" />
 		<structure name="From" map-as="EndPointReference" field="wsaFrom" usage="optional" ns="http://www.w3.org/2005/08/addressing" />
 		<structure name="ReplyTo" map-as="EndPointReference" field="wsaReplyTo" usage="optional" ns="http://www.w3.org/2005/08/addressing" />
@@ -21,11 +21,11 @@
 	</mapping>
 
 
-	<mapping type-name="EndPointReference" abstract="true" class="pt.com.broker.xml.EndPointReference" ns="http://www.w3.org/2005/08/addressing">
+	<mapping type-name="EndPointReference" abstract="true" class="pt.com.broker.client.xml.EndPointReference" ns="http://www.w3.org/2005/08/addressing">
 		<value name="Address" field="address" usage="optional" ns="http://www.w3.org/2005/08/addressing" />
 	</mapping>
 
-	<mapping name="Body" class="pt.com.broker.xml.SoapBody" ns="http://www.w3.org/2003/05/soap-envelope">
+	<mapping name="Body" class="pt.com.broker.client.xml.SoapBody" ns="http://www.w3.org/2003/05/soap-envelope">
 		<structure field="enqueue" usage="optional" />
 		<structure field="poll" usage="optional" />
 		<structure field="publish" usage="optional" />
@@ -38,61 +38,61 @@
 		<structure field="checkStatus" usage="optional" />
 	</mapping>
 	
-	<mapping type-name="FaultCode" abstract="true" class="pt.com.broker.xml.FaultCode" ns="http://www.w3.org/2003/05/soap-envelope">
+	<mapping type-name="FaultCode" abstract="true" class="pt.com.broker.client.xml.FaultCode" ns="http://www.w3.org/2003/05/soap-envelope">
 		<value name="Value" field="value" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 	</mapping>
 	
-	<mapping type-name="FaultReason" abstract="true" class="pt.com.broker.xml.FaultReason" ns="http://www.w3.org/2003/05/soap-envelope">
+	<mapping type-name="FaultReason" abstract="true" class="pt.com.broker.client.xml.FaultReason" ns="http://www.w3.org/2003/05/soap-envelope">
 		<value name="Text" field="text" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 	</mapping>
 	
 	
-	<mapping name="Fault" class="pt.com.broker.xml.SoapFault" ns="http://www.w3.org/2003/05/soap-envelope" ordered="false" flexible="true">
+	<mapping name="Fault" class="pt.com.broker.client.xml.SoapFault" ns="http://www.w3.org/2003/05/soap-envelope" ordered="false" flexible="true">
 		<structure name="Code" map-as="FaultCode" field="faultCode" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 		<structure name="Reason" map-as="FaultReason" field="faultReason" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 		<value name="Detail" field="detail" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 	</mapping>
 
-	<mapping name="Enqueue" class="pt.com.broker.messaging.Enqueue" ns="http://services.sapo.pt/broker">
+	<mapping name="Enqueue" class="pt.com.broker.client.messaging.Enqueue" ns="http://services.sapo.pt/broker">
 		<structure field="brokerMessage" />
 	</mapping>
 	
-	<mapping name="Poll" class="pt.com.broker.messaging.Poll" ns="http://services.sapo.pt/broker">
+	<mapping name="Poll" class="pt.com.broker.client.messaging.Poll" ns="http://services.sapo.pt/broker">
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
-	<mapping name="Publish" class="pt.com.broker.messaging.Publish" ns="http://services.sapo.pt/broker">
+	<mapping name="Publish" class="pt.com.broker.client.messaging.Publish" ns="http://services.sapo.pt/broker">
 		<structure field="brokerMessage" />
 	</mapping>
 
-	<mapping name="Notify" class="pt.com.broker.messaging.Notify" ns="http://services.sapo.pt/broker">
+	<mapping name="Notify" class="pt.com.broker.client.messaging.Notify" ns="http://services.sapo.pt/broker">
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationType" field="destinationType" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 	
-	<mapping name="Unsubscribe" class="pt.com.broker.messaging.Unsubscribe" ns="http://services.sapo.pt/broker" ordered="false">
+	<mapping name="Unsubscribe" class="pt.com.broker.client.messaging.Unsubscribe" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationType" field="destinationType" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>	
 
-	<mapping name="Notification" class="pt.com.broker.messaging.Notification" ns="http://services.sapo.pt/broker">
+	<mapping name="Notification" class="pt.com.broker.client.messaging.Notification" ns="http://services.sapo.pt/broker">
 		<structure field="brokerMessage" />
 	</mapping>
 
-	<mapping name="Acknowledge" class="pt.com.broker.messaging.Acknowledge" ns="http://services.sapo.pt/broker" ordered="false">
+	<mapping name="Acknowledge" class="pt.com.broker.client.messaging.Acknowledge" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="required" ns="http://services.sapo.pt/broker" />
 	</mapping>
 	
-	<mapping name="CheckStatus" class="pt.com.broker.messaging.CheckStatus" ns="http://services.sapo.pt/broker" />
+	<mapping name="CheckStatus" class="pt.com.broker.client.messaging.CheckStatus" ns="http://services.sapo.pt/broker" />
 	
-	<mapping name="Status" class="pt.com.broker.messaging.Status" ns="http://services.sapo.pt/broker" ordered="false">
+	<mapping name="Status" class="pt.com.broker.client.messaging.Status" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="Message" field="message" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="Timestamp" field="timestamp" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="Version" field="version" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
-	<mapping name="BrokerMessage" class="pt.com.broker.messaging.BrokerMessage" ns="http://services.sapo.pt/broker" ordered="false" flexible="true">
+	<mapping name="BrokerMessage" class="pt.com.broker.client.messaging.BrokerMessage" ns="http://services.sapo.pt/broker" ordered="false" flexible="true">
 		<value name="Priority" field="priority" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="CorrelationId" field="correlationId" usage="optional" ns="http://services.sapo.pt/broker" />
