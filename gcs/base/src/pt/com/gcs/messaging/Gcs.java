@@ -3,7 +3,6 @@ package pt.com.gcs.messaging;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,29 +82,14 @@ public class Gcs
 		instance.ienqueue(message);
 	}
 
-	protected static Set<IoSession> getManagedAcceptorSessions()
-	{
-		//return Collections.unmodifiableSet(instance.acceptor.getManagedSessions());
-		Set<IoSession> acceptSessions = new HashSet<IoSession>();
-		Map<Long, IoSession> mngSessions = instance.acceptor.getManagedSessions();
-		
-		Set<Long> keys = mngSessions.keySet();
-		
-		for (Long key : keys)
-		{
-			acceptSessions.add(mngSessions.get(key));
-		}
-		return acceptSessions;
-	}
-
 	protected static Set<IoSession> getManagedConnectorSessions()
 	{
-		//return Collections.unmodifiableSet(instance.connector.getManagedSessions());
+		// return Collections.unmodifiableSet(instance.connector.getManagedSessions());
 		Set<IoSession> connectSessions = new HashSet<IoSession>();
 		Map<Long, IoSession> mngSessions = instance.connector.getManagedSessions();
-		
+
 		Set<Long> keys = mngSessions.keySet();
-		
+
 		for (Long key : keys)
 		{
 			connectSessions.add(mngSessions.get(key));
@@ -251,23 +235,23 @@ public class Gcs
 		{
 			log.debug("Add VirtualQueue '{}' from storage", vqueue);
 			iaddQueueConsumer(vqueue, null);
-		}		
-		
+		}
+
 		String[] queues = BDBEnviroment.getQueueNames();
-		
+
 		for (String queueName : queues)
 		{
 			QueueProcessorList.get(queueName);
-		}		
+		}
 
-		connectToAllPeers();		
+		connectToAllPeers();
 
 		log.info("{} initialized.", SERVICE_NAME);
 	}
 
 	private Message ipoll(final String queueName)
 	{
-		
+
 		LocalQueueConsumers.addSyncConsumer(queueName);
 		Message m = QueueProcessorList.get(queueName).poll();
 
