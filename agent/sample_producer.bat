@@ -10,6 +10,6 @@ set JAVA_OPTS=%JAVA_OPTS% -Djava.awt.headless=true -Djava.net.preferIPv4Stack=tr
 
 @echo on
 
-java %JAVA_OPTS% -cp "%CLASSPATH%" pt.com.broker.sample.Producer -n /test/foo -d TOPIC
+java %JAVA_OPTS% -cp "%CLASSPATH%" pt.com.broker.client.sample.Producer -n /test/foo -d TOPIC
 
 pause

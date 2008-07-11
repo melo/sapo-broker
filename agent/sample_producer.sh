@@ -9,4 +9,4 @@ java -server \
 -Djava.net.preferIPv6Addresses=false \
 -Dfile.encoding=UTF-8 \
 -cp "./conf:./lib/*" \
-pt.com.broker.sample.Producer -n /test/foo -d TOPIC
+pt.com.broker.client.sample.Producer -n /test/foo -d TOPIC
