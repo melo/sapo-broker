@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<definitions name="SapoBroker" targetNamespace="http://services.sapo.pt/broker" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://services.sapo.pt/broker" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsoap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
+<definitions name="SapoBroker"
+ targetNamespace="http://services.sapo.pt/broker" 
+ xmlns="http://schemas.xmlsoap.org/wsdl/" 
+ xmlns:tns="http://services.sapo.pt/broker" 
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+ xmlns:wsoap12="http://schemas.xmlsoap.org/wsdl/soap12/" 
+ xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
 
 	<types>
 
@@ -36,7 +42,7 @@
 			<xsd:element name="Poll">
 				<xsd:complexType>
 					<xsd:all>
-						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="string" />
+						<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
 					</xsd:all>
 				</xsd:complexType>
 			</xsd:element>
@@ -158,25 +164,32 @@
 			<input message="tns:AcknowledgeSoapIn" />
 		</operation>
 
-		<operation name="Subscribe">
+		<operation name="UnSubscribe">
 			<input message="tns:UnsubscribeSoapIn" />
 		</operation>
 
 	</portType>
 
 	<binding name="BrokerSoapBinding" type="tns:BrokerApi">
-		<wsoap12:binding style="document" transport="http://soap.sapo.pt/jms/tcp" />
+		<wsoap12:binding style="document" transport="http://soap.sapo.pt/tcp" />
 		<wsaw:UsingAddressing required="false" />
 
+		<operation name="Publish">
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/publish" />
+			<input>
+				<wsoap12:body use="literal" />
+			</input>
+		</operation>
+		
 		<operation name="Enqueue">
 			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/enqueue" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
-
-		<operation name="Publish">
-			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/publish" />
+		
+		<operation name="Poll">
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/poll" />
 			<input>
 				<wsoap12:body use="literal" />
 			</input>
@@ -195,19 +208,12 @@
 				<wsoap12:body use="literal" />
 			</input>
 		</operation>
-		
-		<operation name="Poll">
-			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/poll" />
-			<input>
-				<wsoap12:body use="literal" />
-			</input>
-		</operation>
-
-		<operation name="Notify">
-			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/notify" />
+	
+		<operation name="Notification">
+			<wsoap12:operation soapAction="http://services.sapo.pt/Broker/notification" />
 			<output>
 				<wsoap12:body use="literal" />
-			</output>
+			</output>			
 		</operation>
 
 		<operation name="Acknowledge">

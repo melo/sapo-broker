@@ -5,7 +5,7 @@
 	xmlns="http://schemas.xmlsoap.org/wsdl/"
 	xmlns:tns="http://services.sapo.pt/broker"
 	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-	xmlns:wsoap12="http://schemas.xmlsoap.org/wsdl/soap12/"
+	xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/"
 	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
 	
 	<types>
@@ -88,26 +88,26 @@
 	</portType>
 
 	<binding name="BrokerSoap" type="tns:BrokerSoap">
-		<wsoap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+		<soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
 		<wsaw:UsingAddressing required="false" />
 
 		<operation name="Publish">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/publish" style="document" />
+			<soap:operation soapAction="http://services.sapo.pt/broker/publish" style="document" />
 			<input>
-				<wsoap12:body use="literal" />
+				<soap:body use="literal" />
 			</input>
 			<output>
-				<wsoap12:body use="literal" />
+				<soap:body use="literal" />
 			</output>
 		</operation>
 
 		<operation name="Enqueue">
-			<wsoap12:operation soapAction="http://services.sapo.pt/broker/enqueue" style="document" />
+			<soap:operation soapAction="http://services.sapo.pt/broker/enqueue" style="document" />
 			<input>
-				<wsoap12:body use="literal" />
+				<soap:body use="literal" />
 			</input>
 			<output>
-				<wsoap12:body use="literal" />
+				<soap:body use="literal" />
 			</output>
 		</operation>
 
@@ -115,7 +115,7 @@
 
 	<service name="Broker">
 		<port name="BrokerSoap" binding="tns:BrokerSoap">
-			<wsoap12:address location="http://localhost:8000/broker/producer" />
+			<soap:address location="http://localhost:8000/broker/producer" />
 		</port>
 	</service>
 
