@@ -12,7 +12,6 @@
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/jibx-run.jar"/>
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/slf4j-api-1.5.0.jar"/>
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/org.caudexorigo.jar"/>
-		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/mina2-snapshot.jar"/>
 	</path>
 
 
@@ -72,7 +71,6 @@
 		<copy todir="${dist}/lib">
 			<fileset dir="${java-Component-BrokerTCP.location}/../../common-libs/">
 				<include name="*.jar"/>
-				<exclude name="h2.jar"/>
 				<exclude name="mina_http_filter.jar"/>
 				<exclude name="logback*"/>
 			</fileset>
