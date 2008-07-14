@@ -148,6 +148,8 @@
 			</fileset>
 		</copy>
 
+		<chmod dir="${dist}" perm="+x" includes="*.sh"/>
+
 		<tar tarfile="../sapo-broker.tar" >
 			<tarfileset dir="${dist}" prefix="sapo-broker"></tarfileset>
 		</tar>
