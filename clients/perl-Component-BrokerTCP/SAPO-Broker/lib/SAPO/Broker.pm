@@ -134,7 +134,21 @@ sub _debug {
     return unless $self->{DEBUG};
     my $msg = shift;
 
-    print STDERR "[SAPO::Broker DEBUG] ", $msg, "\n";
+
+
+    if ($self->{DEBUG} eq 666) {
+        my $detail = "--- MSG: $msg\n";
+        my $detailDeep = 0;
+        while (my @c = caller($detailDeep++)) {
+          $detail .= sprintf ( " %-40s => %s()\n", "$c[0] ($c[2])", $c[3] );
+        }
+        
+        print STDERR "$detail\n";
+    }
+    else {
+        print STDERR "[SAPO::Broker DEBUG] ", $msg, "\n";
+    }
+
 }
 
 # adiciona o tamanho da mensagem antes de a enviar, protocol stuff
@@ -213,9 +227,9 @@ sub _connected {
 
     $self->_debug("Am i connected?");
 
-
     if ( exists $self->{_CORE_}->{sock} && $self->{_CORE_}->{sock}->connected )
     {
+        $self->_debug("Yes, still connected...");
         return 1;
     }
 }
@@ -224,7 +238,7 @@ sub _connected {
 sub _connect {
     my $self = shift;
 
-    $self->_debug("_connect");
+    $self->_debug("Connecting to: " . $self->{host});
 
     my $sock = IO::Socket::INET->new(
         PeerAddr   => $self->{host},
@@ -237,11 +251,14 @@ sub _connect {
         Type       => SOCK_STREAM,
     );
 
-    return undef unless $sock;
+    unless ($sock) {
+        $self->_debug("Cant connect to: $self->{host} : $@");
+        return undef;
+    }
     $sock->autoflush(1);
     $self->{_CORE_}->{sock} = $sock;
 
-    #$self->_debug("CONNECTED:".$self->{_CORE_}->{sock}->connected);
+    $self->_debug("CONNECTED!");
 
     return 1;    #$sock->connected;
 }
@@ -354,25 +371,38 @@ Version 0.69
 Publish and Consume events from SAPO Broker.
 
     use SAPO::Broker;
+    
+    my $topic = "/test";
 
     my $broker = SAPO::Broker->new(
-      msg_type=>'TOPIC_AS_QUEUE',
+        host=> '127.0.0.1',
+        DEBUG=>0,                   # 1 or 666
     );
-    $broker->publish(
-      topic   => '/sapo/radius/test',
-      payload => 'TAU',
-    );
-    $broker->subscribe(
-      topic   => '/sapo/radius/test',
-    );
-    while (1) {
-      my $payload = $broker->receive;
 
-      print "My payload: ", $payload, "\n";
-      ...
+    die "Cant connect? CAUSE: $@\n" unless $broker;
+
+    print "SUBSCRIBING...\n";
+    $broker->subscribe(
+        topic   => $topic,
+    );
+
+    print "PUBLISHING...\n";
+    $broker->publish(
+        topic   => $topic,
+        payload => 'TAU TAU',
+    );
+
+    print "RECEIVING...\n";
+    while (1) {
+        my $payload = $broker->receive;
+
+        print "Message received: ", $payload, "\n";
     }
 
-    ...
+
+
+
+
 
 =head1 EXPORT
 
