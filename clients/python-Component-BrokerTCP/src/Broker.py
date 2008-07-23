@@ -120,7 +120,6 @@ def escape_xml(data):
 
 DEFAULT_KIND  = 'TOPIC'
 DEFAULT_PORT  = 3322
-#XXX no support for TOPIC_AS_QUEUE (yet)
 ALLOWED_KINDS = ('TOPIC', 'QUEUE')
 
 def check_kind(kind):
@@ -165,7 +164,13 @@ def build_msg(name, payload):
     return otag+'\n'+payload+'\n'+ctag
 
 def subscribe_msg(destination, kind):
-    check_kind(kind)
+    if 'TOPIC_AS_QUEUE' == kind:
+        #check whether the destination has the correct syntax
+        if '@' not in destination:
+            raise AttributeError("Invalid destination %r syntax for TOPIC_AS_QUEUE. Format is handle@topic." % destination)
+    else:
+        check_kind(kind)
+
     return """<DestinationName>%s</DestinationName>\n<DestinationType>%s</DestinationType>""" % (
         escape_xml(destination),
         escape_xml(kind)
@@ -539,11 +544,13 @@ class Client:
 
     def subscribe(self, destination, kind=DEFAULT_KIND, auto_acknowledge=True):
         """
-        Subscribes for notification for destination with kind either TOPIC or QUEUE.
+        Subscribes notifications for events of destination with kind either TOPIC or QUEUE.
 
-        auto_acknowledge determines whether the client needs to acknowledge the received messages.
-            By default auto_acknowledge is True meaning acknowledge is done automatically each time a message is consumed.
-            A False value requires the user to call acknowledge for the received message explicitly when he sees fit.
+        auto_acknowledge determines whether the client needs to acknowledge the received messages for QUEUE and TOPIC_AS_QUEUE.
+        By default auto_acknowledge is True meaning acknowledge is done automatically each time a message is consumed.
+        A False value requires the user to call acknowledge for the received message explicitly when he sees fit.
+        
+        ** For TOPIC auto_acknowledge is always ignored and considered to be False **
         """
         log.info("Client.subscribe (%s, %s)", destination, kind)
 
@@ -556,7 +563,7 @@ class Client:
             self.subscribed.add( (destination, kind) )
             log.debug('Currently subscribed to %s', self.subscribed)
 
-        if auto_acknowledge:
+        if auto_acknowledge and kind not in ('TOPIC'):
             log.debug('Using client auto-acknowledgement on consume')
             self.__auto_ack.add(destination)
 
