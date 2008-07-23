@@ -61,6 +61,32 @@ sub subscribe {
     }
 }
 
+# Poll
+sub poll {
+    my ($self, %args) = @_;
+
+    $self->_reconnect unless $self->_connected;
+    return undef      unless $self->_connected;
+
+    my $destname = $self->_destname($args{topic});
+
+    my $msg =
+        "<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
+        <soap:Body>
+        <mq:Poll>
+        <mq:DestinationName>$destname</mq:DestinationName>
+        </mq:Poll>
+        </soap:Body>
+        </soap:Envelope>";
+
+    $self->_debug($msg);
+
+    _bus_encode( \$msg );
+    return undef unless print { $self->{_CORE_}->{sock} } $msg;
+
+    return 1;
+}
+
 # recebe eventos
 sub receive {
 	my $self = shift;
@@ -293,7 +319,7 @@ sub _reconnect {
             #use Data::Dumper;
             #$self->_debug( Dumper( @{ $self->{_CORE_}->{topic} } ) );
             #die;
-            $self->_debug("ReSubscribing...");
+            $self->_debug("ReSubscribing...") if defined $self->{_CORE_}->{topics};
 
             for my $topic ( keys %{ $self->{_CORE_}->{topics} } ) {
                 $self->_debug("... $topic");
