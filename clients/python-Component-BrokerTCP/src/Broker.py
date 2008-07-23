@@ -373,14 +373,15 @@ class Client:
         """
 
         log.info("Client for %s:%s", host, port)
-        self.__mutex_r  = threading.RLock()
-        self.__mutex_w  = threading.RLock()
-        self.host       = host
-        self.port       = port
-        self.endpoint   = "%s:%s" % (host, port)
-        self.subscribed = set()
-        self.__auto_ack = set()
-        self.__closed   = False
+        self.__mutex_r     = threading.RLock()
+        self.__mutex_w     = threading.RLock()
+        self.__mutex_ack   = threading.RLock()
+        self.host          = host
+        self.port          = port
+        self.endpoint      = "%s:%s" % (host, port)
+        self.subscribed    = set()
+        self.__auto_ack    = set()
+        self.__closed      = False
         self.__request_ack = {}
 
         #first create the socket
@@ -396,6 +397,93 @@ class Client:
         log.debug("Socket timeout  %s s", self.__socket.gettimeout())
         #connect to host:port
         self.__socket.connect((host, port))
+
+    def __add_request_ack(self, destination):
+        """
+        A message for destination has been requested by poll.
+        """
+        self.__lock_ack()
+        try:
+            self.__request_ack[destination] = self.__request_ack.get(destination, 0)+1
+        finally:
+            self.__unlock_ack()
+
+        return self
+
+    def __remove_request_ack(self, message):
+        """
+        A message for destination requested by poll has been acknowledged.
+        """
+        self.__lock_ack()
+        try:
+            destination = message.destination
+            count       = self.__request_ack[destination]
+            if count<0:
+                log.error("Internal error. I should acknowledged %d messages for %s.", count, destination)
+            elif 1==count:
+                del self.__request_ack[destination]
+            else:
+                self.__request_ack[destination] = count-1
+        finally:
+            self.__unlock_ack()
+
+        return self
+
+    def __should_request_ack(self, message):
+        """
+        Returns whether a message should be auto-acknowledged due to a previous poll.
+        """
+        self.__lock_ack()
+        try:
+            return message.destination in self.__request_ack
+        finally:
+            self.__unlock_ack()
+
+    def __add_auto_ack(self, destination):
+        """
+        Adds destination to the list of destinations for which auto_acknowledge for be made.
+        """
+        self.__lock_ack()
+        try:
+            self.__auto_ack.add(destination)
+        finally:
+            self.__unlock_ack()
+
+        return self
+
+    def __in_auto_ack(self, message):
+        """
+        Returns whether a message has a destination that should be auto_acknowledged.
+        """
+        self.__lock_ack()
+        try:
+            return message.destination in self.__auto_ack
+        finally:
+            self.__unlock_ack()
+
+    def __lock_ack(self):
+        """
+        Locks the object's internal mutex.
+        """
+        if TRACE:
+            log.debug("Ack locking")
+        self.__mutex_ack.acquire()
+        if TRACE:
+            log.debug("Ack locked")
+
+        return self
+
+    def __unlock_ack(self):
+        """
+        Unlocks the object's internal mutex.
+        """
+        if TRACE:
+            log.debug("Ack unlocking")
+        self.__mutex_ack.release()
+        if TRACE:
+            log.debug("Ack unlocked")
+
+        return self
 
     def __lock_w(self):
         """
@@ -550,7 +638,7 @@ class Client:
         By default auto_acknowledge is True meaning acknowledge is done automatically each time a message is consumed.
         A False value requires the user to call acknowledge for the received message explicitly when he sees fit.
         
-        ** For TOPIC auto_acknowledge is always ignored and considered to be False **
+        ** For kind == 'TOPIC' auto_acknowledge is always ignored and considered to be False **
         """
         log.info("Client.subscribe (%s, %s)", destination, kind)
 
@@ -565,7 +653,7 @@ class Client:
 
         if auto_acknowledge and kind not in ('TOPIC'):
             log.debug('Using client auto-acknowledgement on consume')
-            self.__auto_ack.add(destination)
+            self.__add_auto_ack(destination)
 
         return self
 
@@ -591,7 +679,7 @@ class Client:
         self.__lock_w()
         try:
             self.__write_raw(build_msg('request', request_msg(destination)))
-            self.__request_ack[destination] = self.__request_ack.get(destination, 0)+1
+            self.__add_request_ack(destination)
         finally:
             self.__unlock_w()
 
@@ -608,17 +696,12 @@ class Client:
             content = self.__read_raw()
             msg = Message.fromXML(content)
 
-            if msg.destination in self.__auto_ack:
+            if self.__in_auto_ack(msg):
                 #XXX I can't tell whether this is from a TOPIC or QUEUE which is a pain
                 log.info("Auto acknowledging received message (subscribe)")
                 self.acknowledge(msg)
-            elif msg.destination in self.__request_ack:
-                count = self.__request_ack[msg.destination]
-                if 1==count:
-                    del self.__request_ack[msg.destination]
-                else:
-                    self.__request_ack[msg.destination] = count-1
-
+            elif self.__should_request_ack(msg):
+                self.__remove_request_ack(msg)
                 log.info("Auto acknowledging received message (poll)")
                 self.acknowledge(msg)
             
