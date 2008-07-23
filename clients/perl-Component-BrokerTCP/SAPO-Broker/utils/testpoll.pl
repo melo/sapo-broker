@@ -8,7 +8,7 @@ use Data::Dumper;
 use English qw( -no_match_vars );
 use Time::HiRes qw(time);
 
-my $topic = '/sapo/broker/'; 
+my $topic = '/sapo/broker/testes'; 
 
 my $sleep = 1;
 
@@ -35,10 +35,9 @@ alarm 5;
 
 my $broker = SAPO::Broker->new(
 	timeout		=> 60, 
-	host		=> '127.0.0.1',
+    host		=> '127.0.0.1',
 	DEBUG		=> 0,
 	retstruct   => 1,
-	msg_type	=> 'TOPIC',
 );
 
 die "No Broker?\n" unless $broker;
@@ -48,14 +47,15 @@ if ($stype) { # CONSUMER
 	print "Starting as COMSUMER as in POLL\n";
 	while (1) {
     	die "Can't POLL\n"  unless $broker->poll(
-    		topic => $topic,
+    		topic       => $topic,
+    		msg_type	=> 'TOPIC',
     	);
 		#print Dumper($broker->receive), "\n";		
-		my $data = $broker->receive;
-		print "Received: ",Dumper($data),"\n";
+		my $event = $broker->receive;
+		print "Received: ",Dumper($event),"\n";
 		
-		if ($broker->msg_type eq 'TOPIC_AS_QUEUE') {
-			$broker->ack($data);
+		if ($broker->msg_type($topic) eq 'TOPIC_AS_QUEUE') {
+			$broker->ack($event);
 		}
 		
 		$events++;
@@ -65,11 +65,12 @@ if ($stype) { # CONSUMER
 else { # PRODUCER
 	print "Starting as PRODUCER\n";
 	while (1) {
-	    my $data = time;
-	    #print "Sending: $data\n";
+	    my $event = time;
+	    #print "Sending: $event\n";
 		warn "Can't Publish\n" unless $broker->publish(
-			topic   => $topic,
-			payload => $data,
+			topic       => $topic,
+			payload     => $event,
+			msg_type    => 'Enqueue',
 		);
 		$events++;
 		sleep $sleep;

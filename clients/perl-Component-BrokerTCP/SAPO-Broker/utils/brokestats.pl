@@ -18,7 +18,7 @@ $|++;
 my %stats;
 
 # stats cycle in seconds
-my $stat_cycle = 60;
+my $stat_cycle = 10;
 
 # start stats
 $SIG{ALRM} = sub {_proc_stats() };
@@ -30,28 +30,23 @@ my $topic = '/.*';
 # connect to broker
 my $broker = SAPO::Broker->new(
 	timeout		=> 60, 
-	msg_type	=> 'FF',
 	host		=> '127.0.0.1',
 	port		=> 3322,
 	DEBUG		=> 0,
 	retstruct   => 1
 );
 
-die "Can't subscribe\n" unless $broker->subscribe( topic => $topic );
+die "Can't subscribe\n" 
+    unless $broker->subscribe( 
+        topic       => $topic, 
+    );
 
+
+print "Starting collecting data...\n";
 while (1) {
-	my $xml = $broker->receive;
+	my $event = $broker->receive;
 	
-	my $source = $xml->{source};
-	
-	my ($host, $topic) = _proc_source($source);
-	
-	unless ($topic) {
-	    $topic = $source;
-    	print "WARINIG: voodoo wsa:Address\n"; 
-	}
-	
-	$stats{$topic}++;
+	$stats{$event->{topic}}++;
 }
 
 sub _proc_source {

@@ -8,7 +8,7 @@ use Data::Dumper;
 use English qw( -no_match_vars );
 use Time::HiRes qw(time);
 
-my $topic = '/sapo/broker/'; 
+my $topic = '/sapo/broker/machomac'; 
 
 my $sleep = 1;
 
@@ -35,11 +35,9 @@ alarm 5;
 
 my $broker = SAPO::Broker->new(
 	timeout		=> 60, 
-	msg_type	=> 'TOPIC_AS_QUEUE',
 	host		=> '127.0.0.1',
-	#port		=> 3322,
-	DEBUG		=> 1,
-	retstruct => 1,
+	DEBUG		=> 0,
+	retstruct   => 1,
 );
 
 die "No Broker?\n" unless $broker;
@@ -52,11 +50,12 @@ if ($stype) { # CONSUMER
 	);
 	while (1) {
 		#print Dumper($broker->receive), "\n";		
-		my $data = $broker->receive;
-		print "Received: ",Dumper($data),"\n";
+		my $event = $broker->receive;
+		print "Received: ",Dumper($event), "\n";
 		
-		if ($broker->msg_type eq 'TOPIC_AS_QUEUE') {
-			$broker->ack($data);
+		# send the acknowledge when you subscribed the topic as queue
+		if ($broker->msg_type($topic) eq 'TOPIC_AS_QUEUE') {
+			$broker->ack($event);
 		}
 		
 		$events++;

@@ -8,6 +8,7 @@ use XML::LibXML;
 use XML::LibXML::XPathContext;
 use Sys::Hostname;
 use Data::Dumper;
+use Carp qw(carp);
 
 our $VERSION = 0.69.1;
 our $libxml_parser;
@@ -20,7 +21,6 @@ sub new {
     $args{host}           ||= '127.0.0.1';    # host da manta
     $args{port}           ||= 3322;           # porta da manta
     $args{recon_attempts} ||= 5;              # quantas tentativas de reconnect
-    $args{msg_type}       ||= 'FF';           # se e' "FF:file and forget' ou TOPIC_AS_QUEUE
     $args{DEBUG}          ||= 0;              # msgs de debug e tal...
     
 	$args{retstruct}      ||= 0;              # retornar apenas o TextPayload ou uma struct?
@@ -29,10 +29,12 @@ sub new {
 
     $self->_debug("Starting in DEBUG MODE");
 		
-	$args{msg_type} = 'TOPIC' if $args{msg_type} eq 'FF';
+	# old things...
+	$args{msg_type} = 'TOPIC' if exists $args{msg_type} && $args{msg_type} eq 'FF';
+    carp("!!!\n\tmsg_type IS DEPRECATED in new(), use it only in publish, subscribe or poll\n!!!\n") if exists $args{msg_type};
 
     return undef unless $self->_connect;
-
+    
     return $self;
 }
 
@@ -41,8 +43,21 @@ sub publish {
     my $self = shift;
     my %args = @_;
 
+    # TODO: i hate this :/
+    my @msg_types = ('Publish', 'Enqueue');
+    my %msg_types  = map {$_ => 1} @msg_types;
+
     $self->_reconnect unless $self->_connected;
     return undef      unless $self->_connected;
+
+    # default message type
+    $args{msg_type} ||= 'Publish';
+
+    # check for valid messages types
+    if (!exists $msg_types{$args{msg_type}}) {
+        carp("Unknown msg_type to publish msg, falling back to Publish type");
+        $args{msg_type} = 'Publish';
+    }
 
     return $self->_send_p(%args);
 }
@@ -55,20 +70,35 @@ sub subscribe {
     $self->_reconnect unless $self->_connected;
     return undef      unless $self->_connected;
 
+    # TODO: i hate this :/
+    my @msg_types = ('TOPIC', 'TOPIC_AS_QUEUE');
+    my %msg_types  = map {$_ => 1} @msg_types;
+
+    # default msg type
+    $args{msg_type} ||= 'TOPIC';
+
+    # check for valid messages types
+    if (!exists $msg_types{$args{msg_type}}) {
+        carp("Unknown msg_type to subscribe msg, falling back to TOPIC type");
+        $args{msg_type} = 'TOPIC';
+    }
+
+    # send subscribe notification
     if ( $self->_send_s(%args) ) {
-        $self->{_CORE_}->{topics}{ $args{topic} }++;
+        $self->{_CORE_}->{topics}{ $args{topic} }{msg_type} = $args{topic};
         return 1;
     }
 }
 
-# Poll
+# poll
 sub poll {
     my ($self, %args) = @_;
 
     $self->_reconnect unless $self->_connected;
     return undef      unless $self->_connected;
 
-    my $destname = $self->_destname($args{topic});
+    my $msg_type = $args{msg_type};
+    my $destname = $self->_destname($args{topic}, $msg_type);
 
     my $msg =
         "<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
@@ -79,7 +109,7 @@ sub poll {
         </soap:Body>
         </soap:Envelope>";
 
-    $self->_debug($msg);
+    $self->_debug("MSG SENT: $msg");
 
     _bus_encode( \$msg );
     return undef unless print { $self->{_CORE_}->{sock} } $msg;
@@ -106,7 +136,8 @@ sub receive {
 		return undef;
 	}
 
-	return undef if $buf =~ m{Exception};
+    # REDO this line (don't remember why it's here)
+	#return undef if $buf =~ m{Exception};
 
 	$self->_debug("Payload: $buf");
 
@@ -114,8 +145,6 @@ sub receive {
 		$buf,'http://services.sapo.pt/broker',
 		'BrokerMessage', qw(TextPayload MessageId DestinationName)
 	);
-
-	#print STDERR Dumper($event) if $self->{DEBUG};
 
 	return $self->{retstruct} || $self->{msg_type} eq 'TOPIC_AS_QUEUE' ? 
 		$event : $event->{TextPayload};
@@ -146,9 +175,15 @@ sub ack {
 	return 1;
 }
 
-
+# DEPRECATED...
 sub msg_type {
-	return shift->{msg_type}
+    my ($self, $topic) = @_;
+    
+    return unless $topic;
+    
+    $self->{_CORE_}->{topics}{$topic}{msg_type};
+    #carp("!!!\n\tDont use this, it's deprecated\n!!!\n");
+	#return shift->{msg_type}
 }
 
 #---
@@ -159,8 +194,6 @@ sub _debug {
 
     return unless $self->{DEBUG};
     my $msg = shift;
-
-
 
     if ($self->{DEBUG} eq 666) {
         my $detail = "--- MSG: $msg\n";
@@ -174,7 +207,6 @@ sub _debug {
     else {
         print STDERR "[SAPO::Broker DEBUG] ", $msg, "\n";
     }
-
 }
 
 # adiciona o tamanho da mensagem antes de a enviar, protocol stuff
@@ -184,10 +216,10 @@ sub _bus_encode {
 }
 
 sub _destname {
-	my ($self, $topic) = @_;
+	my ($self, $topic, $msg_type) = @_;
 	my $destname;
 
-	if ($self->{msg_type} eq 'TOPIC_AS_QUEUE') {
+	if ($msg_type eq 'TOPIC_AS_QUEUE') {
 		$destname = ($self->{hostname} || hostname()) . '@'; 
 	}
 	
@@ -201,22 +233,19 @@ sub _send_s {
     my $self = shift;
     my %args = @_;
 
-    #my $msg_type = $self->{msg_type} eq 'TOPIC_AS_QUEUE' ? 'TOPIC_AS_QUEUE' : 'TOPIC';
-		my $destname = $self->_destname($args{topic});
+    my $msg_type = $args{msg_type};
+    my $destname = $self->_destname($args{topic}, $msg_type);
 		
-		#print STDERR "send_s: $destname\n";
-		
-    my $msg =
-q{<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'><soapenv:Body>};
+    my $msg = q{<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'><soapenv:Body>};
     $msg .= q{<Notify xmlns='http://services.sapo.pt/broker'>};
     $msg .= qq{<DestinationName>$destname</DestinationName>};
-    $msg .= "<DestinationType>".$self->{msg_type}."</DestinationType>";
+    $msg .= "<DestinationType>". $msg_type ."</DestinationType>";
     $msg .= q{</Notify>};
     $msg .= q{</soapenv:Body></soapenv:Envelope>};
     
-		$self->_debug($msg);
+	$self->_debug("MSG RECV: $msg");
 		
-		_bus_encode( \$msg );
+	_bus_encode( \$msg );
     return undef unless print { $self->{_CORE_}->{sock} } $msg;
 
     return 1;
@@ -227,22 +256,21 @@ sub _send_p {
     my $self = shift;
     my %args = @_;
 
-    my $msg_type = $self->{msg_type} eq 'TOPIC_AS_QUEUE' ? 'Enqueue' : 'Publish';
-
-    my $msg =
-q{<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"><soapenv:Body>};
-    $msg .=
-      qq{<$msg_type xmlns="http://services.sapo.pt/broker"><BrokerMessage>};
+    my $msg_type = $args{msg_type};
+    
+    my $msg = q{<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"><soapenv:Body>};
+    $msg .= qq{<$msg_type xmlns="http://services.sapo.pt/broker"><BrokerMessage>};
     $msg .= qq{<DestinationName>$args{topic}</DestinationName>};
     $msg .= q{<TextPayload>};
     $msg .= _xml_escape( $args{payload} );
     $msg .= q{</TextPayload>};
     $msg .= qq{</BrokerMessage></$msg_type>};
     $msg .= q{</soapenv:Body></soapenv:Envelope>};
+    
+    $self->_debug("MSG SENT: $msg");
+    
     _bus_encode( \$msg );
     return undef unless print { $self->{_CORE_}->{sock} } $msg;
-
-    #print "Message: $msg \n" if $self->{DEBUG};
 
     return 1;
 }
@@ -253,8 +281,7 @@ sub _connected {
 
     $self->_debug("Am i connected?");
 
-    if ( exists $self->{_CORE_}->{sock} && $self->{_CORE_}->{sock}->connected )
-    {
+    if ( exists $self->{_CORE_}->{sock} && $self->{_CORE_}->{sock}->connected ) {
         $self->_debug("Yes, still connected...");
         return 1;
     }
@@ -316,9 +343,6 @@ sub _reconnect {
         if ( $self->_connect ) {
             $self->_debug("Connected!");
 
-            #use Data::Dumper;
-            #$self->_debug( Dumper( @{ $self->{_CORE_}->{topic} } ) );
-            #die;
             $self->_debug("ReSubscribing...") if defined $self->{_CORE_}->{topics};
 
             for my $topic ( keys %{ $self->{_CORE_}->{topics} } ) {
@@ -327,14 +351,12 @@ sub _reconnect {
             }
 
             return 1;
-
         }
         sleep 1;
     }
 
     return undef;
 }
-
 
 # gamado do modulo do melo
 sub _parse_soap_message {
@@ -353,8 +375,26 @@ sub _parse_soap_message {
     }
 
     $fields{source} = $message->findvalue('//wsa:From/wsa:Address');
+    
+    # extra info, i hope, some day, this fields come from the broker
+    if ($fields{source}) {
+        ($fields{host}, $fields{topic}) = _proc_source($fields{source});
+    }
 
     return \%fields;
+}
+
+# processa o campo source, onde está o host e o topic
+sub _proc_source {
+    my $source = shift;
+    
+    my ($host, $topic) = $source =~ m!topic\@broker-([^-]+)-\d+://(.*)!;
+    
+    # until we don't have a better and secure way to get this info
+    $host   ||= '___I CANT GET THE HOST___';
+    $topic  ||= '___I CANT GET THE TOPIC___';
+    
+    return $host, $topic;
 }
 
 sub _parse_with_libxml {
@@ -362,7 +402,13 @@ sub _parse_with_libxml {
 
     $libxml_parser ||= XML::LibXML->new;
 
-    return XML::LibXML::XPathContext->new( $libxml_parser->parse_string($xml) );
+    my $xpath = XML::LibXML::XPathContext->new( $libxml_parser->parse_string($xml) );
+    
+    # trying to find a very voodoo error :/
+    #:146: parser error : Premature end of data in tag Envelope line 1
+    die "!!!!!!!!!!!!!!!!!!!!!!!!!!\n$xml" unless $xpath;
+
+    return $xpath;
 }
 
 sub _xml_escape {
