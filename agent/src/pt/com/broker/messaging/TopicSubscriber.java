@@ -22,14 +22,13 @@ public class TopicSubscriber extends BrokerListener
 	private final String _dname;
 
 	private final static int MAX_SESSION_BUFFER_SIZE = 512 * 1024;
-	
+
 	private Object slock = new Object();
 
 	public TopicSubscriber(String destinationName)
 	{
 		_dname = destinationName;
 	}
-	
 
 	@Override
 	public DestinationType getDestinationType()
@@ -41,7 +40,6 @@ public class TopicSubscriber extends BrokerListener
 	{
 		if (amsg == null)
 			return true;
-	
 
 		try
 		{
@@ -53,17 +51,20 @@ public class TopicSubscriber extends BrokerListener
 					{
 						if (ios.getScheduledWriteBytes() > (MAX_SESSION_BUFFER_SIZE))
 						{
-							if (log.isDebugEnabled())
+							if (log.isWarnEnabled())
 							{
-								log.debug("Slow client: \"{}\". message will be discarded. Client Address: '{}'", amsg.getSourceApp(), IoSessionHelper.getRemoteAddress(ios));
+								String message = String.format("Slow client for '%s'. Message with id '%s' will be discarded. Client Address: '%s'", _dname, amsg.getMessageId(), IoSessionHelper.getRemoteAddress(ios));
+								log.warn(message);
 							}
 							Sleep.time(1);
-						
-							return false;
-						}
 
-						final SoapEnvelope response = BrokerListener.buildNotification(amsg);
-						ios.write(response);						
+							//return false;
+						}
+						else
+						{
+							final SoapEnvelope response = BrokerListener.buildNotification(amsg);
+							ios.write(response);
+						}
 					}
 					else
 					{
@@ -98,11 +99,15 @@ public class TopicSubscriber extends BrokerListener
 			if (_sessions.remove(iosession))
 			{
 				log.info("Remove 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
-				
-				if (_sessions.size() == 0)
+
+				int subscriberCount = _sessions.size();
+
+				if (subscriberCount == 0)
 				{
 					TopicSubscriberList.remove(_dname);
 				}
+
+				log.info("Local subscriber count for '{}': {}", _dname, subscriberCount);
 			}
 		}
 	}
@@ -113,7 +118,9 @@ public class TopicSubscriber extends BrokerListener
 		{
 			if (_sessions.add(iosession))
 			{
+				int subscriberCount = _sessions.size();
 				log.info("Create 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+				log.info("Local subscriber count for '{}': {}", _dname, subscriberCount);
 			}
 		}
 	}
