@@ -70,8 +70,17 @@ public class BrokerProducer
 	{
 		BrokerMessage brkm = enqreq.brokerMessage;
 		Message msg = prepareForSending(brkm);
-		String source = StringUtils.isBlank(messageSource) ? "queue@" + GcsInfo.getAgentName() + "://" + brkm.destinationName : messageSource;
-		msg.setSourceApp(source);
+		StringBuffer sb_source = new StringBuffer();
+		sb_source.append("queue@");
+		sb_source.append(GcsInfo.getAgentName());
+		sb_source.append("://");
+		sb_source.append(brkm.destinationName);
+		if (StringUtils.isNotBlank(messageSource))
+		{
+			sb_source.append("?app=");
+			sb_source.append(messageSource);
+		}
+		msg.setSourceApp(sb_source.toString());
 		msg.setType(MessageType.COM_QUEUE);
 
 		Gcs.enqueue(msg);
@@ -82,8 +91,18 @@ public class BrokerProducer
 		final BrokerMessage brkm = pubreq.brokerMessage;
 
 		Message msg = prepareForSending(brkm);		
-		String source = StringUtils.isBlank(messageSource) ? "topic@" + GcsInfo.getAgentName() + "://" + brkm.destinationName : messageSource;
-		msg.setSourceApp(source);
+
+		StringBuffer sb_source = new StringBuffer();
+		sb_source.append("topic@");
+		sb_source.append(GcsInfo.getAgentName());
+		sb_source.append("://");
+		sb_source.append(brkm.destinationName);
+		if (StringUtils.isNotBlank(messageSource))
+		{
+			sb_source.append("?app=");
+			sb_source.append(messageSource);
+		}
+		msg.setSourceApp(sb_source.toString());
 		msg.setType(MessageType.COM_TOPIC);		
 		Gcs.publish(msg);
 	}

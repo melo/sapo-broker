@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.mina.common.IoSession;
+import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +18,8 @@ class RemoteTopicConsumers
 	private static final RemoteTopicConsumers instance = new RemoteTopicConsumers();
 
 	private Map<String, CopyOnWriteArrayList<IoSession>> remoteTopicConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<IoSession>>();
+	
+	private static final int WRITE_BUFFER_SIZE = 2048*1024;
 
 	private RemoteTopicConsumers()
 	{
@@ -65,10 +68,10 @@ class RemoteTopicConsumers
 				}
 			}
 
-			for (String destination : matches)
+			for (String subscriptionName : matches)
 			{
-				message.setDestination(destination);
-				instance.doNotify(message);
+				//message.setDestination(destination);
+				instance.doNotify(subscriptionName, message);
 			}
 		}
 	}
@@ -126,11 +129,11 @@ class RemoteTopicConsumers
 		return 0;
 	}
 
-	private void doNotify(Message message)
+	private void doNotify(String subscriptionName, Message message)
 	{
 		try
 		{
-			CopyOnWriteArrayList<IoSession> sessions = remoteTopicConsumers.get(message.getDestination());
+			CopyOnWriteArrayList<IoSession> sessions = remoteTopicConsumers.get(subscriptionName);
 			if (sessions != null)
 			{
 				if (sessions.size() == 0)
@@ -145,12 +148,11 @@ class RemoteTopicConsumers
 				{
 					if (ioSession != null)
 					{
-						// if (ioSession.getScheduledWriteBytes() <
-						// WRITE_BUFFER_SIZE)
-						// {
-						// ioSession.write(message).awaitUninterruptibly();
-						// }
-						ioSession.write(message).awaitUninterruptibly();
+						if (ioSession.getScheduledWriteBytes() > WRITE_BUFFER_SIZE)
+						{
+							Sleep.time(2);
+						}
+						ioSession.write(message);
 					}
 				}
 			}

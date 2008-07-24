@@ -1,5 +1,6 @@
 package pt.com.gcs.messaging;
 
+import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -67,18 +68,18 @@ class LocalTopicConsumers
 				}
 			}
 
-			for (String destination : matches)
+			for (String subscriptionName : matches)
 			{
-				message.setDestination(destination);
-				instance.doNotify(message);
+				//message.setDestination(destination);
+				instance.doNotify(subscriptionName, message);
 			}
 		}
 	}
 
-	private void doNotify(Message message)
+	private void doNotify(String subscriptionName, Message message)
 	{
 		String topicName = message.getDestination();
-		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(topicName);
+		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(subscriptionName);
 		if (listeners != null)
 		{
 			for (MessageListener messageListener : listeners)
@@ -167,7 +168,7 @@ class LocalTopicConsumers
 		Message m = new Message();
 		m.setType((MessageType.SYSTEM_TOPIC));
 		String ptemplate = "<sysmessage><action>%s</action><source-name>%s</source-name><source-ip>%s</source-ip><destination>%s</destination></sysmessage>";
-		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
+		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ((InetSocketAddress) IoSessionHelper.getRemoteInetAddress(ioSession)).getHostName() , destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
 		WriteFuture wf = ioSession.write(m);
