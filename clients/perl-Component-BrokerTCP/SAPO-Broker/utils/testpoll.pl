@@ -54,9 +54,8 @@ if ($stype) { # CONSUMER
 		my $event = $broker->receive;
 		print "Received: ",Dumper($event),"\n";
 		
-		if ($broker->msg_type($topic) eq 'TOPIC_AS_QUEUE') {
-			$broker->ack($event);
-		}
+		# send always ack, since this is poll...
+		$broker->ack($event);
 		
 		$events++;
 		#sleep $sleep;
