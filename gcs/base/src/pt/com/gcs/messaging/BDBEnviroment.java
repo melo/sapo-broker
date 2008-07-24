@@ -45,6 +45,7 @@ public class BDBEnviroment
 			envConfig.setTransactional(true);
 			envConfig.setTxnWriteNoSync(true);
 			envConfig.setTxnNoSync(true);
+			envConfig.setCachePercent(40);
 			env = new Environment(new File(dbDir), envConfig);
 		}
 		catch (Throwable t)
