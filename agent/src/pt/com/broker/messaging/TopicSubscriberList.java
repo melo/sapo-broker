@@ -12,7 +12,7 @@ public class TopicSubscriberList
 {
 	// key: destinationName
 	private final Map<String, TopicSubscriber> topicSubscribersCache = new HashMap<String, TopicSubscriber>();
-	
+
 	private static final Logger log = LoggerFactory.getLogger(TopicSubscriberList.class);
 
 	private static final TopicSubscriberList instance = new TopicSubscriberList();

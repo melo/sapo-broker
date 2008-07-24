@@ -113,8 +113,8 @@ public class BrokerHttpAction extends HttpAction
 		}
 		catch (Throwable e)
 		{
-			fault(null, e, response);
 			response.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);
+			fault(null, e, response);			
 			if (log.isErrorEnabled())
 			{
 				log.error("HTTP Service error, cause:" + e.getMessage() + ". Client address:" + session.getRemoteAddress());
