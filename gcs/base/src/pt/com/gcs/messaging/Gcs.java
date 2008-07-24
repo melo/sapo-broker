@@ -24,7 +24,6 @@ import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
 import org.caudexorigo.concurrent.Sleep;
-import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,15 +65,22 @@ public class Gcs
 
 	protected static void connect(SocketAddress address)
 	{
-		String message = "Connecting to '{}'.";
-		log.info(message, address.toString());
-
-		ConnectFuture cf = instance.connector.connect(address).awaitUninterruptibly();
-
-		if (!cf.isConnected())
+		if (WorldMap.contains((InetSocketAddress) address))
 		{
-			GcsExecutor.schedule(new Connect(address), 5000, TimeUnit.MILLISECONDS);
+			log.info("Connecting to '{}'.", address.toString());
+
+			ConnectFuture cf = instance.connector.connect(address).awaitUninterruptibly();
+
+			if (!cf.isConnected())
+			{
+				GcsExecutor.schedule(new Connect(address), 5000, TimeUnit.MILLISECONDS);
+			}
 		}
+		else
+		{
+			log.info("Peer '{}' does not appear in the world map, it will be ignored.", address.toString());
+		}
+
 	}
 
 	public static void enqueue(final Message message)
@@ -82,9 +88,33 @@ public class Gcs
 		instance.ienqueue(message);
 	}
 
+	protected static void reloadWorldMap()
+	{
+		log.info("Reloading the world map");
+		Set<IoSession> connectedSessions = getManagedConnectorSessions();
+		for (IoSession ioSession : connectedSessions)
+		{
+			InetSocketAddress inet = (InetSocketAddress) ioSession.getRemoteAddress();
+			
+			if (!WorldMap.contains(inet))
+			{
+				log.info("Remove peer '{}'" , inet.toString());
+				ioSession.close().awaitUninterruptibly();
+			}
+		}
+		List<Peer> peerList = WorldMap.getPeerList();
+		for (Peer peer : peerList)
+		{
+			SocketAddress addr = new InetSocketAddress(peer.getHost(), peer.getPort());
+			connect(addr);
+		}
+
+	}
+
 	protected static Set<IoSession> getManagedConnectorSessions()
 	{
-		// return Collections.unmodifiableSet(instance.connector.getManagedSessions());
+		// return
+		// Collections.unmodifiableSet(instance.connector.getManagedSessions());
 		Set<IoSession> connectSessions = new HashSet<IoSession>();
 		Map<Long, IoSession> mngSessions = instance.connector.getManagedSessions();
 
@@ -154,7 +184,7 @@ public class Gcs
 
 			GcsExecutor.scheduleWithFixedDelay(new QueueAwaker(), 1500, 1500, TimeUnit.MILLISECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new QueueCounter(), 20, 20, TimeUnit.SECONDS);
-			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 120, 120, TimeUnit.SECONDS);
+			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 30, 30, TimeUnit.SECONDS);
 
 			Thread sync_hook = new Thread()
 			{
@@ -203,10 +233,10 @@ public class Gcs
 	{
 		QueueProcessorList.get(queueName);
 
-		if (StringUtils.contains(queueName, "@"))
-		{
-			DispatcherList.create(queueName);
-		}
+//		if (StringUtils.contains(queueName, "@"))
+//		{
+//			DispatcherList.create(queueName);
+//		}
 
 		if (listener != null)
 		{
@@ -251,7 +281,6 @@ public class Gcs
 
 	private Message ipoll(final String queueName)
 	{
-
 		LocalQueueConsumers.addSyncConsumer(queueName);
 		Message m = QueueProcessorList.get(queueName).poll();
 

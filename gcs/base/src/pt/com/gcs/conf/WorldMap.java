@@ -1,15 +1,18 @@
 package pt.com.gcs.conf;
 
 import java.io.File;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
 
+import org.apache.mina.util.ConcurrentHashSet;
 import org.caudexorigo.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,8 @@ public class WorldMap
 	private static final Logger log = LoggerFactory.getLogger(WorldMap.class);
 
 	private final List<Peer> peerList = new ArrayList<Peer>();
+
+	private final Set<InetSocketAddress> peerSet = new ConcurrentHashSet<InetSocketAddress>();
 
 	private static final WorldMap instance = new WorldMap();
 
@@ -67,6 +72,7 @@ public class WorldMap
 		boolean isSelfPeerInWorldMap = false;
 
 		peerList.clear();
+		peerSet.clear();
 
 		for (int i = 0; i < npeers; i++)
 		{
@@ -83,7 +89,10 @@ public class WorldMap
 			else
 			{
 				// System.out.println("names[i]: " + names[i]);
-				peerList.add(new Peer(names[i], hosts[i], Integer.parseInt(ports[i])));
+				Peer p = new Peer(names[i], hosts[i], Integer.parseInt(ports[i]));
+				InetSocketAddress inet = new InetSocketAddress(p.getHost(), p.getPort());
+				peerList.add(p);
+				peerSet.add(inet);
 			}
 		}
 
@@ -133,9 +142,30 @@ public class WorldMap
 		return Collections.unmodifiableList(instance.peerList);
 	}
 
-	public static long lastModified()
+	public static boolean contains(InetSocketAddress inet)
 	{
-		return instance.last_modified.get();
+		return instance.peerSet.contains(inet);
+	}
+
+	private synchronized boolean i_reload()
+	{
+		boolean wasReloaded = false;
+		String worldMapPath = GcsInfo.getWorldMapPath();
+		File xmlFile = new File(worldMapPath);
+		long modified = xmlFile.lastModified();
+		long lmod = last_modified.getAndSet(modified);
+		if (modified != lmod)
+		{
+			log.info("New world map detected");
+			populateWorldMap();
+			wasReloaded = true;
+		}
+		return wasReloaded;
+	}
+	
+	public static boolean reload()
+	{
+		return instance.i_reload();
 	}
 
 }
