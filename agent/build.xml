@@ -153,7 +153,6 @@
 		</copy>
 
 		<chmod dir="${dist}" perm="+x" includes="*.sh"/>
-		<chmod dir="${dist}/jvm15" perm="+x" includes="*.sh"/>
 
 		<tar tarfile="../sapo-broker.tar" >
 			<tarfileset dir="${dist}" prefix="sapo-broker"></tarfileset>
