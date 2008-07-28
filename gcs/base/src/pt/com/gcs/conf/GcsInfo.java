@@ -16,7 +16,7 @@ public class GcsInfo
 {
 	private static Logger log = LoggerFactory.getLogger(GcsInfo.class);
 
-	public static final String VERSION = "200805261343";
+	public static final String VERSION = "@gcsversion@";
 
 	private static final GcsInfo instance = new GcsInfo();
 
@@ -115,7 +115,13 @@ public class GcsInfo
 			Shutdown.now();
 		}
 	}
-
+		
+	public static int getBrokerUdpPort()
+	{
+		int iprop = instance.conf.getNet().getBrokerUdpPort();
+		return iprop;
+	}
+	
 	public static int getBrokerHttpPort()
 	{
 		int iprop = instance.conf.getNet().getBrokerHttpPort();

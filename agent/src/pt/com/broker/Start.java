@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import pt.com.broker.core.BrokerServer;
 import pt.com.broker.core.ErrorHandler;
 import pt.com.broker.core.FilePublisher;
+import pt.com.broker.core.UdpService;
 import pt.com.broker.http.BrokerHttpService;
 import pt.com.gcs.conf.GcsInfo;
 
@@ -51,5 +52,8 @@ public class Start
 		http_srv.start();
 
 		FilePublisher.init();
+		
+		UdpService udp_srv = new UdpService();
+		udp_srv.start();
 	}
 }

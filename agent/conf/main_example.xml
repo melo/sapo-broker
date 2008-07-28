@@ -14,6 +14,7 @@
 		<file_ref>./conf/world_map.xml</file_ref>
 		<broker-port>3322</broker-port>
 		<broker-http-port>3380</broker-http-port>
+		<broker-udp-port>3366</broker-udp-port>
 	</net>
 
 	<!-- Persistent storage configuration -->
