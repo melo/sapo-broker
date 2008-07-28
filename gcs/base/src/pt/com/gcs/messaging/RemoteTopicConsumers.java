@@ -70,7 +70,6 @@ class RemoteTopicConsumers
 
 			for (String subscriptionName : matches)
 			{
-				//message.setDestination(destination);
 				instance.doNotify(subscriptionName, message);
 			}
 		}

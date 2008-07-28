@@ -233,11 +233,6 @@ public class Gcs
 	{
 		QueueProcessorList.get(queueName);
 
-//		if (StringUtils.contains(queueName, "@"))
-//		{
-//			DispatcherList.create(queueName);
-//		}
-
 		if (listener != null)
 		{
 			LocalQueueConsumers.add(queueName, listener);

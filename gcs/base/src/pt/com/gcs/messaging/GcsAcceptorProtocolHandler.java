@@ -65,11 +65,16 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			String payload = msg.getContent();
 
 			final String action = extract(payload, "<action>", "</action>");
-			// final String src_name = extract(payload, "<source-name>", "</source-name>");
-			// final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
+			final String src_name = extract(payload, "<source-name>", "</source-name>");
+			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
 			final String destinationName = extract(payload, "<destination>", "</destination>");
 
-			log.info("Action: '{}' Consumer. Destination: '{}'", action, destinationName);
+			if (log.isInfoEnabled())
+			{
+				String lmsg = String.format("Action: '%s' Consumer; Destination: '%s'; Source: '%s'", action, destinationName, src_name);
+				log.info(lmsg);
+			}
+
 
 			if (msg.getType() == MessageType.SYSTEM_TOPIC)
 			{
@@ -87,10 +92,10 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 				if (action.equals("CREATE"))
 				{
 
-					if (StringUtils.contains(msg.getDestination(), "@"))
-					{
-						DispatcherList.create(msg.getDestination());
-					}
+//					if (StringUtils.contains(msg.getDestination(), "@"))
+//					{
+//						DispatcherList.create(msg.getDestination());
+//					}
 
 					RemoteQueueConsumers.add(msg.getDestination(), iosession);
 					QueueProcessorList.get(destinationName);

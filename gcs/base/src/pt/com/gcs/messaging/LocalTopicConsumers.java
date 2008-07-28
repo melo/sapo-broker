@@ -24,20 +24,20 @@ class LocalTopicConsumers
 
 	private static final LocalTopicConsumers instance = new LocalTopicConsumers();
 
-	public synchronized static void add(String topicName, MessageListener listener, boolean broadcast)
+	public synchronized static void add(String subscriptionName, MessageListener listener, boolean broadcast)
 	{
 
-		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
+		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(subscriptionName);
 		if (listeners == null)
 		{
 			listeners = new CopyOnWriteArrayList<MessageListener>();
 		}
 		listeners.add(listener);
-		instance.localTopicConsumers.put(topicName, listeners);
+		instance.localTopicConsumers.put(subscriptionName, listeners);
 		if (broadcast)
 		{
-			instance.broadCastNewTopicConsumer(topicName);
-			instance.broadCastableTopics.add(topicName);
+			instance.broadCastNewTopicConsumer(subscriptionName);
+			instance.broadCastableTopics.add(subscriptionName);
 		}
 	}
 
@@ -70,7 +70,7 @@ class LocalTopicConsumers
 
 			for (String subscriptionName : matches)
 			{
-				//message.setDestination(destination);
+				// message.setDestination(destination);
 				instance.doNotify(subscriptionName, message);
 			}
 		}
@@ -86,14 +86,14 @@ class LocalTopicConsumers
 			{
 				if (messageListener != null)
 				{
-					message.setDestination(topicName); // set the name again because topic dispatchers change the destination
 					messageListener.onMessage(message);
+					message.setDestination(topicName); // set the name again because topic dispatchers change the destination
 				}
 			}
 		}
 		else
 		{
-			log.debug("There are no local listeners for topic: '{}'", message.getDestination());
+			log.info("There are no local listeners for topic: '{}'", message.getDestination());
 		}
 	}
 
@@ -168,7 +168,7 @@ class LocalTopicConsumers
 		Message m = new Message();
 		m.setType((MessageType.SYSTEM_TOPIC));
 		String ptemplate = "<sysmessage><action>%s</action><source-name>%s</source-name><source-ip>%s</source-ip><destination>%s</destination></sysmessage>";
-		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ((InetSocketAddress) IoSessionHelper.getRemoteInetAddress(ioSession)).getHostName() , destinationName);
+		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ((InetSocketAddress) IoSessionHelper.getRemoteInetAddress(ioSession)).getHostName(), destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
 		WriteFuture wf = ioSession.write(m);

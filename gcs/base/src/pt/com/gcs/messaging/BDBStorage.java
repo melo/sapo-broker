@@ -43,6 +43,8 @@ class BDBStorage
 	private AtomicInteger batchCount = new AtomicInteger(0);
 
 	private Object mutex = new Object();
+	
+	private Object dbLock = new Object();
 
 	private Queue<Message> _syncConsumerQueue = new ConcurrentLinkedQueue<Message>();
 
@@ -171,52 +173,60 @@ class BDBStorage
 			}
 			else
 			{
-				Cursor msg_cursor = null;
-
-				try
+				
+				synchronized (dbLock)
 				{
-					msg_cursor = messageDb.openCursor(null, null);
+					Cursor msg_cursor = null;
 
-					DatabaseEntry key = new DatabaseEntry();
-					DatabaseEntry data = new DatabaseEntry();
-
-					int counter = 0;
-					while ((msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS) && counter < 250)
+					try
 					{
-						byte[] bdata = data.getData();
-						BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
-						final int deliveryCount = bdbm.getDeliveryCount();
+						msg_cursor = messageDb.openCursor(null, null);
 
-						if (deliveryCount == 0)
+						DatabaseEntry key = new DatabaseEntry();
+						DatabaseEntry data = new DatabaseEntry();
+
+						int counter = 0;
+						while ((msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS) && counter < 250)
 						{
-							final Message msg = bdbm.getMessage();
-							long k = LongBinding.entryToLong(key);
-							msg.setMessageId(Message.getBaseMessageId() + k);
-							bdbm.setDeliveryCount(deliveryCount + 1);
-							msg_cursor.put(key, buildDatabaseEntry(bdbm));
-							_syncConsumerQueue.offer(msg);
-						}
-						counter++;
-					}
-				}
-				catch (Throwable t)
-				{
-					dealWithError(t, false);
-				}
-				finally
-				{
-					if (msg_cursor != null)
-					{
-						try
-						{
-							msg_cursor.close();
-						}
-						catch (Throwable t)
-						{
-							dealWithError(t, false);
+							byte[] bdata = data.getData();
+							BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
+							final int deliveryCount = bdbm.getDeliveryCount();
+							final boolean isReserved = bdbm.isReserved();
+
+							if (isReserved || (deliveryCount == 0))
+							{
+								final Message msg = bdbm.getMessage();
+								long k = LongBinding.entryToLong(key);
+								msg.setMessageId(Message.getBaseMessageId() + k);
+								bdbm.setDeliveryCount(deliveryCount + 1);
+								bdbm.setReserved(true);
+								msg_cursor.put(key, buildDatabaseEntry(bdbm));
+								//msg_cursor.delete(); // just a test
+								_syncConsumerQueue.offer(msg);								
+							}				
+							counter++;
 						}
 					}
+					catch (Throwable t)
+					{
+						dealWithError(t, false);
+					}
+					finally
+					{
+						if (msg_cursor != null)
+						{
+							try
+							{
+								msg_cursor.close();
+							}
+							catch (Throwable t)
+							{
+								dealWithError(t, false);
+							}
+						}
+					}
 				}
+
 				return _syncConsumerQueue.poll();
 			}
 		}
@@ -267,119 +277,125 @@ class BDBStorage
 		if (isMarkedForDeletion.get())
 			return;
 
-		long c0 = System.currentTimeMillis();
-
-		Cursor msg_cursor = null;
-		boolean redelivery = ((batchCount.incrementAndGet() % 10) == 0);
-
-		if (redelivery)
+		synchronized (dbLock)
 		{
-			batchCount.set(0);
-		}
+			long c0 = System.currentTimeMillis();
 
-		try
-		{
-			msg_cursor = messageDb.openCursor(null, null);
+			Cursor msg_cursor = null;
+			boolean redelivery = ((batchCount.incrementAndGet() % 10) == 0);
 
-			long c1 = System.currentTimeMillis();
-			long d0 = (c1 - c0);
-
-			DatabaseEntry key = new DatabaseEntry();
-			DatabaseEntry data = new DatabaseEntry();
-
-			int i0 = 0;
-			int j0 = 0;
-
-			while (msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS)
+			if (redelivery)
 			{
-				if (isMarkedForDeletion.get())
-					break;
+				batchCount.set(0);
+			}
 
-				byte[] bdata = data.getData();
-				BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
-				final Message msg = bdbm.getMessage();
-				long k = LongBinding.entryToLong(key);
-				msg.setMessageId(Message.getBaseMessageId() + k);
-				final int deliveryCount = bdbm.getDeliveryCount();
-				final boolean localConsumersOnly = bdbm.isLocalConsumersOnly();
+			try
+			{
+				msg_cursor = messageDb.openCursor(null, null);
 
-				if ((deliveryCount < 1) || redelivery)
+				long c1 = System.currentTimeMillis();
+				long d0 = (c1 - c0);
+
+				DatabaseEntry key = new DatabaseEntry();
+				DatabaseEntry data = new DatabaseEntry();
+
+				int i0 = 0;
+				int j0 = 0;
+
+				while (msg_cursor.getNext(key, data, null) == OperationStatus.SUCCESS)
 				{
-					if (!queueProcessor.isMessageReserved(msg.getMessageId()))
+					if (isMarkedForDeletion.get())
+						break;
+
+					byte[] bdata = data.getData();
+					BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
+					final Message msg = bdbm.getMessage();
+					long k = LongBinding.entryToLong(key);
+					msg.setMessageId(Message.getBaseMessageId() + k);
+					final int deliveryCount = bdbm.getDeliveryCount();
+					final boolean localConsumersOnly = bdbm.isLocalConsumersOnly();
+					final boolean isReserved = bdbm.isReserved();
+					
+					
+					if (!isReserved && ((deliveryCount < 1) || redelivery))
 					{
-
-						bdbm.setDeliveryCount(deliveryCount + 1);
-						msg_cursor.put(key, buildDatabaseEntry(bdbm));
-
-						long mark = System.currentTimeMillis();
-
-						if (deliveryCount > MAX_DELIVERY_COUNT)
+						if (!queueProcessor.isMessageReserved(msg.getMessageId()))
 						{
-							j0++;
-							msg_cursor.delete();
-							log.warn("Overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
-							dumpMessage(msg);
-						}
-						else if (mark > msg.getExpiration())
-						{
-							j0++;
-							msg_cursor.delete();
-							log.warn("Expired message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
-							dumpMessage(msg);
-						}
-						else
-						{
-							try
+
+							bdbm.setDeliveryCount(deliveryCount + 1);
+							msg_cursor.put(key, buildDatabaseEntry(bdbm));
+
+							long mark = System.currentTimeMillis();
+
+							if (deliveryCount > MAX_DELIVERY_COUNT)
 							{
-								if (!queueProcessor.forward(msg, localConsumersOnly))
-								{
-									j0++;
-									bdbm.setDeliveryCount(deliveryCount);
-									msg_cursor.put(key, buildDatabaseEntry(bdbm));
-									dumpMessage(msg);
-								}
-								else
-								{
-									i0++;
-								}
+								j0++;
+								msg_cursor.delete();
+								log.warn("Overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+								dumpMessage(msg);
 							}
-							catch (Throwable t)
+							else if (mark > msg.getExpiration())
 							{
-								log.error(t.getMessage());
-								break;
+								j0++;
+								msg_cursor.delete();
+								log.warn("Expired message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+								dumpMessage(msg);
 							}
+							else
+							{
+								try
+								{
+									if (!queueProcessor.forward(msg, localConsumersOnly))
+									{
+										j0++;
+										bdbm.setDeliveryCount(deliveryCount);
+										msg_cursor.put(key, buildDatabaseEntry(bdbm));
+										dumpMessage(msg);
+									}
+									else
+									{
+										i0++;
+									}
+								}
+								catch (Throwable t)
+								{
+									log.error(t.getMessage());
+									break;
+								}
 
+							}
 						}
 					}
 				}
-			}
 
-			long c2 = System.currentTimeMillis();
-			long d1 = (c2 - c1);
+				long c2 = System.currentTimeMillis();
+				long d1 = (c2 - c1);
 
-			if (log.isDebugEnabled())
-			{
-				log.debug(String.format("Queue '%s' processing summary; Retrieval time: %s ms; Delivery time: %s ms; Delivered: %s; Failed delivered: %s, Redelivery: %s;", queueProcessor.getDestinationName(), d0, d1, i0, j0, redelivery));
-			}
-		}
-		catch (Throwable t)
-		{
-			dealWithError(t, false);
-		}
-		finally
-		{
-			if (msg_cursor != null)
-			{
-				try
+				if (log.isDebugEnabled())
 				{
-					msg_cursor.close();
-				}
-				catch (Throwable t)
-				{
-					dealWithError(t, false);
+					log.debug(String.format("Queue '%s' processing summary; Retrieval time: %s ms; Delivery time: %s ms; Delivered: %s; Failed delivered: %s, Redelivery: %s;", queueProcessor.getDestinationName(), d0, d1, i0, j0, redelivery));
 				}
 			}
+			catch (Throwable t)
+			{
+				dealWithError(t, false);
+			}
+			finally
+			{
+				if (msg_cursor != null)
+				{
+					try
+					{
+						msg_cursor.close();
+					}
+					catch (Throwable t)
+					{
+						dealWithError(t, false);
+					}
+				}
+			}
 		}
+
 	}
 
 	private void dumpMessage(final Message msg)

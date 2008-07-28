@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mina.util.ConcurrentHashSet;
+import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,11 @@ public class QueueProcessor
 		else
 		{
 			_sequence = new AtomicLong(storage.getLastSequenceValue());
+		}
+		
+		if (StringUtils.contains(destinationName, "@"))
+		{
+			DispatcherList.create(destinationName);
 		}
 
 		log.info("Create Queue Processor for '{}'.", _destinationName);
@@ -198,11 +204,6 @@ public class QueueProcessor
 
 	protected Message poll()
 	{
-		int lqsize = LocalQueueConsumers.size(_destinationName);
-		if (lqsize > 0)
-		{
-			throw new IllegalStateException("An async consumer already exists, it's not possible to mix sync and async consumers for the same Queue on the same peer.");
-		}
 		return storage.poll();
 	}
 
