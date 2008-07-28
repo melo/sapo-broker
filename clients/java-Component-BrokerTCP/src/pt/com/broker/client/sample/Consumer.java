@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.com.broker.client.BrokerClient;
+import pt.com.broker.client.CliArgs;
 import pt.com.broker.client.messaging.BrokerListener;
 import pt.com.broker.client.messaging.BrokerMessage;
 import pt.com.broker.client.messaging.DestinationType;

@@ -1,4 +1,4 @@
-package pt.com.broker.client.sample;
+package pt.com.broker.client;
 
 import org.caudexorigo.cli.Option;
 
