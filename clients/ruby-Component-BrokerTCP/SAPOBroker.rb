@@ -60,8 +60,7 @@ module SAPOBroker
         begin
           stax = @@x_factory.createXMLStreamReader(ByteArrayInputStream.new(xml.to_java_bytes), 'UTF-8')
           evt_type = stax.getEventType()
-          puts evt_type
-          
+
           begin
             if evt_type == XMLStreamConstants::START_ELEMENT
               name = stax.getLocalName()
