@@ -4,7 +4,7 @@ cd `dirname $0`
 
 # check version
 java -version 2>&1 | grep 1.5 > /dev/null
-if [ $? == 0 ] ; then # Yup, 1.5 still
+if [ $? = 0 ] ; then # Yup, 1.5 still
   echo Found Java version 1.5
   classpath="./conf"
 
