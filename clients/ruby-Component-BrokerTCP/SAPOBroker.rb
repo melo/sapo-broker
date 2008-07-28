@@ -88,12 +88,13 @@ module SAPOBroker
     else
       require 'xml/libxml'
 
+      @@x_parser ||= XML::Parser.new
+
       def from_xml(xml)
 
         begin
-          xp = XML::Parser.new
-          xp.string = xml
-          doc = xp.parse
+          @@x_parser.string = xml
+          doc = @@x_parser.parse
 
           doc.find('//mq:BrokerMessage/*', 'mq:http://services.sapo.pt/broker').each do |elem|
             case elem.name
