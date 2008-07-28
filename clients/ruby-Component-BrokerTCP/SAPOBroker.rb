@@ -47,42 +47,37 @@ module SAPOBroker
     
     if RUBY_PLATFORM =~ /java/
       include Java
-      import javax.xml.parsers.DocumentBuilder
-      import javax.xml.parsers.DocumentBuilderFactory
-      import org.xml.sax.InputSource
-      import java.io.StringReader
+      import java.io.ByteArrayInputStream
+      import javax.xml.stream.XMLInputFactory
+      import javax.xml.stream.XMLStreamConstants
+      import javax.xml.stream.XMLStreamException
+      import javax.xml.stream.XMLStreamReader
 
-      @@dbf = nil
+      @@x_factory ||= XMLInputFactory.newInstance
 
       def from_xml(xml)
 
         begin
-          unless @@dbf
-            @@dbf = DocumentBuilderFactory.newInstance
-            @@dbf.setNamespaceAware true
-          end
-          doc = @@dbf.new_document_builder.parse(InputSource.new(StringReader.new(xml)))
-          nodes = doc.getElementsByTagNameNS('http://services.sapo.pt/broker', 'BrokerMessage')
-          if nodes.length == 1
-            childs = nodes.item(0).getChildNodes()
-            i = 0
-            while i < childs.length
-              elem = childs.item(i)
-              i += 1
-              next unless elem.getFirstChild()
-
-              value = elem.getFirstChild.getNodeValue()
-              case elem.getLocalName()
-              when 'Priority' then self.priority = value
-              when 'MessageId' then self.id = value
-              when 'Timestamp' then self.timestamp = value
-              when 'Expiration' then self.expiration = value
-              when 'DestinationName' then self.destination = value
-              when 'TextPayload' then self.payload = value
-              when 'CorrelationId' then self.correlation_id = value
+          stax = @@x_factory.createXMLStreamReader(ByteArrayInputStream.new(xml.to_java_bytes), 'UTF-8')
+          evt_type = stax.getEventType()
+          puts evt_type
+          
+          begin
+            if evt_type == XMLStreamConstants::START_ELEMENT
+              name = stax.getLocalName()
+              case name
+              when 'Priority' then self.priority = stax.getElementText()
+              when 'MessageId' then self.id = stax.getElementText()
+              when 'Timestamp' then self.timestamp = stax.getElementText()
+              when 'Expiration' then self.expiration = stax.getElementText()
+              when 'DestinationName' then self.destination = stax.getElementText()
+              when 'TextPayload' then self.payload = stax.getElementText()
+              when 'CorrelationId' then self.correlation_id = stax.getElementText()
               end
             end
-          end
+            evt_type = stax.next
+          end while evt_type != XMLStreamConstants::END_DOCUMENT
+            
         rescue Exception => ex
           raise ArgumentError, ex.message
         end
