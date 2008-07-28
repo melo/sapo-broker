@@ -41,20 +41,87 @@ module SAPOBroker
 
   require 'socket'
   require 'rubygems'
-  if RUBY_PLATFORM =~ /java/
-    include Java 
-    import javax.xml.parsers.DocumentBuilder
-    import javax.xml.parsers.DocumentBuilderFactory
-    import org.xml.sax.InputSource
-    import java.io.StringReader
-  else
-    require 'xml/libxml'
-  end
 
   class Message
     attr_accessor(:destination, :payload, :id, :correlation_id, :timestamp, :expiration, :priority)
-    @@dbf = nil if RUBY_PLATFORM =~ /java/
     
+    if RUBY_PLATFORM =~ /java/
+      include Java
+      import javax.xml.parsers.DocumentBuilder
+      import javax.xml.parsers.DocumentBuilderFactory
+      import org.xml.sax.InputSource
+      import java.io.StringReader
+
+      @@dbf = nil
+
+      def from_xml(xml)
+
+        begin
+          unless @@dbf
+            @@dbf = DocumentBuilderFactory.newInstance
+            @@dbf.setNamespaceAware true
+          end
+          doc = @@dbf.new_document_builder.parse(InputSource.new(StringReader.new(xml)))
+          nodes = doc.getElementsByTagNameNS('http://services.sapo.pt/broker', 'BrokerMessage')
+          if nodes.length == 1
+            childs = nodes.item(0).getChildNodes()
+            i = 0
+            while i < childs.length
+              elem = childs.item(i)
+              i += 1
+              next unless elem.getFirstChild()
+
+              value = elem.getFirstChild.getNodeValue()
+              case elem.getLocalName()
+              when 'Priority' then self.priority = value
+              when 'MessageId' then self.id = value
+              when 'Timestamp' then self.timestamp = value
+              when 'Expiration' then self.expiration = value
+              when 'DestinationName' then self.destination = value
+              when 'TextPayload' then self.payload = value
+              when 'CorrelationId' then self.correlation_id = value
+              end
+            end
+          end
+        rescue Exception => ex
+          raise ArgumentError, ex.message
+        end
+
+        raise ArgumentError, "ID and destination not present" unless self.id && self.destination
+        self
+      end
+
+    else
+      require 'xml/libxml'
+
+      def from_xml(xml)
+
+        begin
+          xp = XML::Parser.new
+          xp.string = xml
+          doc = xp.parse
+
+          doc.find('//mq:BrokerMessage/*', 'mq:http://services.sapo.pt/broker').each do |elem|
+            case elem.name
+            when 'Priority' then self.priority = elem.content
+            when 'MessageId' then self.id = elem.content
+            when 'Timestamp' then self.timestamp = elem.content
+            when 'Expiration' then self.expiration = elem.content
+            when 'DestinationName' then self.destination = elem.content
+            when 'TextPayload' then self.payload = elem.content
+            when 'CorrelationId' then self.correlation_id = elem.content
+            end
+          end          
+        rescue Exception => ex
+          raise ArgumentError, ex.message
+        end
+
+        raise ArgumentError, "ID and destination not present" unless self.id && self.destination
+        self
+      end
+      
+    end
+
     def xml_escape(input)
 
       specials = [ /&(?!#?[\w-]+;)/u, /</u, />/u, /"/u, /'/u, /\r/u ]
@@ -82,61 +149,6 @@ module SAPOBroker
       message << "<Expiration>#{self.expiration}</Expiration>" if self.expiration
       message << "<CorrelationId>#{self.correlation_id}</CorrelationId>" if self.correlation_id
       message << '</BrokerMessage>'
-    end
-    
-    def from_xml(xml)
-
-      begin
-        if RUBY_PLATFORM =~ /java/
-          unless @@dbf
-            @@dbf = DocumentBuilderFactory.newInstance
-            @@dbf.setNamespaceAware true
-          end
-          doc = @@dbf.new_document_builder.parse(InputSource.new(StringReader.new(xml)))
-          nodes = doc.getElementsByTagNameNS('http://services.sapo.pt/broker', 'BrokerMessage')
-          if nodes.length == 1
-            childs = nodes.item(0).getChildNodes()
-            i = 0
-            while i < childs.length
-              elem = childs.item(i)
-              i += 1
-              next unless elem.getFirstChild()
-              
-              value = elem.getFirstChild.getNodeValue()
-              case elem.getLocalName()
-              when 'Priority' then self.priority = value
-              when 'MessageId' then self.id = value
-              when 'Timestamp' then self.timestamp = value
-              when 'Expiration' then self.expiration = value
-              when 'DestinationName' then self.destination = value
-              when 'TextPayload' then self.payload = value
-              when 'CorrelationId' then self.correlation_id = value
-              end
-            end
-          end
-        else
-          xp = XML::Parser.new
-          xp.string = xml
-          doc = xp.parse
-
-          doc.find('//mq:BrokerMessage/*', 'mq:http://services.sapo.pt/broker').each do |elem|
-            case elem.name
-            when 'Priority' then self.priority = elem.content
-            when 'MessageId' then self.id = elem.content
-            when 'Timestamp' then self.timestamp = elem.content
-            when 'Expiration' then self.expiration = elem.content
-            when 'DestinationName' then self.destination = elem.content
-            when 'TextPayload' then self.payload = elem.content
-            when 'CorrelationId' then self.correlation_id = elem.content
-            end
-          end          
-        end
-      rescue Exception => ex
-        raise ArgumentError, ex.message
-      end
-      
-      raise ArgumentError, "ID and destination not present" unless self.id && self.destination
-      self
     end
 
   end
