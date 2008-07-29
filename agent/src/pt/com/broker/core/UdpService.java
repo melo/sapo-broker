@@ -26,7 +26,6 @@ public class UdpService
 
 	public UdpService()
 	{
-		log.info("");
 	}
 
 	public void start()
