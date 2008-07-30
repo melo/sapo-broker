@@ -207,24 +207,23 @@ public class BrokerClient
 
 	protected void notifyListener(BrokerMessage msg)
 	{
-		BrokerListener listener = _async_listeners.get(msg.destinationName);
-
-		if (listener == null)
+		for (BrokerAsyncConsumer aconsumer : _consumerList)
 		{
-			log.error("There are no listeners for '{}'", msg.destinationName);
-		}
+			boolean isDelivered = aconsumer.deliver(msg);
+			BrokerListener listener = aconsumer.getListener();
 
-		listener.onMessage(msg);
-		if (listener.isAutoAck())
-		{
-			try
+		
+			if (listener.isAutoAck() && isDelivered)
 			{
-				acknowledge(msg);
-			}
-			catch (Throwable t)
-			{
-				log.error("Could not acknowledge message, messageId: '{}'", msg.messageId);
-				log.error(t.getMessage(), t);
+				try
+				{
+					acknowledge(msg);
+				}
+				catch (Throwable t)
+				{
+					log.error("Could not acknowledge message, messageId: '{}'", msg.messageId);
+					log.error(t.getMessage(), t);
+				}
 			}
 		}
 	}

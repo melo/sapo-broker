@@ -1,19 +1,26 @@
 package pt.com.broker.client;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import pt.com.broker.client.messaging.BrokerListener;
+import pt.com.broker.client.messaging.BrokerMessage;
 import pt.com.broker.client.messaging.Notify;
 
 public class BrokerAsyncConsumer
 {
 	private final Notify _notify;
 
-	private final BrokerListener _listener;
+	private final BrokerListener _wrappedListener;
+	
+	private final Pattern _subscriptionName;
 
 	public BrokerAsyncConsumer(Notify notify, BrokerListener listener)
 	{
 		super();
-		_listener = listener;
+		_wrappedListener = listener;
 		_notify = notify;
+		_subscriptionName = Pattern.compile(notify.destinationName);
 	}
 
 	public Notify getNotify()
@@ -23,44 +30,24 @@ public class BrokerAsyncConsumer
 
 	public BrokerListener getListener()
 	{
-		return _listener;
+		return _wrappedListener;
 	}
 
-	@Override
-	public int hashCode()
+	
+	public boolean deliver(BrokerMessage msg)
 	{
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((_listener == null) ? 0 : _listener.hashCode());
-		result = prime * result + ((_notify == null) ? 0 : _notify.hashCode());
-		return result;
-	}
 
-	@Override
-	public boolean equals(Object obj)
-	{
-		if (this == obj)
+		Matcher m = _subscriptionName.matcher(msg.destinationName);
+		if (m.matches())
+		{
+			_wrappedListener.onMessage(msg);
 			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		BrokerAsyncConsumer other = (BrokerAsyncConsumer) obj;
-		if (_listener == null)
-		{
-			if (other._listener != null)
-				return false;
 		}
-		else if (!_listener.equals(other._listener))
-			return false;
-		if (_notify == null)
+		else
 		{
-			if (other._notify != null)
-				return false;
-		}
-		else if (!_notify.equals(other._notify))
 			return false;
-		return true;
+		}
 	}
+
 
 }
