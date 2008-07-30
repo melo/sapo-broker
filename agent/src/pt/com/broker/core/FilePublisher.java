@@ -110,18 +110,37 @@ public class FilePublisher
 
 						if (isFileValid)
 						{
-							
-							if (soap.body.publish != null)
+							try
 							{
-								BrokerProducer.getInstance().publishMessage(soap.body.publish, MQ.requestSource(soap));
+								if (soap.body.publish != null)
+								{
+									BrokerProducer.getInstance().publishMessage(soap.body.publish, MQ.requestSource(soap));
+								}
+								else if (soap.body.enqueue != null)
+								{
+									BrokerProducer.getInstance().enqueueMessage(soap.body.enqueue, MQ.requestSource(soap));
+								}
 							}
-							else if (soap.body.enqueue != null)
+							catch (Throwable e)
 							{
-								BrokerProducer.getInstance().enqueueMessage(soap.body.enqueue, MQ.requestSource(soap));
+								log.error("Error publishing file \"" + msgf.getAbsolutePath() + "\". Error message: " + ErrorAnalyser.findRootCause(e).getMessage());
 							}
-							
-							fis.close();
-							msgf.delete();
+							finally
+							{
+								
+								try
+								{
+									fis.close();
+									//msgf.delete();
+									File badFile = new File(msgf.getAbsolutePath() + ".bad");
+									msgf.renameTo(badFile);
+								}
+								catch (Throwable e)
+								{
+									//ignore since we are cleaning
+								}
+							}							
+
 						}
 						else
 						{
