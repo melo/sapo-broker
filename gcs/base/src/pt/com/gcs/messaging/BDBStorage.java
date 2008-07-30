@@ -43,7 +43,7 @@ class BDBStorage
 	private AtomicInteger batchCount = new AtomicInteger(0);
 
 	private Object mutex = new Object();
-	
+
 	private Object dbLock = new Object();
 
 	private Queue<Message> _syncConsumerQueue = new ConcurrentLinkedQueue<Message>();
@@ -53,7 +53,7 @@ class BDBStorage
 		try
 		{
 			queueProcessor = qp;
-			//primaryDbName = MD5.getHashString(queueProcessor.getDestinationName());
+			// primaryDbName = MD5.getHashString(queueProcessor.getDestinationName());
 			primaryDbName = queueProcessor.getDestinationName();
 
 			env = BDBEnviroment.get();
@@ -64,7 +64,6 @@ class BDBStorage
 			dbConfig.setSortedDuplicates(false);
 			dbConfig.setBtreeComparator(BDBMessageComparator.class);
 			messageDb = env.openDatabase(null, primaryDbName, dbConfig);
-			
 
 			log.info("Storage for queue '{}' is ready.", queueProcessor.getDestinationName());
 		}
@@ -173,7 +172,7 @@ class BDBStorage
 			}
 			else
 			{
-				
+
 				synchronized (dbLock)
 				{
 					Cursor msg_cursor = null;
@@ -190,20 +189,40 @@ class BDBStorage
 						{
 							byte[] bdata = data.getData();
 							BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
-							final int deliveryCount = bdbm.getDeliveryCount();
-							final boolean isReserved = bdbm.isReserved();
+							final Message msg = bdbm.getMessage();
+							final int deliveryCount = bdbm.getDeliveryCount();							
+							final long expiration = msg.getExpiration();
+							final long reserved = bdbm.getReserve();
+							final long now = System.currentTimeMillis();
+							final boolean isReserved = reserved > now ? true : false;
+							final boolean safeForPolling = ((reserved==0) && (deliveryCount==0)) ? true : false;
 
-							if (isReserved || (deliveryCount == 0))
+							if (deliveryCount > MAX_DELIVERY_COUNT)
 							{
-								final Message msg = bdbm.getMessage();
-								long k = LongBinding.entryToLong(key);
-								msg.setMessageId(Message.getBaseMessageId() + k);
-								bdbm.setDeliveryCount(deliveryCount + 1);
-								bdbm.setReserved(true);
-								msg_cursor.put(key, buildDatabaseEntry(bdbm));
-								//msg_cursor.delete(); // just a test
-								_syncConsumerQueue.offer(msg);								
-							}				
+								msg_cursor.delete();
+								log.warn("Overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+								dumpMessage(msg);
+							}
+							else if (now > expiration)
+							{
+								msg_cursor.delete();
+								log.warn("Expired message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+								dumpMessage(msg);
+							}
+							else
+							{
+								if (!isReserved || safeForPolling)
+								{
+									long k = LongBinding.entryToLong(key);
+									msg.setMessageId(Message.getBaseMessageId() + k);
+									bdbm.setDeliveryCount(deliveryCount + 1);
+									bdbm.setReserve(System.currentTimeMillis() + 900000);
+									msg_cursor.put(key, buildDatabaseEntry(bdbm));
+
+									_syncConsumerQueue.offer(msg);
+								}
+							}
+
 							counter++;
 						}
 					}
@@ -314,9 +333,9 @@ class BDBStorage
 					msg.setMessageId(Message.getBaseMessageId() + k);
 					final int deliveryCount = bdbm.getDeliveryCount();
 					final boolean localConsumersOnly = bdbm.isLocalConsumersOnly();
-					final boolean isReserved = bdbm.isReserved();
-					
-					
+					final long reserved = bdbm.getReserve();
+					final boolean isReserved = reserved > 0 ? true : false;
+
 					if (!isReserved && ((deliveryCount < 1) || redelivery))
 					{
 						if (!queueProcessor.isMessageReserved(msg.getMessageId()))

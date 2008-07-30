@@ -12,7 +12,7 @@ public class BDBMessage implements Externalizable
 {
 	private long _sequence;
 	private boolean _localConsumersOnly;
-	private boolean _isReserved;
+	private long _reserve;
 	private int _deliveryCount;
 	private Message _message;
 	private static final String SEPARATOR = "<#>";
@@ -27,7 +27,7 @@ public class BDBMessage implements Externalizable
 		_localConsumersOnly = localConsumersOnly;
 		_message = msg;
 		_sequence = sequence;
-		_isReserved = false;
+		_reserve = 0L;
 	}
 
 	public long getSequence()
@@ -40,9 +40,9 @@ public class BDBMessage implements Externalizable
 		return _localConsumersOnly;
 	}
 	
-	public boolean isReserved()
+	public long getReserve()
 	{
-		return _isReserved;
+		return _reserve;
 	}
 
 	public int getDeliveryCount()
@@ -60,9 +60,9 @@ public class BDBMessage implements Externalizable
 		_deliveryCount = count;
 	}
 	
-	public void setReserved(boolean isReserved)
+	public void setReserve(long reserve)
 	{
-		_isReserved = isReserved;
+		_reserve = reserve;
 	}
 
 	public void readExternal(ObjectInput oin) throws IOException, ClassNotFoundException
@@ -70,7 +70,7 @@ public class BDBMessage implements Externalizable
 		_sequence = oin.readLong();
 		_localConsumersOnly = oin.readBoolean();
 		_deliveryCount = oin.readInt();
-		_isReserved = oin.readBoolean();
+		_reserve = oin.readLong();
 		Message m = new Message();
 		m.readExternal(oin);
 		_message = m;
@@ -81,7 +81,7 @@ public class BDBMessage implements Externalizable
 		oout.writeLong(_sequence);
 		oout.writeBoolean(_localConsumersOnly);
 		oout.writeInt(_deliveryCount);
-		oout.writeBoolean(_isReserved);
+		oout.writeLong(_reserve);
 		_message.writeExternal(oout);
 	}
 
@@ -95,7 +95,7 @@ public class BDBMessage implements Externalizable
 		buf.append(SEPARATOR);
 		buf.append(_localConsumersOnly);
 		buf.append(SEPARATOR);
-		buf.append(_isReserved);		
+		buf.append(_reserve);		
 
 		return buf.toString();
 	}
