@@ -238,15 +238,38 @@ try:
         tree = ElementTree.fromstring(raw)
         broker = tree.find('.//{%s}BrokerMessage' % broker_ns)
 
-        fields = {}
-        for node in broker:
-            if len(node) > 0:
-                pass
+        if broker is None:
+            #must have been an error. Try and find SOAP Fault
+            fault = tree.find('.//{%s}Fault' % soap_ns)
+            if fault is None:
+                #This is trully bad. I don't know what to do with this
+                log.error("Received unknown error message %r", raw)
+                raise Client.Error()
             else:
-                (_, tag) = node.tag.split('}')[0:2]
-                fields[tag] = node.text
+                code   = fault.find('.//{%s}Code/{%s}Value' % (soap_ns, soap_ns) )
+                reason = fault.find('.//{%s}Reason/{%s}Text' % (soap_ns, soap_ns) )
+                detail = fault.find('.//{%s}Detail' % (soap_ns,) )
 
-        return msgfromFields(fields)
+                if code is not None:
+                    code = code.text
+                if reason is not None:
+                    reason = reason.text
+                if detail is not None:
+                    detail = detail.text
+
+                e = Client.SOAPError(code, reason, detail)
+                log.exception(e)
+                raise e
+        else:
+            fields = {}
+            for node in broker:
+                if len(node) > 0:
+                    pass
+                else:
+                    (_, tag) = node.tag.split('}')[0:2]
+                    fields[tag] = node.text
+
+            return msgfromFields(fields)
 
 except ImportError:
     #since 2.3 an XML SAX parser is shipped with python so sax is both faster than DOM and always available in all reasonable versions
@@ -359,13 +382,31 @@ class Client:
     Abstracts access to a broker server using TCP.
     """
 
-    class DisconnectedError(EOFError):
+    class Error(Exception):
+        """
+        Empty class for error in the broker.
+        """
+
+    class DisconnectedError(EOFError, Error):
         """
         Class to indicate that the Server disconnected while the client was waiting for a response.
         """
 
         def __init__(self, message):
             EOFError.__init__(self, message)
+
+    class SOAPError(Error):
+        """
+        Class to represent SOAP Faults.
+        """
+        def __init__(self, code, reason=None, detail=None):
+            self.code   = code
+            self.reason = reason
+            self.detail = detail
+
+        def __repr__(self):
+            return """<%s{ code : %r, reason: %r }>""" % (self.__class__, self.code, self.reason)
+
 
     def __init__ (self, host, port=DEFAULT_PORT):
         """
