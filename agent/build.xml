@@ -155,7 +155,12 @@
 		<chmod dir="${dist}" perm="+x" includes="*.sh"/>
 
 		<tar tarfile="../sapo-broker.tar" >
-			<tarfileset dir="${dist}" prefix="sapo-broker"></tarfileset>
+			<tarfileset dir="${dist}" prefix="sapo-broker">
+				<exclude name="**/*.sh"/>
+			</tarfileset>
+			<tarfileset dir="${dist}" prefix="sapo-broker" filemode="755">
+				<include name="**/*.sh"/>
+			</tarfileset>
 		</tar>
 		<gzip src="../sapo-broker.tar" destfile="../sapo-broker.tar.gz" />
 		<delete file="../sapo-broker.tar" />
