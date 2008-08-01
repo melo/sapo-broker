@@ -9,6 +9,7 @@ use XML::LibXML::XPathContext;
 use Sys::Hostname;
 use Data::Dumper;
 use Carp qw(carp);
+use Time::HiRes qw(gettimeofday);
 
 our $VERSION = 0.69.1;
 our $libxml_parser;
@@ -19,9 +20,14 @@ sub new {
 
     $args{timeout}        ||= 60;             # timeout de ligacao
     $args{host}           ||= '127.0.0.1';    # host da manta
+    $args{hosts}          ||= undef;          # list of hosts to connect, try to connect in order
     $args{port}           ||= 3322;           # porta da manta
     $args{recon_attempts} ||= 5;              # quantas tentativas de reconnect
     $args{DEBUG}          ||= 0;              # msgs de debug e tal...
+    
+    # this implementation sucks
+    $args{drop}           ||= 0;                         # act as a dropper or a TCPer
+    $args{dropbox}        ||= '/servers/broker/dropbox'; # default broker dropbox
     
 	$args{retstruct}      ||= 0;              # retornar apenas o TextPayload ou uma struct?
 		
@@ -33,7 +39,9 @@ sub new {
 	$args{msg_type} = 'TOPIC' if exists $args{msg_type} && $args{msg_type} eq 'FF';
     carp("!!!\n\tmsg_type IS DEPRECATED in new(), use it only in publish, subscribe or poll\n!!!\n") if exists $args{msg_type};
 
-    return undef unless $self->_connect;
+    if ( ! $self->{drop} ) {
+        return undef unless $self->_connect;        
+    }
     
     return $self;
 }
@@ -60,6 +68,22 @@ sub publish {
     }
 
     return $self->_send_p(%args);
+}
+
+# grava os eventos para uma dropbox, not TCP stuff...
+sub dropbox {
+    my ($self, %args) = @_;
+        
+    my $id = join "", gettimeofday;
+    
+    if ( ! -d $self->{dropbox} ) {
+        carp("NO DROPBOX FOUND!");
+        return;
+    }
+    
+    open my $fh, ">", $self->{dropbox}."/".$id;
+    print $fh "XXX";
+    close $fh;
 }
 
 # subscreve eventos
@@ -287,25 +311,57 @@ sub _connected {
     }
 }
 
-# liga
-sub _connect {
-    my $self = shift;
-
-    $self->_debug("Connecting to: " . $self->{host});
+sub _open_sock {
+    my ($self, $host, $port, $timeout) = @_;
+    
+    $self->_debug("Connecting to: " . $host);
 
     my $sock = IO::Socket::INET->new(
-        PeerAddr   => $self->{host},
-        PeerPort   => $self->{port},
-        Timeout    => $self->{timeout},
+        PeerAddr   => $host,
+        PeerPort   => $port,
+        Timeout    => $timeout,
         Proto      => 'tcp',
         Reuse      => 1,
         MultiHomed => 1,
         Blocking   => 1,
         Type       => SOCK_STREAM,
     );
+}
+
+# liga
+sub _connect {
+    my $self = shift;
+
+    my $sock;
+    
+    if ($self->{hosts}) {
+        for my $peer (@{$self->{hosts}}) {
+            $self->_debug("Trying to connect to: $peer->{host} ...");
+            $sock = $self->_open_sock(
+                $peer->{host},
+                $peer->{port} || $self->{port},
+                $peer->{timeout} || $self->{timeout}
+            );
+            #print $peer->{host};
+            if (!$sock) {
+               $self->_debug("Peer down, trying next...");
+            } 
+            else {
+                last;
+            }
+        }
+    }
+    else {
+        $sock = $self->_open_sock(
+            $self->{host},
+            $self->{port},
+            $self->{timeout}
+        );
+        $self->_debug("Cant connect to: $self->{host} : $@") unless $sock;
+        
+    }
 
     unless ($sock) {
-        $self->_debug("Cant connect to: $self->{host} : $@");
         return undef;
     }
     $sock->autoflush(1);
@@ -402,11 +458,14 @@ sub _parse_with_libxml {
 
     $libxml_parser ||= XML::LibXML->new;
 
-    my $xpath = XML::LibXML::XPathContext->new( $libxml_parser->parse_string($xml) );
+    my $xpath;
+    eval {
+        $xpath = XML::LibXML::XPathContext->new( $libxml_parser->parse_string($xml) );        
+    };
     
     # trying to find a very voodoo error :/
     #:146: parser error : Premature end of data in tag Envelope line 1
-    die "!!!!!!!!!!!!!!!!!!!!!!!!!!\n$xml" unless $xpath;
+    die "!!!!!!!!!!!!!!!!!!!!!!!!!!\n$xml - $@" if $@;
 
     return $xpath;
 }
