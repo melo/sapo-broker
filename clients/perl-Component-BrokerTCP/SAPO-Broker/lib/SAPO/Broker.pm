@@ -71,7 +71,7 @@ sub publish {
 }
 
 # grava os eventos para uma dropbox, not TCP stuff...
-sub dropbox {
+sub drop {
     my ($self, %args) = @_;
         
     my $id = join "", gettimeofday;
@@ -545,28 +545,34 @@ Nothing exported.
 
 =head3 OPTIONS:
 
-	$args{timeout} 		||= 60;			# timeout de ligacao
-	$args{host} 		||= '127.0.0.1';	# host da manta
-	$args{port}		||= 3322;		# porta da manta
-	$args{recon_attempts}	||= 5;			# quantas tentativas de reconnect
-	$args{msg_type}		||= 'FF';		# se e' "file and forget' ou QUEUE
-	$args{DEBUG}		||= 0;			# msgs de debug e tal...
+    $args{timeout}        ||= 60;             # timeout de ligacao
+    $args{host}           ||= '127.0.0.1';    # host da manta
+    $args{hosts}          ||= undef;          # list of hosts to connect, try to connect in order
+    $args{port}           ||= 3322;           # porta da manta
+    $args{recon_attempts} ||= 5;              # quantas tentativas de reconnect
+    $args{DEBUG}          ||= 0;              # msgs de debug e tal...
+
+    $args{drop}           ||= 0;                         # act as a dropper or a TCPer
+    $args{dropbox}        ||= '/servers/broker/dropbox'; # default broker dropbox
+
+    $args{retstruct}      ||= 0;              # retornar apenas o TextPayload ou uma struct?
 
 =head3 RETURNS:
 
    1 => OK, subscribed
    undef => NOK
+
 
 =head2 publish (topic => <TOPIC>, payload => <PAYLOAD>)
 
 Send the payload to some topic.
 
 =head3 RETURNS:
-
    1 => OK, subscribed
    undef => NOK
 
 =cut
+
 
 =head2 subscribe (topic => <TOPIC>)
 
@@ -584,7 +590,29 @@ Subscribe a topic.
 Receive events from subscribed topics.
 
 =head3 RETURNS:
+
    payload sent
+
+=cut
+
+=head2 poll
+
+Poll a event from a topics
+
+=head3 RETURNS:
+
+   payload
+
+=cut
+
+=head2 drop
+
+Write the event in broker dropbox, don't use TCP stuff
+
+=head3 RETURNS:
+
+    1 => OK, subscribed
+    undef => NOK
 
 =cut
 
