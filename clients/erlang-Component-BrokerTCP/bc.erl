@@ -11,6 +11,8 @@
 
 -include("xmerl.hrl").
 
+%-record(item,{topic,type}).
+
 
 loop() ->
 	receive 
@@ -25,8 +27,9 @@ loop() ->
 
 go() ->
 	%{ok,F} =init([{msg_type,'TOPIC_AS_QUEUE'},{host,"ejabberd1.m3.bk.sapo.pt"}]),
-	{ok,F} =init([{msg_type,'TOPIC_AS_QUEUE'},{host,"10.135.5.110"}]),
-	subscribe(F,["/sapo/messenger/raw/sessions", "/sapo/messenger/raw/presences"]),
+	{ok,F} =init([{host,"10.135.5.110"}]),
+	subscribe(F,[{"/sapo/messenger/raw/sessions",'TOPIC_AS_QUEUE'},
+		{"/sapo/messenger/raw/presences",'TOPIC_AS_QUEUE'}]),
 	%X= receive_msg(F),
 	%io:format("go: Result (~p)~n",[X])
 
@@ -36,35 +39,35 @@ go() ->
 
 
 init(Conf) when is_list(Conf) -> 
-	case msg_type(Conf) of
-		{ok, MType} ->
-			case lists:keysearch(host,1,Conf) of
-				{value, {_, Host}} -> Host;
-				_ -> Host = "localhost"
-			end,
+	case lists:keysearch(name,1,Conf) of
+		{value, {_, Name}} -> Name;
+		_ -> {_, Name} = inet:gethostname()
+	end,
 
-			case lists:keysearch(port,1,Conf) of
-				{value, {_, Port}} -> Port;
-				_ -> Port = 3322
-			end,
+	case lists:keysearch(host,1,Conf) of
+		{value, {_, Host}} -> Host;
+		_ -> Host = "localhost"
+	end,
 
-			case lists:keysearch(timeout,1,Conf) of
-				{value, {_, Timeout}} -> Timeout;
-				_ -> Timeout = 10000
-			end,
+	case lists:keysearch(port,1,Conf) of
+		{value, {_, Port}} -> Port;
+		_ -> Port = 3322
+	end,
 
-			case gen_tcp:connect(
-					Host, Port, [binary, {packet, 4}, {active,false}], Timeout) of
-				{ok, Socket} -> {ok, {Socket, MType, Timeout}};
-				{_, X}  -> {error, X}
-			end;
-		
-		X -> X 
+	case lists:keysearch(timeout,1,Conf) of
+		{value, {_, Timeout}} -> Timeout;
+		_ -> Timeout = 10000
+	end,
+
+	case gen_tcp:connect(
+			Host, Port, [binary, {packet, 4}, {active,false}], Timeout) of
+		{ok, Socket} -> {ok, {Socket, Name, Timeout}};
+		{_, X}  -> {error, X}
 	end
 .		
 
 
-publish({Socket, [MT|Name], _Timeout}, Topic, Data) -> 
+publish({Socket, Name, _Timeout}, {Topic,MT}, Data) -> 
 	case MT of 
 		'TOPIC_AS_QUEUE' -> Dest = Name ++ "@" ++ Topic;
 		_ -> Dest = Topic
@@ -81,10 +84,10 @@ publish({Socket, [MT|Name], _Timeout}, Topic, Data) ->
 .
 
 
-subscribe({Socket, [MT|Name], Timeout}, [H|T]) -> 
+subscribe({Socket, Name, Timeout}, [{Topic,MT}|T]) -> 
 	case MT of 
-		'TOPIC_AS_QUEUE' -> Dest = Name ++ "@" ++ H;
-		_ -> Dest = H
+		'TOPIC_AS_QUEUE' -> Dest = Name ++ "@" ++ Topic;
+		_ -> Dest = Topic
 	end,
 	
 	Msg = 
@@ -95,7 +98,7 @@ subscribe({Socket, [MT|Name], Timeout}, [H|T]) ->
 		</Notify></soapenv:Body></soapenv:Envelope>",
     
 	case gen_tcp:send(Socket,Msg) of
-		ok -> subscribe({Socket, [MT|Name], Timeout}, T);
+		ok -> subscribe({Socket, Name, Timeout}, T);
 		What -> 
 			io:format("subscribe: send failed ~p~n",[What]),
 			What
@@ -170,27 +173,27 @@ acknowledge(Socket, X, Data) ->
 .
 
 
-msg_type(Conf) ->
-	case lists:keysearch(msg_type,1,Conf) of
-		{ value, { _, V } } -> 
-			case lists:member(V,['TOPIC','TOPIC_AS_QUEUE']) of
-				true -> 
-					case V of
-						'TOPIC_AS_QUEUE' ->
-							case lists:keysearch(name,1,Conf) of
-								{value, {_, Name}} -> Name;
-								_ -> {_, Name} = inet:gethostname()
-							end,
-							{ok, [V, Name]};
-						_ -> {ok, [V] }
-					end;
-					
-				false -> {error, einval}
-			end;
-			
-		_ -> {ok, ['TOPIC']}
-	end
-.
+%msg_type(Conf) ->
+%	case lists:keysearch(msg_type,1,Conf) of
+%		{ value, { _, V } } -> 
+%			case lists:member(V,['TOPIC','TOPIC_AS_QUEUE']) of
+%				true -> 
+%					case V of
+%						'TOPIC_AS_QUEUE' ->
+%							case lists:keysearch(name,1,Conf) of
+%								{value, {_, Name}} -> Name;
+%								_ -> {_, Name} = inet:gethostname()
+%							end,
+%							{ok, [V, Name]};
+%						_ -> {ok, [V] }
+%					end;
+%					
+%				false -> {error, einval}
+%			end;
+%			
+%		_ -> {ok, ['TOPIC']}
+%	end
+%.
 
 
 find_elements(Taglist,L) ->
