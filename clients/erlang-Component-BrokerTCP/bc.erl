@@ -73,8 +73,8 @@ publish({Socket, [MT|Name], _Timeout}, Topic, Data) ->
  Msg = 
   "<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'>
 	<soapenv:Body><Publish xmlns='http://services.sapo.pt/broker'><BrokerMessage>
-  <DestinationName>" ++ Dest ++ "</DestinationName>
-	<TextPayload>" ++ Data ++ "/TextPayload></BrokerMessage></Publish>
+  <DestinationName>" ++ escape(Dest) ++ "</DestinationName>
+	<TextPayload>" ++ escape(Data) ++ "/TextPayload></BrokerMessage></Publish>
   </soapenv:Body></soapenv:Envelope>",
 
 	gen_tcp:send(Socket,Msg)
@@ -90,7 +90,7 @@ subscribe({Socket, [MT|Name], Timeout}, [H|T]) ->
 	Msg = 
 		"<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'>
 		<soapenv:Body><Notify xmlns='http://services.sapo.pt/broker'>
-		<DestinationName>" ++ Dest ++ "</DestinationName>
+		<DestinationName>" ++ escape(Dest) ++ "</DestinationName>
 		<DestinationType>" ++ atom_to_list(MT) ++ "</DestinationType>
 		</Notify></soapenv:Body></soapenv:Envelope>",
     
@@ -159,7 +159,7 @@ acknowledge(Socket, X, Data) ->
 			Msg = 
 				"<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'>
 				<soapenv:Body><Acknowledge xmlns='http://services.sapo.pt/broker'>
-				<DestinationName>" ++ Dest ++ "</DestinationName>
+				<DestinationName>" ++ escape(Dest) ++ "</DestinationName>
 				<MessageId>" ++ Id ++ "</MessageId></Acknowledge>
 				</soapenv:Body></soapenv:Envelope>",
 
@@ -247,4 +247,20 @@ text_content([],Res) -> Res
 .
 
 
+escape(L) ->
+	lists:reverse(escape(L,[]))
+.
+
+
+escape([H|T],Res) ->
+	Res1 = case H of
+		$< -> [$; , $t , $l , $& | Res];
+		$& -> [$; , $p, $m , $a , $& | Res];
+		_ -> [H | Res]
+	end,
+	escape(T,Res1)
+;
+
+escape([],Res) -> Res
+.
 
