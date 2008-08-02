@@ -56,7 +56,6 @@ class LocalTopicConsumers
 			Set<String> matches = new HashSet<String>();
 			for (String sname : subscriptionNames)
 			{
-
 				if (sname.equals(topicName))
 				{
 					matches.add(topicName);

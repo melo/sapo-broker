@@ -104,7 +104,6 @@ public class ErrorHandler extends ExceptionMonitor
 				Shutdown.now();
 			}
 		}
-
 	}
 	
 	private static void exitIfCritical(Throwable cause)

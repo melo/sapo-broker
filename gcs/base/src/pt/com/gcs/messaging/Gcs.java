@@ -178,7 +178,6 @@ public class Gcs
 		log.info("{} starting.", SERVICE_NAME);
 		try
 		{
-
 			startAcceptor(GcsInfo.getAgentPort());
 			startConnector();
 

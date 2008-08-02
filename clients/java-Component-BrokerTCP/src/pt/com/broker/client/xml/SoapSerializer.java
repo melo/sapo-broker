@@ -29,11 +29,9 @@ public class SoapSerializer
 			{
 				BrokerMessage bmsg = soapEnv.body.notification.brokerMessage;
 				StringBuilder buf = new StringBuilder();
-				buf.append("\ncorrelationId: " + bmsg.correlationId);
 				buf.append("\ndestinationName: " + bmsg.destinationName);
 				buf.append("\nexpiration: " + bmsg.expiration);
 				buf.append("\nmessageId: " + bmsg.messageId);
-				buf.append("\npriority: " + bmsg.priority);
 				buf.append("\ntextPayload: " + bmsg.textPayload);
 				buf.append("\ntimestamp: " + bmsg.timestamp);
 
