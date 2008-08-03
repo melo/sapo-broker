@@ -127,17 +127,14 @@ public class FilePublisher
 							}
 							finally
 							{
-								
 								try
 								{
 									fis.close();
-									//msgf.delete();
-									File badFile = new File(msgf.getAbsolutePath() + ".bad");
-									msgf.renameTo(badFile);
+									msgf.delete();
 								}
-								catch (Throwable e)
+								catch (Throwable t)
 								{
-									//ignore since we are cleaning
+									log.error("Error deleting file", t);
 								}
 							}							
 
