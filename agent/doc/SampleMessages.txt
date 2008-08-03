@@ -46,9 +46,9 @@
 		<soap:Body>
 			<mq:Notification>
 				<mq:BrokerMessage>
-					<MessageId>4e982250-239c-4e25-b177-11774e8090a7</MessageId> <!-- elemento opcional -->
-					<Timestamp>2006-02-21T13:04:49Z</Timestamp> <!-- elemento opcional -->
-					<Expiration>2006-02-21T14:44:49Z</Expiration> <!-- elemento opcional -->
+					<mq:MessageId>4e982250-239c-4e25-b177-11774e8090a7</mq:MessageId> <!-- elemento opcional -->
+					<mq:Timestamp>2006-02-21T13:04:49Z</mq:Timestamp> <!-- elemento opcional -->
+					<mq:Expiration>2006-02-21T14:44:49Z</mq:Expiration> <!-- elemento opcional -->
 					<mq:DestinationName>SampleTopic1</mq:DestinationName>
 					<mq:TextPayload>Lorem ipsum dolor sit amet, consectetuer adipiscing elit.</mq:TextPayload>
 				</mq:BrokerMessage>
