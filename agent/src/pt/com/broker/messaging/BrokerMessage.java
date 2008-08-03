@@ -18,9 +18,7 @@ public class BrokerMessage
 
 	public BrokerMessage()
 	{
-		priority = 4;
 		messageId = "";
-		correlationId = "";
 		timestamp = "";
 		expiration = "";
 		destinationName = "";

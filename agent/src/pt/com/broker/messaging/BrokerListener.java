@@ -13,26 +13,21 @@ import pt.com.gcs.messaging.MessageListener;
 
 public abstract class BrokerListener implements MessageListener
 {
-	public static SoapEnvelope buildNotification(Message msg)
+	protected static SoapEnvelope buildNotification(Message msg)
 	{
 		Notification nt = new Notification();
 		BrokerMessage bkrm = nt.brokerMessage;
-
-		// String sourceAgent = msg.getStringProperty(MQ.MESSAGE_SOURCE);
-
-		bkrm.correlationId = msg.getCorrelationId();
+		
 		bkrm.destinationName = msg.getDestination();
 		bkrm.timestamp = DateUtil.formatISODate(new Date(msg.getTimestamp()));
 		bkrm.expiration = DateUtil.formatISODate(new Date(msg.getExpiration()));
-		bkrm.messageId = msg.getMessageId();
-		bkrm.priority = msg.getPriority();
+		bkrm.messageId = msg.getMessageId();		
 		bkrm.textPayload = msg.getContent();
 		nt.brokerMessage = bkrm;
 
 		SoapEnvelope soap_env = new SoapEnvelope();
 		SoapHeader soap_header = new SoapHeader();
 		EndPointReference epr = new EndPointReference();
-		//epr.address = destinationType + "://" + msg.getDestination();
 		epr.address = msg.getSourceApp();
 		soap_header.wsaFrom = epr;
 		soap_header.wsaMessageID = "http://services.sapo.pt/broker/message/" + bkrm.messageId;

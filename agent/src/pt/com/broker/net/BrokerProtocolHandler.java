@@ -168,7 +168,6 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 				{
 					throw new IllegalArgumentException("Not a valid destination name for a TOPIC_AS_QUEUE consumer");
 				}
-
 			}
 			return;
 		}

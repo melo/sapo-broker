@@ -13,9 +13,7 @@
 
 			<xsd:complexType name="BrokerMessage">
 				<xsd:all>
-					<xsd:element name="Priority" type="tns:Priority" />
 					<xsd:element name="MessageId" type="xsd:string" />
-					<xsd:element name="CorrelationId" type="xsd:string" />
 					<xsd:element name="Timestamp" type="xsd:string" />
 					<xsd:element name="Expiration" type="xsd:string" />
 					<xsd:element minOccurs="1" maxOccurs="1" name="DestinationName" type="xsd:string" />
@@ -87,13 +85,6 @@
 					<xsd:enumeration value="TOPIC" />
 					<xsd:enumeration value="QUEUE" />
 					<xsd:enumeration value="TOPIC_AS_QUEUE" />
-				</xsd:restriction>
-			</xsd:simpleType>
-
-			<xsd:simpleType name="Priority">
-				<xsd:restriction base="xsd:int">
-					<xsd:minInclusive value="0" />
-					<xsd:maxInclusive value="9" />
 				</xsd:restriction>
 			</xsd:simpleType>
 			

@@ -7,11 +7,7 @@ import org.caudexorigo.text.StringUtils;
 
 public class BrokerMessage
 {
-	public int priority;
-
 	public String messageId;
-
-	public String correlationId;
 
 	public String timestamp;
 

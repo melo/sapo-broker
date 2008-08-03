@@ -34,9 +34,6 @@ public class BrokerProducer
 			if (StringUtils.isNotBlank(brkMessage.messageId))
 				message.setMessageId(brkMessage.messageId);
 
-			if (StringUtils.isNotBlank(brkMessage.correlationId))
-				message.setCorrelationId(brkMessage.correlationId);
-
 			if (StringUtils.isNotBlank(brkMessage.destinationName))
 				message.setDestination(brkMessage.destinationName);
 
@@ -51,7 +48,6 @@ public class BrokerProducer
 			}
 
 			message.setContent(brkMessage.textPayload);
-			message.setPriority(brkMessage.priority);
 
 			if (log.isDebugEnabled())
 			{
@@ -90,7 +86,7 @@ public class BrokerProducer
 	{
 		final BrokerMessage brkm = pubreq.brokerMessage;
 
-		Message msg = prepareForSending(brkm);		
+		Message msg = prepareForSending(brkm);
 
 		StringBuffer sb_source = new StringBuffer();
 		sb_source.append("topic@");
@@ -103,7 +99,7 @@ public class BrokerProducer
 			sb_source.append(messageSource);
 		}
 		msg.setSourceApp(sb_source.toString());
-		msg.setType(MessageType.COM_TOPIC);		
+		msg.setType(MessageType.COM_TOPIC);
 		Gcs.publish(msg);
 	}
 

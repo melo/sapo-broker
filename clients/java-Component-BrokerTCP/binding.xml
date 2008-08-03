@@ -93,9 +93,7 @@
 	</mapping>
 
 	<mapping name="BrokerMessage" class="pt.com.broker.client.messaging.BrokerMessage" ns="http://services.sapo.pt/broker" ordered="false" flexible="true">
-		<value name="Priority" field="priority" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="optional" ns="http://services.sapo.pt/broker" />
-		<value name="CorrelationId" field="correlationId" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="Timestamp" field="timestamp" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="Expiration" field="expiration" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
