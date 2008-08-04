@@ -26,15 +26,14 @@ loop() ->
 
 
 go() ->
-	%{ok,F} =init([{msg_type,'TOPIC_AS_QUEUE'},{host,"ejabberd1.m3.bk.sapo.pt"}]),
-	{ok,F} =init([{host,"10.135.5.110"}]),
-	subscribe(F,[{"/sapo/messenger/raw/sessions",'TOPIC_AS_QUEUE'},
+	{ok, Desc} = init([{host,"10.135.5.110"}]),
+	Ndesc = subscribe(Desc, [{"/sapo/messenger/raw/sessions",'TOPIC_AS_QUEUE'},
 		{"/sapo/messenger/raw/presences",'TOPIC_AS_QUEUE'}]),
-	%X= receive_msg(F),
+	%X= receive_msg(Nhandle),
 	%io:format("go: Result (~p)~n",[X])
 
 	Pid = spawn(fun loop/0),
-	receive_loop(F,Pid)
+	receive_loop(Ndesc,Pid)
 .
 
 
@@ -61,13 +60,13 @@ init(Conf) when is_list(Conf) ->
 
 	case gen_tcp:connect(
 			Host, Port, [binary, {packet, 4}, {active,false}], Timeout) of
-		{ok, Socket} -> {ok, {Socket, Name, Timeout}};
+		{ok, Socket} -> {ok, {Socket, Name, Timeout, []}};
 		{_, X}  -> {error, X}
 	end
 .		
 
 
-publish({Socket, Name, _Timeout}, {Topic,MT}, Data) -> 
+publish({Socket, Name, _Timeout, _}, {Topic,MT}, Data) -> 
 	case MT of 
 		'TOPIC_AS_QUEUE' -> Dest = Name ++ "@" ++ Topic;
 		_ -> Dest = Topic
@@ -84,7 +83,7 @@ publish({Socket, Name, _Timeout}, {Topic,MT}, Data) ->
 .
 
 
-subscribe({Socket, Name, Timeout}, [{Topic,MT}|T]) -> 
+subscribe({Socket, Name, Timeout, L}, [{Topic,MT}|T]) -> 
 	case MT of 
 		'TOPIC_AS_QUEUE' -> Dest = Name ++ "@" ++ Topic;
 		_ -> Dest = Topic
@@ -96,27 +95,27 @@ subscribe({Socket, Name, Timeout}, [{Topic,MT}|T]) ->
 		<DestinationName>" ++ escape(Dest) ++ "</DestinationName>
 		<DestinationType>" ++ atom_to_list(MT) ++ "</DestinationType>
 		</Notify></soapenv:Body></soapenv:Envelope>",
-    
+  
+	L1 = [{Topic, MT} | L],
+	  
 	case gen_tcp:send(Socket,Msg) of
-		ok -> subscribe({Socket, Name, Timeout}, T);
+		ok -> subscribe({Socket, Name, Timeout, L1}, T);
 		What -> 
 			io:format("subscribe: send failed ~p~n",[What]),
 			What
 	end;
 
-subscribe(_, []) -> ok.
+subscribe(H, []) -> H.
 
 
-receive_msg({Socket, X, Timeout}) -> 
-	%io:format("recv: timeout ~p~n",[Timeout]),
-
+receive_msg({Socket, _, Timeout, L}) -> 
 	case gen_tcp:recv(Socket,0,Timeout) of
 		{ok, Data} ->
 			{XML, _} = xmerl_scan:string(binary_to_list(Data)),
 			RV = find_elements(
-				['TextPayload', 'MessageId', 'DestinationName' ],XML#xmlElement.content),
+				['TextPayload', 'MessageId', 'DestinationName'], XML#xmlElement.content),
 
-			acknowledge(Socket, X, RV),
+			acknowledge(Socket, L, RV),
 			RV;
 
 		{error, closed} -> []
@@ -124,12 +123,12 @@ receive_msg({Socket, X, Timeout}) ->
 .
 
 
-receive_loop(X,Pid) when is_pid(Pid) -> 
-	receive_loop(X,fun(Data) -> Pid ! {self(), Data} end)
+receive_loop(X, Pid) when is_pid(Pid) -> 
+	receive_loop(X, fun(Data) -> Pid ! {self(), Data} end)
 ;
 
-receive_loop({Socket,X, _Timeout}, F) -> 
-	%io:format("recv: timeout ~p~n",[Timeout]),
+receive_loop({Socket, _N, _Timeout, L}, F) -> 
+	%io:format("receive_loop: L ~p~n",[L]),
 	case gen_tcp:recv(Socket,0) of
 		{ok, Data} -> 
 			{XML, _} = xmerl_scan:string(binary_to_list(Data)),
@@ -142,22 +141,28 @@ receive_loop({Socket,X, _Timeout}, F) ->
 				throw:X -> io:format("receive_loop: function raised exception ~p~n",[X])
 			end,
 
-			acknowledge(Socket, X, RV),
-			receive_loop({Socket,X, _Timeout},F);
+			acknowledge(Socket, L, RV),
+			receive_loop({Socket, _N, _Timeout, L}, F);
 			
 		{error, closed} -> [];
 		
 		{error, _} ->
-			receive_loop({Socket,X, _Timeout},F)
+			receive_loop({Socket, _N, _Timeout, L}, F)
 	end
 .
 
 
-acknowledge(Socket, X, Data) ->
-	case X of 
-		['TOPIC_AS_QUEUE', _] ->
+acknowledge(Socket, L, Data) ->
+	{value, {_, Dest}} = lists:keysearch('DestinationName',1,Data),	
+	[Topic|_] = lists:reverse(string:tokens(Dest,"@")),
+	
+	%io:format("acknowledge: list ~p~n",[L]),
+	
+	{value, {_, MT}} = lists:keysearch(Topic,1,L),
+
+	if 
+		MT =:= 'TOPIC_AS_QUEUE' ->
 			{value, {_, Id}} = lists:keysearch('MessageId',1,Data),
-			{value, {_, Dest}} = lists:keysearch('DestinationName',1,Data),
 
 			Msg = 
 				"<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'>
@@ -168,32 +173,9 @@ acknowledge(Socket, X, Data) ->
 
 			gen_tcp:send(Socket,Msg);
 
-		_ -> ok
+		true -> ok
 	end
 .
-
-
-%msg_type(Conf) ->
-%	case lists:keysearch(msg_type,1,Conf) of
-%		{ value, { _, V } } -> 
-%			case lists:member(V,['TOPIC','TOPIC_AS_QUEUE']) of
-%				true -> 
-%					case V of
-%						'TOPIC_AS_QUEUE' ->
-%							case lists:keysearch(name,1,Conf) of
-%								{value, {_, Name}} -> Name;
-%								_ -> {_, Name} = inet:gethostname()
-%							end,
-%							{ok, [V, Name]};
-%						_ -> {ok, [V] }
-%					end;
-%					
-%				false -> {error, einval}
-%			end;
-%			
-%		_ -> {ok, ['TOPIC']}
-%	end
-%.
 
 
 find_elements(Taglist,L) ->
