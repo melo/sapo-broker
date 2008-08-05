@@ -35,7 +35,7 @@ public class QueueSessionListenerList
 						int ssize = qs.count();
 
 						Message cnt_message = new Message();
-						String ctName = String.format("/system/stats/topic-consumer-count/#%s#", qs.getDestinationName());
+						String ctName = String.format("/system/stats/queue-consumer-count/#%s#", qs.getDestinationName());
 						String content = GcsInfo.getAgentName() + "#" + qs.getDestinationName() + "#" + ssize;
 						cnt_message.setDestination(ctName);
 						cnt_message.setContent(content);
