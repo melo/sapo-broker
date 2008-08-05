@@ -170,7 +170,7 @@ sub receive {
 		'BrokerMessage', qw(TextPayload MessageId DestinationName)
 	);
 
-	return $self->{retstruct} || $self->{msg_type} eq 'TOPIC_AS_QUEUE' ? 
+	return $self->{retstruct} || ( $self->{msg_type} && $self->{msg_type} eq 'TOPIC_AS_QUEUE' ) 
 		$event : $event->{TextPayload};
 }
 
