@@ -2,6 +2,8 @@ package pt.com.broker.messaging;
 
 public class Notify
 {
+	public String actionId;
+	
 	public String destinationName;
 
 	public String destinationType;

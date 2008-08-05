@@ -10,6 +10,8 @@ public class BrokerRequestRouter implements RequestRouter
 	private final BrokerHttpAction broker_action = new BrokerHttpAction();
 	
 	private final StatusAction status_action = new StatusAction();
+	
+	private final AdminAction admin_action = new AdminAction();
 
 	public HttpAction map(HttpRequest req)
 	{
@@ -21,6 +23,10 @@ public class BrokerRequestRouter implements RequestRouter
 		else if (path.equals("/broker/status"))
 		{
 			return status_action;
+		}
+		else if (path.equals("/broker/admin"))
+		{
+			return admin_action;
 		}
 		return null;
 	}

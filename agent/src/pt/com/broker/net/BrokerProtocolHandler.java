@@ -2,14 +2,17 @@ package pt.com.broker.net;
 
 import java.io.IOException;
 
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteTimeoutException;
+import org.apache.mina.core.service.IoHandlerAdapter;
+import org.apache.mina.core.session.IoSession;
+import org.apache.mina.core.write.WriteTimeoutException;
+import org.caudexorigo.concurrent.Sleep;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.broker.core.BrokerExecutor;
 import pt.com.broker.core.ErrorHandler;
+import pt.com.broker.messaging.Accepted;
 import pt.com.broker.messaging.BrokerConsumer;
 import pt.com.broker.messaging.BrokerProducer;
 import pt.com.broker.messaging.BrokerSyncConsumer;
@@ -18,6 +21,7 @@ import pt.com.broker.messaging.Notify;
 import pt.com.broker.messaging.Poll;
 import pt.com.broker.messaging.QueueSessionListenerList;
 import pt.com.broker.messaging.Status;
+import pt.com.broker.messaging.TopicSubscriberList;
 import pt.com.broker.messaging.Unsubscribe;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.gcs.net.IoSessionHelper;
@@ -29,6 +33,8 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 	private static final BrokerProducer _brokerProducer = BrokerProducer.getInstance();
 
 	private static final BrokerConsumer _brokerConsumer = BrokerConsumer.getInstance();
+
+	private static final int MAX_WRITE_BUFFER_SIZE = 5000;
 
 	public BrokerProtocolHandler()
 	{
@@ -52,6 +58,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			String remoteClient = IoSessionHelper.getRemoteAddress(iosession);
 			log.info("Session closed: " + remoteClient);
 			QueueSessionListenerList.removeSession(iosession);
+			TopicSubscriberList.removeSession(iosession);
 		}
 		catch (Throwable e)
 		{
@@ -100,7 +107,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 				String emsg = wtf.Cause.getMessage();
 				msg = "Client: " + client + ". Message: " + emsg;
 			}
-			
+
 			if (wtf.Cause instanceof IOException)
 			{
 				log.error(msg);
@@ -109,7 +116,7 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			{
 				log.error(msg, wtf.Cause);
 			}
-			
+
 		}
 		catch (Throwable t)
 		{
@@ -144,7 +151,8 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		if (request.body.notify != null)
 		{
 			Notify sb = request.body.notify;
-			
+			String actionId = sb.actionId;
+
 			if (StringUtils.isBlank(sb.destinationName))
 			{
 				throw new IllegalArgumentException("Must provide a valid destination");
@@ -169,20 +177,28 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 					throw new IllegalArgumentException("Not a valid destination name for a TOPIC_AS_QUEUE consumer");
 				}
 			}
+			sendAccepted(session, actionId);
 			return;
 		}
 		else if (request.body.publish != null)
 		{
+			String actionId = request.body.publish.actionId;
 			_brokerProducer.publishMessage(request.body.publish, requestSource);
+			sendAccepted(session, actionId);
 			return;
 		}
 		else if (request.body.enqueue != null)
 		{
+			String actionId = request.body.enqueue.actionId;
 			_brokerProducer.enqueueMessage(request.body.enqueue, requestSource);
+			sendAccepted(session, actionId);
 			return;
 		}
 		else if (request.body.poll != null)
 		{
+			String actionId = request.body.poll.actionId;
+			sendAccepted(session, actionId);
+
 			Poll poll = request.body.poll;
 			BrokerSyncConsumer.poll(poll, session);
 			return;
@@ -192,10 +208,17 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 			_brokerProducer.acknowledge(request.body.acknowledge);
 			return;
 		}
+		else if (request.body.accepted != null)
+		{
+			// TODO: deal with the ack
+			return;
+		}
 		else if (request.body.unsubscribe != null)
 		{
 			Unsubscribe unsubs = request.body.unsubscribe;
 			_brokerConsumer.unsubscribe(unsubs, session);
+			String actionId = request.body.unsubscribe.actionId;
+			sendAccepted(session, actionId);
 			return;
 		}
 		else if (request.body.checkStatus != null)
@@ -209,5 +232,50 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		{
 			throw new RuntimeException("Not a valid request");
 		}
+	}
+
+	private void sendAccepted(final IoSession ios, final String actionId)
+	{
+		if (actionId != null)
+		{
+			SoapEnvelope soap_a = new SoapEnvelope();
+			Accepted a = new Accepted();
+			a.actionId = actionId;
+			soap_a.body.accepted = a;
+			ios.write(soap_a);
+
+			boolean isSuspended = (Boolean) ios.getAttribute("IS_SUSPENDED", Boolean.FALSE);
+
+			if ((ios.getScheduledWriteMessages() > MAX_WRITE_BUFFER_SIZE) && !isSuspended)
+			{
+				ios.suspendRead();
+				ios.setAttribute("IS_SUSPENDED", Boolean.TRUE);
+
+				Runnable resumer = new Runnable()
+				{
+					public void run()
+					{
+						int counter = 0;
+						while (true)
+						{
+							Sleep.time(5);
+							counter++;
+							if (ios.getScheduledWriteMessages() <= MAX_WRITE_BUFFER_SIZE)
+							{
+								ios.resumeRead();
+								ios.setAttribute("IS_SUSPENDED", Boolean.FALSE);
+								return;
+							}
+							if (counter % 1000 == 0)
+							{
+								log.warn("Client is slow to read ack messages.");
+							}
+						}
+					}
+				};
+				BrokerExecutor.execute(resumer);
+			}
+		}
+
 	}
 }

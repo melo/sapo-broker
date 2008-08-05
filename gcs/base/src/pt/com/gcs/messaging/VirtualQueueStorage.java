@@ -94,17 +94,17 @@ public class VirtualQueueStorage
 
 	}
 
-	public synchronized static void saveVirtualQueue(String queueName)
+	protected synchronized static void saveVirtualQueue(String queueName)
 	{
 		instance.i_saveVirtualQueue(queueName);
 	}
 
-	public static void deleteVirtualQueue(String queueName)
+	protected static void deleteVirtualQueue(String queueName)
 	{
 		instance.i_deleteVirtualQueue(queueName);
 	}
 
-	public String[] i_getVirtualQueueNames()
+	protected String[] i_getVirtualQueueNames()
 	{
 		Cursor cursor = null;
 		try
@@ -148,7 +148,7 @@ public class VirtualQueueStorage
 		}
 	}
 
-	public static String[] getVirtualQueueNames()
+	protected static String[] getVirtualQueueNames()
 	{
 		return instance.i_getVirtualQueueNames();
 	}

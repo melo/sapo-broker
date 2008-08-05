@@ -66,7 +66,7 @@ public class BDBEnviroment
 		try
 		{
 			instance.env.sync();
-			log.info("Sync was successful");
+			log.debug("Sync was successful");
 		}
 		catch (DatabaseException e)
 		{

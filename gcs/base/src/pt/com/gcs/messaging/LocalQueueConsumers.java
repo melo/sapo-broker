@@ -9,8 +9,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
+import org.apache.mina.core.future.WriteFuture;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +28,7 @@ class LocalQueueConsumers
 
 	private static final Set<String> _syncConsumers = new HashSet<String>();
 
-	public static void acknowledgeMessage(Message msg, IoSession ioSession)
+	protected static void acknowledgeMessage(Message msg, IoSession ioSession)
 	{
 		log.debug("Acknowledge message with Id: '{}'.", msg.getMessageId());
 
@@ -38,7 +38,7 @@ class LocalQueueConsumers
 		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
 	}
 
-	public synchronized static void add(String queueName, MessageListener listener)
+	protected synchronized static void add(String queueName, MessageListener listener)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
 		if (listeners == null)
@@ -50,7 +50,7 @@ class LocalQueueConsumers
 		instance.broadCastNewQueueConsumer(queueName);
 	}
 
-	public static void addSyncConsumer(String queueName)
+	protected static void addSyncConsumer(String queueName)
 	{
 		synchronized (_syncConsumers)
 		{
@@ -62,7 +62,7 @@ class LocalQueueConsumers
 		}
 	}
 
-	public static void removeSyncConsumer(String queueName)
+	protected static void removeSyncConsumer(String queueName)
 	{
 		synchronized (_syncConsumers)
 		{
@@ -74,7 +74,7 @@ class LocalQueueConsumers
 		}
 	}
 
-	public static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
+	protected static void broadCastQueueInfo(String destinationName, String action, IoSession ioSession)
 	{
 		if (StringUtils.isBlank(destinationName))
 		{
@@ -100,22 +100,22 @@ class LocalQueueConsumers
 		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
 	}
 
-	public synchronized static void delete(String queueName)
+	protected synchronized static void delete(String queueName)
 	{
 		instance.localQueueConsumers.remove(queueName);
 	}
 
-	public static Set<String> getBroadcastableQueues()
+	protected static Set<String> getBroadcastableQueues()
 	{
 		return Collections.unmodifiableSet(instance.localQueueConsumers.keySet());
 	}
 
-	public static boolean notify(Message message)
+	protected static boolean notify(Message message)
 	{
 		return instance.doNotify(message);
 	}
 
-	public synchronized static void remove(MessageListener listener)
+	protected synchronized static void remove(MessageListener listener)
 	{
 		if (listener != null)
 		{
@@ -129,7 +129,7 @@ class LocalQueueConsumers
 		}
 	}
 
-	public static int size(String destinationName)
+	protected static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(destinationName);
 		if (listeners != null)
@@ -185,7 +185,7 @@ class LocalQueueConsumers
 		broadCastActionQueueConsumer(destinationName, "DELETE");
 	}
 
-	public boolean doNotify(Message message)
+	protected boolean doNotify(Message message)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = localQueueConsumers.get(message.getDestination());
 		if (listeners != null)

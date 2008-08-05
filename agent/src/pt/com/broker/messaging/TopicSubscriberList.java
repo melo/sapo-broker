@@ -1,17 +1,23 @@
 package pt.com.broker.messaging;
 
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
+import org.apache.mina.core.session.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.broker.core.BrokerExecutor;
+import pt.com.gcs.conf.GcsInfo;
 import pt.com.gcs.messaging.Gcs;
+import pt.com.gcs.messaging.Message;
 
 public class TopicSubscriberList
 {
 	// key: destinationName
-	private final Map<String, TopicSubscriber> topicSubscribersCache = new HashMap<String, TopicSubscriber>();
+	private static final Map<String, TopicSubscriber> topicSubscribersCache = new ConcurrentHashMap<String, TopicSubscriber>();
 
 	private static final Logger log = LoggerFactory.getLogger(TopicSubscriberList.class);
 
@@ -19,6 +25,27 @@ public class TopicSubscriberList
 
 	private TopicSubscriberList()
 	{
+		Runnable counter = new Runnable()
+		{
+			public void run()
+			{
+				Collection<TopicSubscriber> subs = topicSubscribersCache.values();
+
+				for (TopicSubscriber topicSubscriber : subs)
+				{
+					int ssize = topicSubscriber.count();
+
+					Message cnt_message = new Message();
+					String ctName = String.format("/system/stats/topic-consumer-count/#%s#", topicSubscriber.getDestinationName());
+					String content = GcsInfo.getAgentName() + "#" + topicSubscriber.getDestinationName() + "#" + ssize;
+					cnt_message.setDestination(ctName);
+					cnt_message.setContent(content);
+					Gcs.publish(cnt_message);
+				}
+			}
+		};
+
+		BrokerExecutor.scheduleWithFixedDelay(counter, 20, 20, TimeUnit.SECONDS);
 	}
 
 	private TopicSubscriber getSubscriber(String destinationName)
@@ -86,5 +113,24 @@ public class TopicSubscriberList
 	public static TopicSubscriber get(String destinationName)
 	{
 		return instance.getSubscriber(destinationName);
+	}
+
+	public static void removeSession(IoSession iosession)
+	{
+		synchronized (topicSubscribersCache)
+		{
+			try
+			{
+				Collection<TopicSubscriber> list = topicSubscribersCache.values();
+				for (TopicSubscriber subscriber : list)
+				{
+					subscriber.removeConsumer(iosession);
+				}
+			}
+			catch (Throwable t)
+			{
+				log.error(t.getMessage(), t);
+			}
+		}
 	}
 }

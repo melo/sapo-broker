@@ -36,6 +36,7 @@
 		<structure field="fault" usage="optional" />
 		<structure field="status" usage="optional" />
 		<structure field="checkStatus" usage="optional" />
+		<structure field="accepted" usage="optional" />
 	</mapping>
 	
 	<mapping type-name="FaultCode" abstract="true" class="pt.com.broker.client.xml.FaultCode" ns="http://www.w3.org/2003/05/soap-envelope">
@@ -54,37 +55,46 @@
 	</mapping>
 
 	<mapping name="Enqueue" class="pt.com.broker.client.messaging.Enqueue" ns="http://services.sapo.pt/broker">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<structure field="brokerMessage" />
 	</mapping>
 	
 	<mapping name="Poll" class="pt.com.broker.client.messaging.Poll" ns="http://services.sapo.pt/broker">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
 	<mapping name="Publish" class="pt.com.broker.client.messaging.Publish" ns="http://services.sapo.pt/broker">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<structure field="brokerMessage" />
 	</mapping>
 
 	<mapping name="Notify" class="pt.com.broker.client.messaging.Notify" ns="http://services.sapo.pt/broker">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationType" field="destinationType" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>
 	
 	<mapping name="Unsubscribe" class="pt.com.broker.client.messaging.Unsubscribe" ns="http://services.sapo.pt/broker" ordered="false">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationType" field="destinationType" usage="optional" ns="http://services.sapo.pt/broker" />
 	</mapping>	
 
 	<mapping name="Notification" class="pt.com.broker.client.messaging.Notification" ns="http://services.sapo.pt/broker">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<structure field="brokerMessage" />
 	</mapping>
 
 	<mapping name="Acknowledge" class="pt.com.broker.client.messaging.Acknowledge" ns="http://services.sapo.pt/broker" ordered="false">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
 		<value name="MessageId" field="messageId" usage="required" ns="http://services.sapo.pt/broker" />
 	</mapping>
 	
-	<mapping name="CheckStatus" class="pt.com.broker.client.messaging.CheckStatus" ns="http://services.sapo.pt/broker" />
+	<mapping name="CheckStatus" class="pt.com.broker.client.messaging.CheckStatus" ns="http://services.sapo.pt/broker">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
+	</mapping>
 	
 	<mapping name="Status" class="pt.com.broker.client.messaging.Status" ns="http://services.sapo.pt/broker" ordered="false">
 		<value name="Message" field="message" usage="optional" ns="http://services.sapo.pt/broker" />
@@ -98,6 +108,10 @@
 		<value name="Expiration" field="expiration" usage="optional" ns="http://services.sapo.pt/broker" />
 		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
 		<value name="TextPayload" field="textPayload" usage="required" ns="http://services.sapo.pt/broker" />
+	</mapping>
+	
+	<mapping name="Accepted" class="pt.com.broker.client.messaging.Accepted" ns="http://services.sapo.pt/broker" ordered="false">
+		<value name="action-id" field="actionId" usage="optional" ns="http://services.sapo.pt/broker" style="attribute"/>
 	</mapping>
 
 </binding>

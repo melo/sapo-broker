@@ -49,7 +49,7 @@ public class BrokerProtocolHandler extends ProtocolHandler<SoapEnvelope>
 	public void onConnectionClose()
 	{
 		log.debug("Connection Closed");
-		
+
 	}
 
 	@Override
@@ -63,13 +63,13 @@ public class BrokerProtocolHandler extends ProtocolHandler<SoapEnvelope>
 		catch (Throwable t)
 		{
 			log.error(t.getMessage(), t);
-		}		
+		}
 	}
 
 	@Override
 	public void onError(Throwable error)
 	{
-		log.error(error.getMessage(), error);		
+		log.error(error.getMessage(), error);
 	}
 
 	@Override
@@ -110,6 +110,11 @@ public class BrokerProtocolHandler extends ProtocolHandler<SoapEnvelope>
 			SoapFault fault = request.body.fault;
 			log.error(fault.toString());
 			throw new RuntimeException(fault.faultReason.text);
+		}
+		else if (request.body.accepted != null)
+		{
+			// TODO: handle ACK
+			// Accepted accepted = request.body.accepted;
 		}
 	}
 

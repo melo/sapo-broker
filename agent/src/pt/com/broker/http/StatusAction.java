@@ -2,8 +2,8 @@ package pt.com.broker.http;
 
 import java.io.OutputStream;
 
-import org.apache.mina.common.IoBuffer;
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.buffer.IoBuffer;
+import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.http.HttpRequest;
 import org.apache.mina.filter.codec.http.HttpResponseStatus;
 import org.apache.mina.filter.codec.http.MutableHttpResponse;
@@ -55,7 +55,5 @@ public class StatusAction extends HttpAction
 			bbo.flip();
 			response.setContent(bbo);
 		}
-
 	}
-
 }

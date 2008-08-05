@@ -3,7 +3,7 @@ package pt.com.broker.messaging;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class TopicSubscriber extends BrokerListener
 							}
 							Sleep.time(1);
 
-							//return false;
+							// return false;
 						}
 						else
 						{
@@ -128,5 +128,10 @@ public class TopicSubscriber extends BrokerListener
 	public String getDestinationName()
 	{
 		return _dname;
+	}
+	
+	public int count()
+	{
+		return _sessions.size();
 	}
 }

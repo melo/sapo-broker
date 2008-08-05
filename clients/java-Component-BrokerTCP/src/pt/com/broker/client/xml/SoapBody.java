@@ -1,5 +1,6 @@
 package pt.com.broker.client.xml;
 
+import pt.com.broker.client.messaging.Accepted;
 import pt.com.broker.client.messaging.Acknowledge;
 import pt.com.broker.client.messaging.CheckStatus;
 import pt.com.broker.client.messaging.Enqueue;
@@ -30,6 +31,8 @@ public class SoapBody
 	
 	public CheckStatus checkStatus;
 	
-	public Status status;	
+	public Status status;
+	
+	public Accepted accepted;
 	
 }

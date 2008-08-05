@@ -2,7 +2,7 @@ package pt.com.broker.core;
 
 import java.io.PrintWriter;
 
-import org.apache.mina.common.ExceptionMonitor;
+import org.apache.mina.util.ExceptionMonitor;
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.Shutdown;
 import org.caudexorigo.text.StringBuilderWriter;

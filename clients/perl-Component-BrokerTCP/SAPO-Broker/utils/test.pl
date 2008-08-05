@@ -35,10 +35,7 @@ alarm 5;
 
 my $broker = SAPO::Broker->new(
 	timeout		=> 60, 
-	hosts       => [
-	    { host    =>  '127.0.0.1' },
-	    { host    =>  'devbroker' }
-	],
+	host		=> '127.0.0.1',
 	DEBUG		=> 0,
 	retstruct   => 1,
 );

@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,14 +18,14 @@ class RemoteTopicConsumers
 	private static final RemoteTopicConsumers instance = new RemoteTopicConsumers();
 
 	private Map<String, CopyOnWriteArrayList<IoSession>> remoteTopicConsumers = new ConcurrentHashMap<String, CopyOnWriteArrayList<IoSession>>();
-	
-	private static final int WRITE_BUFFER_SIZE = 2048*1024;
+
+	private static final int WRITE_BUFFER_SIZE = 2048 * 1024;
 
 	private RemoteTopicConsumers()
 	{
 	}
 
-	public synchronized static void add(String topicName, IoSession iosession)
+	protected synchronized static void add(String topicName, IoSession iosession)
 	{
 		log.info("Adding new remote topic consumer for topic:  '{}'", topicName);
 		try
@@ -47,7 +47,7 @@ class RemoteTopicConsumers
 		}
 	}
 
-	public static void notify(Message message)
+	protected static void notify(Message message)
 	{
 		if (instance.remoteTopicConsumers.size() > 0)
 		{
@@ -75,7 +75,7 @@ class RemoteTopicConsumers
 		}
 	}
 
-	public synchronized static void remove(IoSession iosession)
+	protected synchronized static void remove(IoSession iosession)
 	{
 		try
 		{
@@ -96,7 +96,7 @@ class RemoteTopicConsumers
 		}
 	}
 
-	public synchronized static void remove(String topicName, IoSession iosession)
+	protected synchronized static void remove(String topicName, IoSession iosession)
 	{
 		try
 		{
@@ -113,12 +113,12 @@ class RemoteTopicConsumers
 		}
 	}
 
-	public synchronized static int size()
+	protected synchronized static int size()
 	{
 		return instance.remoteTopicConsumers.size();
 	}
 
-	public synchronized static int size(String destinationName)
+	protected synchronized static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteTopicConsumers.get(destinationName);
 		if (sessions != null)

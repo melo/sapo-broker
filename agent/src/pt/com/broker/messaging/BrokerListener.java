@@ -2,7 +2,7 @@ package pt.com.broker.messaging;
 
 import java.util.Date;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.DateUtil;
 
 import pt.com.broker.xml.EndPointReference;
@@ -24,6 +24,7 @@ public abstract class BrokerListener implements MessageListener
 		bkrm.messageId = msg.getMessageId();		
 		bkrm.textPayload = msg.getContent();
 		nt.brokerMessage = bkrm;
+		nt.actionId = msg.getMessageId();
 
 		SoapEnvelope soap_env = new SoapEnvelope();
 		SoapHeader soap_header = new SoapHeader();

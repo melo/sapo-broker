@@ -366,14 +366,14 @@ except ImportError:
     
 
 def msgfromFields(fields):
+    priority = safe_cast(int, fields['Priority']) 
     return Message(
-        payload       = fields['TextPayload'],
-        destination   = fields['DestinationName'],
-        id            = fields['MessageId'],
-        priority      = safe_cast(int, fields.get('Priority')),
-        expiration    = fields.get('Expiration'),
-        timestamp     = fields.get('Timestamp'),
-        correlationId = fields.get('CorrelationId')
+        payload     = fields['TextPayload'],
+        destination = fields['DestinationName'],
+        id          = fields['MessageId'],
+        priority    = priority,
+        expiration  = fields.get('Expiration'),
+        timestamp   = fields.get('Timestamp')
     )
 
 

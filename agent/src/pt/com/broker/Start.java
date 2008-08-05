@@ -1,6 +1,6 @@
 package pt.com.broker;
 
-import org.apache.mina.common.ExceptionMonitor;
+import org.apache.mina.util.ExceptionMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

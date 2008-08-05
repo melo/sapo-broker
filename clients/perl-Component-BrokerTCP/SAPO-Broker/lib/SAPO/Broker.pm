@@ -9,7 +9,6 @@ use XML::LibXML::XPathContext;
 use Sys::Hostname;
 use Data::Dumper;
 use Carp qw(carp);
-use Time::HiRes qw(gettimeofday);
 
 our $VERSION = 0.69.1;
 our $libxml_parser;
@@ -20,14 +19,9 @@ sub new {
 
     $args{timeout}        ||= 60;             # timeout de ligacao
     $args{host}           ||= '127.0.0.1';    # host da manta
-    $args{hosts}          ||= undef;          # list of hosts to connect, try to connect in order
     $args{port}           ||= 3322;           # porta da manta
     $args{recon_attempts} ||= 5;              # quantas tentativas de reconnect
     $args{DEBUG}          ||= 0;              # msgs de debug e tal...
-    
-    # this implementation sucks
-    $args{drop}           ||= 0;                         # act as a dropper or a TCPer
-    $args{dropbox}        ||= '/servers/broker/dropbox'; # default broker dropbox
     
 	$args{retstruct}      ||= 0;              # retornar apenas o TextPayload ou uma struct?
 		
@@ -39,9 +33,7 @@ sub new {
 	$args{msg_type} = 'TOPIC' if exists $args{msg_type} && $args{msg_type} eq 'FF';
     carp("!!!\n\tmsg_type IS DEPRECATED in new(), use it only in publish, subscribe or poll\n!!!\n") if exists $args{msg_type};
 
-    if ( ! $self->{drop} ) {
-        return undef unless $self->_connect;        
-    }
+    return undef unless $self->_connect;
     
     return $self;
 }
@@ -68,22 +60,6 @@ sub publish {
     }
 
     return $self->_send_p(%args);
-}
-
-# grava os eventos para uma dropbox, not TCP stuff...
-sub drop {
-    my ($self, %args) = @_;
-        
-    my $id = join "", gettimeofday;
-    
-    if ( ! -d $self->{dropbox} ) {
-        carp("NO DROPBOX FOUND!");
-        return;
-    }
-    
-    open my $fh, ">", $self->{dropbox}."/".$id;
-    print $fh "XXX";
-    close $fh;
 }
 
 # subscreve eventos
@@ -170,7 +146,7 @@ sub receive {
 		'BrokerMessage', qw(TextPayload MessageId DestinationName)
 	);
 
-	return $self->{retstruct} || ( $self->{msg_type} && $self->{msg_type} eq 'TOPIC_AS_QUEUE' ) 
+	return $self->{retstruct} || $self->{msg_type} eq 'TOPIC_AS_QUEUE' ? 
 		$event : $event->{TextPayload};
 }
 
@@ -311,57 +287,25 @@ sub _connected {
     }
 }
 
-sub _open_sock {
-    my ($self, $host, $port, $timeout) = @_;
-    
-    $self->_debug("Connecting to: " . $host);
+# liga
+sub _connect {
+    my $self = shift;
+
+    $self->_debug("Connecting to: " . $self->{host});
 
     my $sock = IO::Socket::INET->new(
-        PeerAddr   => $host,
-        PeerPort   => $port,
-        Timeout    => $timeout,
+        PeerAddr   => $self->{host},
+        PeerPort   => $self->{port},
+        Timeout    => $self->{timeout},
         Proto      => 'tcp',
         Reuse      => 1,
         MultiHomed => 1,
         Blocking   => 1,
         Type       => SOCK_STREAM,
     );
-}
-
-# liga
-sub _connect {
-    my $self = shift;
-
-    my $sock;
-    
-    if ($self->{hosts}) {
-        for my $peer (@{$self->{hosts}}) {
-            $self->_debug("Trying to connect to: $peer->{host} ...");
-            $sock = $self->_open_sock(
-                $peer->{host},
-                $peer->{port} || $self->{port},
-                $peer->{timeout} || $self->{timeout}
-            );
-            #print $peer->{host};
-            if (!$sock) {
-               $self->_debug("Peer down, trying next...");
-            } 
-            else {
-                last;
-            }
-        }
-    }
-    else {
-        $sock = $self->_open_sock(
-            $self->{host},
-            $self->{port},
-            $self->{timeout}
-        );
-        $self->_debug("Cant connect to: $self->{host} : $@") unless $sock;
-        
-    }
 
     unless ($sock) {
+        $self->_debug("Cant connect to: $self->{host} : $@");
         return undef;
     }
     $sock->autoflush(1);
@@ -458,14 +402,11 @@ sub _parse_with_libxml {
 
     $libxml_parser ||= XML::LibXML->new;
 
-    my $xpath;
-    eval {
-        $xpath = XML::LibXML::XPathContext->new( $libxml_parser->parse_string($xml) );        
-    };
+    my $xpath = XML::LibXML::XPathContext->new( $libxml_parser->parse_string($xml) );
     
     # trying to find a very voodoo error :/
     #:146: parser error : Premature end of data in tag Envelope line 1
-    die "!!!!!!!!!!!!!!!!!!!!!!!!!!\n$xml - $@" if $@;
+    die "!!!!!!!!!!!!!!!!!!!!!!!!!!\n$xml" unless $xpath;
 
     return $xpath;
 }
@@ -545,34 +486,28 @@ Nothing exported.
 
 =head3 OPTIONS:
 
-    $args{timeout}        ||= 60;             # timeout de ligacao
-    $args{host}           ||= '127.0.0.1';    # host da manta
-    $args{hosts}          ||= undef;          # list of hosts to connect, try to connect in order
-    $args{port}           ||= 3322;           # porta da manta
-    $args{recon_attempts} ||= 5;              # quantas tentativas de reconnect
-    $args{DEBUG}          ||= 0;              # msgs de debug e tal...
-
-    $args{drop}           ||= 0;                         # act as a dropper or a TCPer
-    $args{dropbox}        ||= '/servers/broker/dropbox'; # default broker dropbox
-
-    $args{retstruct}      ||= 0;              # retornar apenas o TextPayload ou uma struct?
+	$args{timeout} 		||= 60;			# timeout de ligacao
+	$args{host} 		||= '127.0.0.1';	# host da manta
+	$args{port}		||= 3322;		# porta da manta
+	$args{recon_attempts}	||= 5;			# quantas tentativas de reconnect
+	$args{msg_type}		||= 'FF';		# se e' "file and forget' ou QUEUE
+	$args{DEBUG}		||= 0;			# msgs de debug e tal...
 
 =head3 RETURNS:
 
    1 => OK, subscribed
    undef => NOK
-
 
 =head2 publish (topic => <TOPIC>, payload => <PAYLOAD>)
 
 Send the payload to some topic.
 
 =head3 RETURNS:
+
    1 => OK, subscribed
    undef => NOK
 
 =cut
-
 
 =head2 subscribe (topic => <TOPIC>)
 
@@ -590,29 +525,7 @@ Subscribe a topic.
 Receive events from subscribed topics.
 
 =head3 RETURNS:
-
    payload sent
-
-=cut
-
-=head2 poll
-
-Poll a event from a topics
-
-=head3 RETURNS:
-
-   payload
-
-=cut
-
-=head2 drop
-
-Write the event in broker dropbox, don't use TCP stuff
-
-=head3 RETURNS:
-
-    1 => OK, subscribed
-    undef => NOK
 
 =cut
 

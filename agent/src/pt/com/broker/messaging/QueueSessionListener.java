@@ -3,10 +3,10 @@ package pt.com.broker.messaging;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.mina.common.DefaultWriteRequest;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteRequest;
-import org.apache.mina.common.WriteTimeoutException;
+import org.apache.mina.core.session.IoSession;
+import org.apache.mina.core.write.DefaultWriteRequest;
+import org.apache.mina.core.write.WriteRequest;
+import org.apache.mina.core.write.WriteTimeoutException;
 import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,5 +163,13 @@ public class QueueSessionListener extends BrokerListener
 	public String getDestinationName()
 	{
 		return _dname;
+	}
+
+	public int count()
+	{
+		synchronized (mutex)
+		{
+			return _sessions.size();
+		}
 	}
 }

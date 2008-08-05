@@ -1,8 +1,8 @@
 package pt.com.gcs.messaging;
 
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.service.IoHandlerAdapter;
+import org.apache.mina.core.session.IdleStatus;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.ErrorAnalyser;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;

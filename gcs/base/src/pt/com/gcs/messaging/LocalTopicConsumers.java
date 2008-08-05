@@ -9,8 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
+import org.apache.mina.core.future.WriteFuture;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +24,7 @@ class LocalTopicConsumers
 
 	private static final LocalTopicConsumers instance = new LocalTopicConsumers();
 
-	public synchronized static void add(String subscriptionName, MessageListener listener, boolean broadcast)
+	protected synchronized static void add(String subscriptionName, MessageListener listener, boolean broadcast)
 	{
 
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(subscriptionName);
@@ -77,7 +77,6 @@ class LocalTopicConsumers
 
 	private void doNotify(String subscriptionName, Message message)
 	{
-		String topicName = message.getDestination();
 		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(subscriptionName);
 		if (listeners != null)
 		{
@@ -86,7 +85,6 @@ class LocalTopicConsumers
 				if (messageListener != null)
 				{
 					messageListener.onMessage(message);
-					message.setDestination(topicName); // set the name again because topic dispatchers change the destination
 				}
 			}
 		}
@@ -104,13 +102,14 @@ class LocalTopicConsumers
 			if (listeners != null)
 			{
 				listeners.remove(listener);
+				instance.localTopicConsumers.remove(listeners);
+				if (listeners.size() == 0)
+				{
+					instance.broadCastableTopics.remove(listener.getDestinationName());
+				}
 			}
-			instance.localTopicConsumers.remove(listeners);
+			
 			instance.broadCastRemovedTopicConsumer(listener.getDestinationName());
-			if (listeners.size() == 0)
-			{
-				instance.broadCastableTopics.remove(listener.getDestinationName());
-			}
 		}
 	}
 

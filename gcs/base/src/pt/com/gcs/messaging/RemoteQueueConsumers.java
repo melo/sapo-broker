@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
+import org.apache.mina.core.future.WriteFuture;
+import org.apache.mina.core.session.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +17,7 @@ class RemoteQueueConsumers
 
 	private static Logger log = LoggerFactory.getLogger(RemoteQueueConsumers.class);
 
-	public synchronized static void add(String queueName, IoSession iosession)
+	protected synchronized static void add(String queueName, IoSession iosession)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(queueName);
 		if (sessions == null)
@@ -31,17 +31,17 @@ class RemoteQueueConsumers
 		instance.remoteQueueConsumers.put(queueName, sessions);
 	}
 
-	public synchronized static void delete(String queueName)
+	protected synchronized static void delete(String queueName)
 	{
 		instance.remoteQueueConsumers.remove(queueName);
 	}
 
-	public static boolean notify(Message message)
+	protected static boolean notify(Message message)
 	{
 		return instance.doNotify(message);
 	}
 
-	public synchronized static void remove(IoSession iosession)
+	protected synchronized static void remove(IoSession iosession)
 	{
 		Set<String> keys = instance.remoteQueueConsumers.keySet();
 		for (String queueName : keys)
@@ -55,7 +55,7 @@ class RemoteQueueConsumers
 		}
 	}
 
-	public synchronized static void remove(String queueName, IoSession iosession)
+	protected synchronized static void remove(String queueName, IoSession iosession)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(queueName);
 		if (sessions != null)
@@ -65,7 +65,7 @@ class RemoteQueueConsumers
 		instance.remoteQueueConsumers.put(queueName, sessions);
 	}
 
-	public synchronized static int size(String destinationName)
+	protected synchronized static int size(String destinationName)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(destinationName);
 		if (sessions != null)
@@ -85,7 +85,7 @@ class RemoteQueueConsumers
 	{
 	}
 
-	public boolean doNotify(Message message)
+	protected boolean doNotify(Message message)
 	{
 		CopyOnWriteArrayList<IoSession> sessions = remoteQueueConsumers.get(message.getDestination());
 		if (sessions != null)

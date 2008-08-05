@@ -4,10 +4,12 @@ class TopicToQueueDispatcher implements MessageListener
 {
 
 	private final String _queueName;
+	private final String _topicName;
 
-	public TopicToQueueDispatcher(String queueName)
+	public TopicToQueueDispatcher(String topicName, String queueName)
 	{
 		_queueName = queueName;
+		_topicName = topicName;
 	}
 
 	@Override
@@ -20,11 +22,12 @@ class TopicToQueueDispatcher implements MessageListener
 	{
 		message.setDestination(_queueName);
 		Gcs.enqueue(message);
+		message.setDestination(_topicName);
 		return true;
 	}
 
 	public String getDestinationName()
 	{
-		return _queueName;
+		return _topicName;
 	}
 }

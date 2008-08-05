@@ -26,8 +26,9 @@ public class DispatcherList
 			{
 				log.debug("Populate DispatcherList");
 
-				TopicToQueueDispatcher qp = new TopicToQueueDispatcher(queueName);
 				String topicName = StringUtils.substringAfter(queueName, "@");
+				TopicToQueueDispatcher qp = new TopicToQueueDispatcher(topicName, queueName);
+
 				LocalTopicConsumers.add(topicName, qp, false);
 				VirtualQueueStorage.saveVirtualQueue(queueName);
 				return qp;
@@ -39,7 +40,7 @@ public class DispatcherList
 		}
 	};
 
-	public static void create(String queueName)
+	protected synchronized static void create(String queueName)
 	{
 		log.info("Get Dispatcher for: {}", queueName);
 
@@ -54,17 +55,17 @@ public class DispatcherList
 		}
 	}
 
-	public static void removeDispatcher(String queueName)
+	protected synchronized static void removeDispatcher(String queueName)
 	{
 		try
 		{
 			if (_dCache.containsKey(queueName))
 			{
 				TopicToQueueDispatcher listener = _dCache.get(queueName, qp_cf);
-				_dCache.remove(queueName);
 				Gcs.removeAsyncConsumer(listener);
+				_dCache.remove(queueName);
+				VirtualQueueStorage.deleteVirtualQueue(queueName);
 			}
-			VirtualQueueStorage.deleteVirtualQueue(queueName);
 		}
 		catch (InterruptedException ie)
 		{
@@ -73,7 +74,7 @@ public class DispatcherList
 		}
 	}
 
-	public static int size()
+	protected static int size()
 	{
 		return _dCache.size();
 	}
