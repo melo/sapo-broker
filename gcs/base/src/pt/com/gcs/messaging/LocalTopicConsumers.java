@@ -78,6 +78,7 @@ class LocalTopicConsumers
 	private void doNotify(String subscriptionName, Message message)
 	{
 		CopyOnWriteArrayList<MessageListener> listeners = localTopicConsumers.get(subscriptionName);
+		String topicName = message.getDestination();
 		if (listeners != null)
 		{
 			for (MessageListener messageListener : listeners)
@@ -85,6 +86,7 @@ class LocalTopicConsumers
 				if (messageListener != null)
 				{
 					messageListener.onMessage(message);
+					message.setDestination(topicName); // -> Set the destination name, queue dispatchers change it.
 				}
 			}
 		}

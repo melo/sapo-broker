@@ -27,7 +27,7 @@ public class DispatcherList
 				log.debug("Populate DispatcherList");
 
 				String topicName = StringUtils.substringAfter(queueName, "@");
-				TopicToQueueDispatcher qp = new TopicToQueueDispatcher(topicName, queueName);
+				TopicToQueueDispatcher qp = new TopicToQueueDispatcher(queueName);
 
 				LocalTopicConsumers.add(topicName, qp, false);
 				VirtualQueueStorage.saveVirtualQueue(queueName);
