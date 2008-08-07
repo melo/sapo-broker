@@ -10,6 +10,7 @@ use Sys::Hostname;
 use Data::Dumper;
 use Carp qw(carp);
 use Time::HiRes qw(gettimeofday);
+use File::Temp;
 
 our $VERSION = 0.69.1;
 our $libxml_parser;
@@ -74,16 +75,25 @@ sub publish {
 sub drop {
     my ($self, %args) = @_;
         
-    my $id = join "", gettimeofday;
-    
     if ( ! -d $self->{dropbox} ) {
         carp("NO DROPBOX FOUND!");
         return;
     }
-    
-    open my $fh, ">", $self->{dropbox}."/".$id;
-    print $fh "XXX";
-    close $fh;
+
+    my $tmp_name;
+    {
+        my $tmp_file = File::Temp->new(
+            TEMPLATE => 'perl_XXXXX',
+            DIR      => $self->{dropbox},
+            SUFFIX   => '_brk',
+            UNLINK => 0
+        );
+        $tmp_name = $tmp_file->filename();
+        binmode($tmp_file, ':utf8');
+
+        print $tmp_file $self->_build_send_p(%args);
+    }
+    return rename($tmp_name, "${tmp_name}.good");
 }
 
 # subscreve eventos
@@ -275,8 +285,7 @@ sub _send_s {
     return 1;
 }
 
-# envia eventos
-sub _send_p {
+sub _build_send_p{
     my $self = shift;
     my %args = @_;
 
@@ -284,13 +293,23 @@ sub _send_p {
     
     my $msg = q{<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"><soapenv:Body>};
     $msg .= qq{<$msg_type xmlns="http://services.sapo.pt/broker"><BrokerMessage>};
-    $msg .= qq{<DestinationName>$args{topic}</DestinationName>};
+    $msg .= qq{<DestinationName>};
+    $msg .= _xml_escape( $args{topic} );
+    $msg .= qq{</DestinationName>};
     $msg .= q{<TextPayload>};
     $msg .= _xml_escape( $args{payload} );
     $msg .= q{</TextPayload>};
     $msg .= qq{</BrokerMessage></$msg_type>};
     $msg .= q{</soapenv:Body></soapenv:Envelope>};
-    
+
+    return $msg;
+}
+
+# envia eventos
+sub _send_p {
+    my $self = shift;
+
+    my $msg = $self->_build_send_p(@_);
     $self->_debug("MSG SENT: $msg");
     
     _bus_encode( \$msg );
