@@ -476,10 +476,10 @@ sub _xml_escape {
     return $xml unless $xml;
 
     ## Please remmember that the order is important
-    #$xml =~ s/&/&amp;/g;
-    #$xml =~ s/</&lt;/g;
-    #$xml =~ s/>/&gt;/g;
-		$xml =~ s/([&<>])/if ($1 eq "&") {"&amp;"} elsif ($1 eq "<") {"&lt;"} else {"&gt;"}/ge;
+    $xml =~ s/&/&amp;/g;
+    $xml =~ s/</&lt;/g;
+    $xml =~ s/>/&gt;/g;
+
     return $xml;
 }
 
