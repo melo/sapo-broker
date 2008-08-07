@@ -47,7 +47,7 @@ die "No Broker?\n" unless $broker;
 
 
 if ($stype) { # CONSUMER
-	print "Starting as COMSUMER\n";
+	print "Starting as CONSUMER\n";
 	die "Can't subscribe\n"  unless $broker->subscribe(
 		topic => $topic,
 	);
