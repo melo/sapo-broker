@@ -38,8 +38,9 @@
 		<structure field="checkStatus" usage="optional" />
 		<structure field="accepted" usage="optional" />
 	</mapping>
-	
-	<mapping type-name="FaultCode" abstract="true" class="pt.com.broker.xml.FaultCode" ns="http://www.w3.org/2003/05/soap-envelope">
+
+	<mapping type-name="FaultCode" abstract="true" class="pt.com.broker.xml.FaultCode" ns="http://www.w3.org/2003/05/soap-envelope" ordered="false" flexible="true">
+		<structure name="Subcode" map-as="FaultCode" field="subcode" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 		<value name="Value" field="value" usage="optional" ns="http://www.w3.org/2003/05/soap-envelope" />
 	</mapping>
 	
