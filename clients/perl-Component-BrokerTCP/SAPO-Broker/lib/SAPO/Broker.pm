@@ -74,9 +74,11 @@ sub publish {
 # grava os eventos para uma dropbox, not TCP stuff...
 sub drop {
     my ($self, %args) = @_;
-        
-    if ( ! -d $self->{dropbox} ) {
-        carp("NO DROPBOX FOUND!");
+    my $dropbox = $self->{dropbox};
+    my $mode    = $self->{fmode};
+
+    if ( !-d $dropbox ) {
+        carp("DROPBOX [$dropbox] NOT FOUND!");
         return;
     }
 
@@ -97,8 +99,12 @@ sub drop {
         binmode($tmp_file, ':utf8');
 
         print $tmp_file $self->_build_send_p(%args);
+
+        #please take into consideration that the broker must see the file so it must be readable by its user
+        if( defined( $mode ) ){
+            chmod($mode, $tmp_name);
+        }
     }
-    #please take into consideration that the broker must see the file so it must be readable by its user
     return rename($tmp_name, "${tmp_name}.good");
 }
 
