@@ -81,18 +81,24 @@ sub drop {
     }
 
     my $tmp_name;
+    #this scope is to guarantee the temporary filehande is closed when it goes out of scope
     {
+        #this should be quite safe because it uses O_EXCL in the open
         my $tmp_file = File::Temp->new(
-            TEMPLATE => 'perl_XXXXX',
+            TEMPLATE => 'brk_XXXXX',
             DIR      => $self->{dropbox},
-            SUFFIX   => '_brk',
+            SUFFIX   => '_pl',
             UNLINK   => 0
         );
         $tmp_name = $tmp_file->filename();
+
+        #this way we should never endup with invalid XML due to latin-1 characters.
+        #invalid unicode characters in XML are not checked so users should take caution.
         binmode($tmp_file, ':utf8');
 
         print $tmp_file $self->_build_send_p(%args);
     }
+    #please take into consideration that the broker must see the file so it must be readable by its user
     return rename($tmp_name, "${tmp_name}.good");
 }
 
