@@ -75,7 +75,7 @@ sub publish {
 sub drop {
     my ($self, %args) = @_;
     my $dropbox = $self->{dropbox};
-    my $mode    = $self->{fmode};
+    my $mode    = $self->{fmode} || 0666;
 
     if ( !-d $dropbox ) {
         carp("DROPBOX [$dropbox] NOT FOUND!");
