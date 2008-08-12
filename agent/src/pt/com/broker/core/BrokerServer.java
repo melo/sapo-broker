@@ -3,7 +3,7 @@ package pt.com.broker.core;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.mina.common.DefaultIoFilterChainBuilder;
+import org.apache.mina.core.filterchain.DefaultIoFilterChainBuilder;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
 import org.apache.mina.filter.executor.IoEventQueueThrottle;

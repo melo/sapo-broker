@@ -2,8 +2,6 @@
 Documentação perliminar do Sapo-Broker
 ----------------------------------
 
-* Configurar a port: especicar o argumento  -Dbus_port=####
-
 * O ficheiro broker.wsdl especifica qual o contracto.
 
 * Ver o ficheiro SampleMessages.txt para "templates" de mensagens que são trocados.

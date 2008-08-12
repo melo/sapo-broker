@@ -16,7 +16,7 @@ public class GcsInfo
 {
 	private static Logger log = LoggerFactory.getLogger(GcsInfo.class);
 
-	public static final String VERSION = "@gcsversion@";
+	public static final String VERSION = "200808032331";
 
 	private static final GcsInfo instance = new GcsInfo();
 

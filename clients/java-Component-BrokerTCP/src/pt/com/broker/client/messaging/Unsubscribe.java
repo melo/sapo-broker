@@ -2,6 +2,8 @@ package pt.com.broker.client.messaging;
 
 public class Unsubscribe
 {
+	public String actionId;
+	
 	public String destinationName;
 
 	public DestinationType destinationType;

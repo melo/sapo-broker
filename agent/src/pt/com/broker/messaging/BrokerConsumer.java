@@ -1,6 +1,6 @@
 package pt.com.broker.messaging;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.StringUtils;
 
 public class BrokerConsumer

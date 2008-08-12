@@ -18,6 +18,8 @@ import pt.com.broker.messaging.MQ;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.broker.xml.SoapSerializer;
 import pt.com.gcs.conf.GcsInfo;
+import pt.com.gcs.messaging.Gcs;
+import pt.com.gcs.messaging.Message;
 
 public class FilePublisher
 {
@@ -37,6 +39,9 @@ public class FilePublisher
 
 	private File dropBoxDir;
 
+	private int fileCount = 0;
+	
+
 	private FilePublisher()
 	{
 		isEnabled = GcsInfo.isDropboxEnabled();
@@ -53,6 +58,7 @@ public class FilePublisher
 	{
 		public boolean accept(File file)
 		{
+			fileCount++;
 			return file.getName().endsWith(".good");
 		}
 	};
@@ -82,7 +88,18 @@ public class FilePublisher
 			log.debug("Checking for files in the DropBox.");
 			try
 			{
+				fileCount = 0;
 				File[] files = dropBoxDir.listFiles(fileFilter);
+				int goodFileCount = files.length;
+
+				
+				Message cnt_message = new Message();
+				String dName = String.format("/system/stats/dropbox/#%s#", GcsInfo.getAgentName());
+				String content = GcsInfo.getAgentName() + "#" + dropBoxDir.getAbsolutePath() + "#" + fileCount + "#" + goodFileCount;
+				cnt_message.setDestination(dName);
+				cnt_message.setContent(content);
+				Gcs.publish(cnt_message);
+				
 
 				if ((files != null) && (files.length > 0))
 				{
@@ -136,8 +153,7 @@ public class FilePublisher
 								{
 									log.error("Error deleting file", t);
 								}
-							}							
-
+							}
 						}
 						else
 						{

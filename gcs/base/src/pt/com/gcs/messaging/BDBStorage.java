@@ -52,8 +52,11 @@ class BDBStorage
 	{
 		try
 		{
+			if (isMarkedForDeletion.get())
+				return;
 			queueProcessor = qp;
-			// primaryDbName = MD5.getHashString(queueProcessor.getDestinationName());
+			// primaryDbName =
+			// MD5.getHashString(queueProcessor.getDestinationName());
 			primaryDbName = queueProcessor.getDestinationName();
 
 			env = BDBEnviroment.get();
@@ -190,12 +193,12 @@ class BDBStorage
 							byte[] bdata = data.getData();
 							BDBMessage bdbm = BDBMessage.fromByteArray(bdata);
 							final Message msg = bdbm.getMessage();
-							final int deliveryCount = bdbm.getDeliveryCount();							
+							final int deliveryCount = bdbm.getDeliveryCount();
 							final long expiration = msg.getExpiration();
 							final long reserved = bdbm.getReserve();
 							final long now = System.currentTimeMillis();
 							final boolean isReserved = reserved > now ? true : false;
-							final boolean safeForPolling = ((reserved==0) && (deliveryCount==0)) ? true : false;
+							final boolean safeForPolling = ((reserved == 0) && (deliveryCount == 0)) ? true : false;
 
 							if (deliveryCount > MAX_DELIVERY_COUNT)
 							{
@@ -232,17 +235,7 @@ class BDBStorage
 					}
 					finally
 					{
-						if (msg_cursor != null)
-						{
-							try
-							{
-								msg_cursor.close();
-							}
-							catch (Throwable t)
-							{
-								dealWithError(t, false);
-							}
-						}
+						closeDbCursor(msg_cursor);
 					}
 				}
 
@@ -276,17 +269,7 @@ class BDBStorage
 		}
 		finally
 		{
-			if (msg_cursor != null)
-			{
-				try
-				{
-					msg_cursor.close();
-				}
-				catch (Throwable t)
-				{
-					dealWithError(t, false);
-				}
-			}
+			closeDbCursor(msg_cursor);
 		}
 		return seqValue;
 	}
@@ -401,20 +384,25 @@ class BDBStorage
 			}
 			finally
 			{
-				if (msg_cursor != null)
-				{
-					try
-					{
-						msg_cursor.close();
-					}
-					catch (Throwable t)
-					{
-						dealWithError(t, false);
-					}
-				}
+				closeDbCursor(msg_cursor);
 			}
 		}
 
+	}
+
+	private void closeDbCursor(Cursor msg_cursor)
+	{
+		if (msg_cursor != null)
+		{
+			try
+			{
+				msg_cursor.close();
+			}
+			catch (Throwable t)
+			{
+				dealWithError(t, false);
+			}
+		}
 	}
 
 	private void dumpMessage(final Message msg)
@@ -440,9 +428,8 @@ class BDBStorage
 	{
 		isMarkedForDeletion.set(true);
 		Sleep.time(2500);
-		closeDatabase(messageDb);
 
-		BDBEnviroment.sync();
+		closeDatabase(messageDb);
 
 		removeDatabase(primaryDbName);
 	}
@@ -451,6 +438,7 @@ class BDBStorage
 	{
 		try
 		{
+			BDBEnviroment.sync();
 			String dbName = db.getDatabaseName();
 			log.info("Try to close db '{}'", dbName);
 			db.close();
@@ -470,6 +458,7 @@ class BDBStorage
 		{
 			try
 			{
+				BDBEnviroment.sync();
 				log.info("Try to remove db '{}'", dbName);
 				env.removeDatabase(null, dbName);
 				log.info("Removed db '{}'", dbName);

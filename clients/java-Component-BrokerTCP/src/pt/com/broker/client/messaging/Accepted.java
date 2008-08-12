@@ -1,6 +1,6 @@
 package pt.com.broker.client.messaging;
 
-public class CheckStatus
+public class Accepted
 {
 	public String actionId;
 }

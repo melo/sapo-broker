@@ -4,6 +4,7 @@ import java.util.Collection;
 
 import org.caudexorigo.ds.Cache;
 import org.caudexorigo.ds.CacheFiller;
+import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,32 +32,32 @@ public class QueueProcessorList
 		}
 	};
 
-	public static QueueProcessor get(String destinationName)
+	protected static QueueProcessor get(String destinationName)
 	{
 		return instance.i_get(destinationName);
 	}
 
-	public static void remove(String queueName)
+	protected static void remove(String queueName)
 	{
 		instance.i_remove(queueName);
 	}
 
-	public static void removeValue(QueueProcessor value)
+	protected static void removeValue(QueueProcessor value)
 	{
 		instance.i_removeValue(value);
 	}
 
-	public static int size()
+	protected static int size()
 	{
 		return instance.i_size();
 	}
 
-	public static int size(String destinationName)
+	protected static int size(String destinationName)
 	{
 		return get(destinationName).size();
 	}
 
-	public static Collection<QueueProcessor> values()
+	protected static Collection<QueueProcessor> values()
 	{
 		return instance.i_values();
 	}
@@ -74,7 +75,11 @@ public class QueueProcessorList
 
 		try
 		{
-			return qpCache.get(destinationName, qp_cf);
+			synchronized (qpCache)
+			{
+				return qpCache.get(destinationName, qp_cf);
+			}
+
 		}
 		catch (InterruptedException ie)
 		{
@@ -83,20 +88,32 @@ public class QueueProcessorList
 		}
 	}
 
-	private void i_remove(String queueName)
+	private synchronized void i_remove(String queueName)
 	{
 		try
 		{
-			synchronized (qpCache)
+
+			if (StringUtils.contains(queueName, "@"))
 			{
-				QueueProcessor qp = get(queueName);
-				qpCache.remove(queueName);
-				LocalQueueConsumers.delete(queueName);
-				RemoteQueueConsumers.delete(queueName);
-				qp.clearStorage();
 				DispatcherList.removeDispatcher(queueName);
-				log.info("Destination '{}' was deleted", queueName);
 			}
+
+			QueueProcessor qp = get(queueName);
+
+			if (qp.hasRecipient())
+			{
+				String m = String.format("Queue %s has active consumers.", queueName);
+				throw new IllegalStateException(m);
+			}
+
+			LocalQueueConsumers.delete(queueName);
+			RemoteQueueConsumers.delete(queueName);
+			qp.clearStorage();
+
+			qpCache.remove(queueName);
+
+			log.info("Destination '{}' was deleted", queueName);
+
 		}
 		catch (InterruptedException ie)
 		{

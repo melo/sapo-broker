@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.mina.common.ConnectFuture;
-import org.apache.mina.common.DefaultIoFilterChainBuilder;
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.filterchain.DefaultIoFilterChainBuilder;
+import org.apache.mina.core.future.ConnectFuture;
+import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.executor.ExecutorFilter;
 import org.apache.mina.filter.executor.IoEventQueueThrottle;
@@ -95,10 +95,10 @@ public class Gcs
 		for (IoSession ioSession : connectedSessions)
 		{
 			InetSocketAddress inet = (InetSocketAddress) ioSession.getRemoteAddress();
-			
+
 			if (!WorldMap.contains(inet))
 			{
-				log.info("Remove peer '{}'" , inet.toString());
+				log.info("Remove peer '{}'", inet.toString());
 				ioSession.close().awaitUninterruptibly();
 			}
 		}
@@ -331,6 +331,11 @@ public class Gcs
 
 		connector.setHandler(new GcsRemoteProtocolHandler());
 		connector.setConnectTimeoutMillis(5000); // 5 seconds timeout
+	}
+
+	public synchronized static void deleteQueue(String queueName)
+	{
+		QueueProcessorList.remove(queueName);
 	}
 
 }

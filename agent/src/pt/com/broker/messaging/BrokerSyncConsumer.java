@@ -2,7 +2,7 @@ package pt.com.broker.messaging;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -2,7 +2,7 @@ package pt.com.gcs.net;
 
 import java.net.SocketAddress;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
 
 public class IoSessionHelper
 {
