@@ -1,0 +1,38 @@
+#!/bin/sh
+if [ -z $1 ] ; then
+	echo "Usage: $0 [start|stop|restart] "
+	exit 1
+fi
+
+# Source the common setup functions for startup scripts
+test -r /etc/rc.common || exit 1
+. /etc/rc.common
+
+SCRIPT="/opt/local/broker/scripts/brokerctl.sh"
+
+StartService ()
+{
+	if [ -f /opt/local/broker/.startup ] ; then
+		ConsoleMessage "Starting SAPO Broker"
+		$SCRIPT start > /dev/null 2>&1
+	fi
+}
+
+StopService ()
+{
+	ConsoleMessage "Stopping SAPO Broker"
+	$SCRIPT stop > /dev/null 2>&1
+}
+
+RestartService ()
+{
+	ConsoleMessage "Restarting SAPO Broker"
+	$SCRIPT stop > /dev/null 2>&1
+	$SCRIPT start > /dev/null 2>&1
+}
+
+if test -x $SCRIPT ; then
+	RunService "$1"
+else
+	ConsoleMessage "Could not find brokerctl.sh script!"
+fi
