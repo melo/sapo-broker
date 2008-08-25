@@ -47,26 +47,29 @@ sub new {
     return $self;
 }
 
+# correct publish msg types
+sub _sanitize_msgtype {
+    my ($self, $args) = @_;
+    
+    my %msg_types  = map {$_ => 1} qw(Publish Enqueue);
+
+    # check for valid messages types
+    if (!exists $msg_types{$$args{msg_type}}) {
+        carp("Unknown msg_type to publish msg, falling back to Publish type");
+        $$args{msg_type} = 'Publish';
+    }
+    
+}
+
 # envia eventos
 sub publish {
     my $self = shift;
     my %args = @_;
 
-    # TODO: i hate this :/
-    my @msg_types = ('Publish', 'Enqueue');
-    my %msg_types  = map {$_ => 1} @msg_types;
-
     $self->_reconnect unless $self->_connected;
     return undef      unless $self->_connected;
 
-    # default message type
-    $args{msg_type} ||= 'Publish';
-
-    # check for valid messages types
-    if (!exists $msg_types{$args{msg_type}}) {
-        carp("Unknown msg_type to publish msg, falling back to Publish type");
-        $args{msg_type} = 'Publish';
-    }
+    $self->_sanitize_msgtype(\%args);
 
     return $self->_send_p(%args);
 }
@@ -76,6 +79,8 @@ sub drop {
     my ($self, %args) = @_;
     my $dropbox = $self->{dropbox};
     my $mode    = $self->{fmode} || 0666;
+
+    $self->_sanitize_msgtype(\%args);
 
     if ( !-d $dropbox ) {
         carp("DROPBOX [$dropbox] NOT FOUND!");
