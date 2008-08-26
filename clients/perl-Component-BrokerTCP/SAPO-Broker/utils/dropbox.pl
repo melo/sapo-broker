@@ -21,7 +21,6 @@ if( defined($dir) ){
     $count ||= 100;
     while($count--){
         $broker->drop(
-                msg_type => 'Publish',
                 topic   => $topic,
                 payload => sprintf("O servi\x{e7}o custa %.2f \x{20ac}", rand(100*100)/100)
                 );

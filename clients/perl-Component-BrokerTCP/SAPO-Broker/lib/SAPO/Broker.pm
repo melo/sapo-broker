@@ -53,6 +53,9 @@ sub _sanitize_msgtype {
     
     my %msg_types  = map {$_ => 1} qw(Publish Enqueue);
 
+    # default if nothing supplied
+    $$args{msg_type} ||= 'Publish';
+    
     # check for valid messages types
     if (!exists $msg_types{$$args{msg_type}}) {
         carp("Unknown msg_type to publish msg, falling back to Publish type");
