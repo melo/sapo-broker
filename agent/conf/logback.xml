@@ -35,7 +35,7 @@
 		<appender-ref ref="ConsoleAppender" />
 	</logger>
 
-	<logger additivity="false" name="org.caudexorigo">
+	<logger additivity="false" name="pt.com.gcs">
 		<level value="info" />
 		<appender-ref ref="GCS-ConsoleAppender" />
 	</logger>
