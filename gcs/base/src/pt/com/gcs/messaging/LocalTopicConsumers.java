@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.regex.Pattern;
 
 import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.session.IoSession;
@@ -26,6 +27,14 @@ class LocalTopicConsumers
 
 	protected synchronized static void add(String subscriptionName, MessageListener listener, boolean broadcast)
 	{
+		try
+		{
+			Pattern.compile(subscriptionName);
+		}
+		catch (Throwable e)
+		{
+			throw new IllegalArgumentException(e);
+		}
 
 		CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(subscriptionName);
 		if (listeners == null)
@@ -110,7 +119,7 @@ class LocalTopicConsumers
 					instance.broadCastableTopics.remove(listener.getDestinationName());
 				}
 			}
-			
+
 			instance.broadCastRemovedTopicConsumer(listener.getDestinationName());
 		}
 	}

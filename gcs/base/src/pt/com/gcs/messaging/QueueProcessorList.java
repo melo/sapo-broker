@@ -75,10 +75,7 @@ public class QueueProcessorList
 
 		try
 		{
-			synchronized (qpCache)
-			{
-				return qpCache.get(destinationName, qp_cf);
-			}
+			return qpCache.get(destinationName, qp_cf);
 
 		}
 		catch (InterruptedException ie)
@@ -92,7 +89,12 @@ public class QueueProcessorList
 	{
 		try
 		{
-
+			
+			if (!qpCache.containsKey(queueName))
+			{
+				throw new IllegalArgumentException(String.format("Queue named '%s' doesn't exist", queueName));
+			}
+				
 			if (StringUtils.contains(queueName, "@"))
 			{
 				DispatcherList.removeDispatcher(queueName);

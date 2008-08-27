@@ -1,0 +1,17 @@
+#!/bin/sh
+
+pid=`/opt/local/broker/scripts/brokerctl.sh pid`
+if [ "$pid" != "0" ]
+then
+/opt/local/broker/scripts/brokerctl.sh stop >/dev/null 2>/dev/null
+fi
+rm -fr /Library/StartupItems/SAPOBroker
+mkdir /Library/StartupItems/SAPOBroker
+cp /opt/local/broker/scripts/StartupParameters.plist /Library/StartupItems/SAPOBroker/
+cp /opt/local/broker/scripts/SAPOBroker /Library/StartupItems/SAPOBroker/
+chmod 755 /Library/StartupItems/SAPOBroker/SAPOBroker
+if [ "$pid" != "0" ]
+then
+/opt/local/broker/scripts/brokerctl.sh start >/dev/null 2>/dev/null
+fi
+open /opt/local/broker/scripts/README.rtf
