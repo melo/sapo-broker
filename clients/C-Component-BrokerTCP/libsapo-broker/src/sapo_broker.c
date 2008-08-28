@@ -96,7 +96,7 @@ int sb_connect (SAPO_BROKER_T * conn){
 	//log_msgf("Connecting to %s:%d\n",INFO, conn->hostname , conn->port);
 	
 	// create client endpoint
-	if ((conn->socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
+	if ((conn->socket = socket(PF_INET, conn->type, 0)) < 0){
 		_sb_set_errorf ("[SB]Could not create a socket: %s",strerror(errno));
 		return SB_ERROR;
 	}
