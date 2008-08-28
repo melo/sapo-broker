@@ -236,7 +236,7 @@ class SAPO_Broker {
 
     function subscribe($topic, $args, $callback)
     {
-        array_push($this->net->subscriptions,array('topic'=>$topic,'args'=>$args,'callback'=>$callback));
+        array_push($this->net->subscriptions,array('topic'=>$topic,'topic_reg'=>"/".str_replace('/','\/',$topic)."/",'args'=>$args,'callback'=>$callback));
     }
 
     function unsubscribe($topic)
@@ -625,7 +625,8 @@ class SAPO_Broker_Parser {
           //
           if (!empty($elements['DestinationName'])) {
             foreach ($subscriptions as $subscription) {
-              if ($subscription['topic'] == $elements['DestinationName']) {
+              //if ($subscription['topic'] == $elements['DestinationName']) {
+              if (preg_match($subscription['topic_reg'],$elements['DestinationName'])) {
                 call_user_func($subscription['callback'], $elements['TextPayload'],$elements['DestinationName'],$this->instance);
               // only one callback per subscribed topic, only one subscription per topic
               return(array($subscription['args']['destination_type'],$elements['DestinationName'],$elements['MessageId']));
