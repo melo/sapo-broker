@@ -102,19 +102,20 @@ enum{
 typedef struct _sapo_broker_connection {
 	char hostname[MAX_HOSTNAME];
 	int port;
+	int type;
 	int max_retry;
 	int blocking_io;
 	int socket;
 	int connected;
 	int last_status;
-        XML_Parser parser;
+	XML_Parser parser;
 } SAPO_BROKER_T;
 
 
 
 
 
-SAPO_BROKER_T * sb_new(char * hostname, int port);
+SAPO_BROKER_T * sb_new(char * hostname, int port, int type);
 void sb_destroy(SAPO_BROKER_T * conn);
 char * sb_error();
 

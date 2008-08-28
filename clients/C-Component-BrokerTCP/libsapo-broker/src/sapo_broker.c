@@ -43,7 +43,7 @@ char * sb_error(){
 }
 
 
-SAPO_BROKER_T * sb_new(char * hostname, int port){
+SAPO_BROKER_T * sb_new(char * hostname, int port, int type){
 	SAPO_BROKER_T * conn = calloc(1,sizeof(SAPO_BROKER_T));
 	_sb_set_error("");
 	if (conn==NULL){
@@ -58,8 +58,9 @@ SAPO_BROKER_T * sb_new(char * hostname, int port){
 	conn->blocking_io = SAPO_BROKER_IO_BLOCKING;
 	conn->socket = 0;
 	conn->connected = 0;
+	conn->type = type;
         
-        conn->parser = sb_parser_new();
+	conn->parser = sb_parser_new();
 	return conn;
 }
 
@@ -227,15 +228,18 @@ int _sb_write(int socket, char*msg , int size){
 // send size + message
 // size is in network mode
 
-int _sb_send(int socket, char * body, int body_len ){
-	uint32_t nbody_len = htonl(body_len);
-        int err=0;
+int _sb_send(int socket, int type, char * body, int body_len ){
+	uint32_t nbody_len;
+	int err=0;
 
 	_sb_set_error("");
-	
-	if ((err = _sb_write(socket, (char*)&nbody_len , 4)) < 0 ){
-		_sb_set_errorf("[SB]Error writing message size:%s",strerror(errno));
-		return err;
+
+	if (type == SOCK_STREAM) { /* tcp? */
+		nbody_len = htonl(body_len);
+		if ((err = _sb_write(socket, (char*)&nbody_len , 4)) < 0 ){
+			_sb_set_errorf("[SB]Error writing message size:%s",strerror(errno));
+			return err;
+		}
 	}
 
 	//printf ("writing total body *%s*\n", body);
@@ -342,7 +346,7 @@ int sb_publish_time(SAPO_BROKER_T * conn, int type, char * topic, char * payload
         
 	//printf ("%s\n", body);
         int err;
-	if ((err =_sb_send(conn->socket, body, body_len) ) < 0 ){
+	if ((err =_sb_send(conn->socket, conn->type, body, body_len) ) < 0 ){
 		_sb_set_error("[SB]Error publishing message!");
 		if (allocated){
 			free(body);
@@ -418,7 +422,7 @@ int sb_subscribe(SAPO_BROKER_T * conn, int type, char * topic){
 	}	
 	sprintf(body, TSUBSCRIBE, topic, msg_type );
 	//printf ("body_len  %d = %d\n ", body_len, strlen(body));
-	if (_sb_send(conn->socket, body, body_len) < 0 ){
+	if (_sb_send(conn->socket, conn->type, body, body_len) < 0 ){
 		_sb_set_error("[SB]Error subscribing!");
 		if (allocated){
 			free(body);
@@ -550,7 +554,7 @@ int sb_send_ack(SAPO_BROKER_T * conn, BrokerMessage * msg){
 
         sprintf(body, TACK, msg->message_id, msg->destination);
 
-	if (_sb_send(conn->socket, body, body_len) < 0 ){
+	if (_sb_send(conn->socket, conn->type, body, body_len) < 0 ){
 		_sb_set_error("[sapo_broker]Error publishing message!");
 		sb_disconnect(conn);
 		return SB_ERROR;
