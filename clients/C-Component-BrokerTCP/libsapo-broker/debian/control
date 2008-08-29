@@ -41,7 +41,7 @@ Description: Client library for the SAPO Broker - Debug symbols
 Package: libsapo-broker-dev
 Architecture: any
 Section: libs
-Depends: libsapo-broker0 (= ${Source-Version}), ${misc:Depends}
+Depends: libsapo-broker0 (= ${Source-Version}), ${misc:Depends}, libexpat1-dev
 Description: Client library for the SAPO Broker - Headers
  This library provides a high-level API for the SAPO
  Broker TCP agent. This is a synchronous API that
