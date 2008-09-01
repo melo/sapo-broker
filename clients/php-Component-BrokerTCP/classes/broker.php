@@ -513,12 +513,14 @@ class SAPO_Broker_Net {
         } // end this->debug
         while($i<$len) { // read just about enough. do i hate sockets...
             $start=$this->timer->utime();
-            $tmp=fread($this->socket, 1024); // block read with timeout
+            $tmp=stream_get_contents($this->socket, -1); // block read with timeout
+            ob_flush;
+            flush(); 
             $end=$this->timer->utime(); // there's a problem with php's microtime function and the tcp timeout. This 0.1 offset fixes this.
             // Execute callbacks on subscribed topics
             foreach($this->callbacks as $callback) { // periodic callbacks here, if any
                 if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=$this->timer->utime()) {
-		                SAPO_Broker::dodebug("SAPO_Broker_Net::Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
+	            SAPO_Broker::dodebug("SAPO_Broker_Net::Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
                     $this->callbacks_ts[$callback['id']]=$this->timer->utime();
                     call_user_func($callback['name'],$this);
                 }
