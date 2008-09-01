@@ -44,7 +44,10 @@ class SAPO_Broker {
     function initNetwork() {
       // instanciate network handler
       $this->net =& new SAPO_Broker_Net($this->debug);
-        
+      
+      // inerith timer from parent class
+      $this->net->timer=$this->timer;
+
       // setting default timeouts - usefull for low traffic topics (higher these to avoid disconnects)
       $this->net->rcv_to=$this->args['timeout']*1000000;
       $this->net->snd_to=$this->args['timeout']*1000000;
@@ -112,6 +115,13 @@ class SAPO_Broker {
       // Check for supported PHP version.
       if (version_compare(phpversion(), '4.3.0', '<')) {
         die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
+      }
+      if (version_compare(phpversion(), '5.0.0', '>')) {
+        $this->timer =& new SAPO_Broker_Tools_Timer_PHP5;
+      }
+      else
+      {
+        $this->timer =& new SAPO_Broker_Tools_Timer_PHP4;
       }
     }
 
@@ -280,14 +290,8 @@ class SAPO_Broker {
     {
         $period_float=0;
         $period=0;
-        if($args['sec']) {
-            $period_float+=$args['sec'];
-            $period+=$args['sec']*1000000;
-        }
-        if($args['usec']) {
-            $period+=$args['usec'];
-            $period_float+=(float)($args['usec']/1000000); 
-        }
+        if($args['sec']) $period+=$args['sec']*1000000;
+        if($args['usec']) $period+=$args['usec'];
 
         $this->net->callbacks_count++;
 
@@ -299,7 +303,7 @@ class SAPO_Broker {
             $this->net->snd_to=$period;
             $this->net->timeouts();
         }
-        $this->net->callbacks_ts[$this->net->callbacks_count]=SAPO_Broker_Tools::utime();
+        $this->net->callbacks_ts[$this->net->callbacks_count]=$this->timer->utime();
     }
 
     function consumer()
@@ -343,7 +347,6 @@ class SAPO_Broker_Net {
     var $rcv_to_sec;
     var $snd_to_usec;
     var $rcv_to_usec;
-    var $php_utime_bug_add=0.01; // php bug with microtime. see http://www.rohitab.com/discuss/lofiversion/index.php/t25344.html
     var $con_retry_count = 0;
     var $initted = false;
     var $debug = false;
@@ -442,7 +445,7 @@ class SAPO_Broker_Net {
             
         } else {
             
-            stream_set_timeout($this->socket, $this->snd_to_sec, $this->snd_to_sec);
+            stream_set_timeout($this->socket, $this->snd_to_sec, $this->snd_to_usec);
             
             //
             // Set stream to blocking mode.
@@ -509,14 +512,14 @@ class SAPO_Broker_Net {
             }
         } // end this->debug
         while($i<$len) { // read just about enough. do i hate sockets...
-            $start=SAPO_Broker_Tools::utime();
+            $start=$this->timer->utime();
             $tmp=fread($this->socket, 1024); // block read with timeout
-            $end=SAPO_Broker_Tools::utime()+$this->php_utime_bug_add; // there's a problem with php's microtime function and the tcp timeout. This 0.1 offset fixes this.
+            $end=$this->timer->utime(); // there's a problem with php's microtime function and the tcp timeout. This 0.1 offset fixes this.
             // Execute callbacks on subscribed topics
             foreach($this->callbacks as $callback) { // periodic callbacks here, if any
-                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=SAPO_Broker_Tools::utime()) {
+                if(($this->callbacks_ts[$callback['id']]+$callback['period'])<=$this->timer->utime()) {
 		                SAPO_Broker::dodebug("SAPO_Broker_Net::Callbacking #".$callback['id']." ".$callback['name'].". Next in ".$callback['period']." seconds");
-                    $this->callbacks_ts[$callback['id']]=SAPO_Broker_Tools::utime();
+                    $this->callbacks_ts[$callback['id']]=$this->timer->utime();
                     call_user_func($callback['name'],$this);
                 }
             } // end callbacks
@@ -693,14 +696,22 @@ class SAPO_Broker_Parser_DOM extends SAPO_Broker_Parser {
     }
 }
 
-class SAPO_Broker_Tools {
-
+class SAPO_Broker_Tools_Timer_PHP4 {
     function utime()
     {
         list($usec, $sec) = explode(" ", microtime());
-        return ((float)$usec + (float)$sec);
+        return (((float)$usec + (float)$sec)+0.001); // php bug with microtime. see http://www.rohitab.com/discuss/lofiversion/index.php/t25344.html
     }
+  }
 
+class SAPO_Broker_Tools_Timer_PHP5 {
+    function utime()
+    {
+        return ((float)microtime(true));
+    }
+  }
+
+class SAPO_Broker_Tools {
 
     function xmlentities ($string, $quote_style = ENT_QUOTES, $charset = 'UTF-8')
     {
