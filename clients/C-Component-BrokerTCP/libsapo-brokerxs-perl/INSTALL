@@ -1,0 +1,6 @@
+
+To build a new debian package of this software:
+
+- install in your system libsapo-broker0 and libsapo-broker-dev
+run:
+$ dpkg-buildpackage -rfakeroot -b
