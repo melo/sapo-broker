@@ -4,7 +4,7 @@ AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(libsapo-broker, 0.1.1, miguel.filipe@caixamagica.pt)
 
-SOVERSION=0:3:0
+SOVERSION=1:1:0
 AC_SUBST(SOVERSION)
 
 AC_LANG_C
