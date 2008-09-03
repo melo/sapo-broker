@@ -41,7 +41,7 @@ CODE:
         
         /* Initialize SAPO Broker and create an IV ref
            containing its memory location */
-        self->handle = sb_new(hostname, port);
+        self->handle = sb_new(hostname, port, SB_TYPE_TCP);
         self_ref = newRV_noinc((SV *) self);
         RETVAL = newSV(0); /* This gets mortalized automagically */
 

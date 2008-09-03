@@ -1,3 +1,8 @@
+libsapo-brokerxs-perl (0.0.4) unstable; urgency=low
+  * update for version libsapobroker-0.1.1.0
+  
+ -- Miguel Sousa Filipe <miguel.filipe@caixamagica.pt>  Wed,  03 Sep 2008 18:05:33 +0100
+
 libsapo-brokerxs-perl (0.0.3) unstable; urgency=low
   * update for new version of libsapobroker
   * ads ack and timetolive
