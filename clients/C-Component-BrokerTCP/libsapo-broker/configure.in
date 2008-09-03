@@ -2,7 +2,7 @@ AC_PREREQ(2.59)
 AC_INIT(configure.in)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(libsapo-broker, 0.0.3, francisco.lourenco@segula.pt)
+AM_INIT_AUTOMAKE(libsapo-broker, 0.1.1, miguel.filipe@caixamagica.pt)
 
 SOVERSION=0:3:0
 AC_SUBST(SOVERSION)

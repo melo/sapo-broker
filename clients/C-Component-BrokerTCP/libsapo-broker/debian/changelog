@@ -4,7 +4,7 @@ libsapo-broker (0.1.1.0) unstable; urgency=low
   * API changed: sb_new(host, port) ->  sb_new( host, port, proto)
   * small fixes.
 
- -- Miguel Sousa Filipe <miguel.filipe@caixamagica.pt>  Fry, 29 Aug 2008 19:50:00 +0100
+ -- Miguel Sousa Filipe <miguel.filipe@caixamagica.pt>  Wed,  03 Sep 2008 16:20:13 +0100
  
 libsapo-broker (0.1.0.0) unstable; urgency=low
 
