@@ -6,6 +6,7 @@
 */
 
 #include <sys/time.h>
+#include <sys/socket.h>
 #include <expat.h>
 
 #include "sapo_broker_xml.h"
@@ -98,6 +99,10 @@ enum{
 #define CHANGE_TOPIC  1
 #define CHANGE_MSG_ID 2
 
+
+// sb_new types
+#define SB_TYPE_TCP	SOCK_STREAM
+#define SB_TYPE_UDP	SOCK_DGRAM
 
 typedef struct _sapo_broker_connection {
 	char hostname[MAX_HOSTNAME];

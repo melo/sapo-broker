@@ -6,7 +6,6 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
@@ -15,12 +14,10 @@
 
 #define TCP_PORT    3322
 #define UDP_PORT    3366
-#define TCP_TYPE    SOCK_STREAM
-#define UDP_TYPE    SOCK_DGRAM
 
 #define HOST        "127.0.0.1"
 #define PORT        TCP_PORT
-#define TYPE        TCP_TYPE
+#define TYPE        SB_TYPE_TCP // or SB_TYPE_UDP
 
 #define TOPIC       "/my/test/topic"
 #define PAYLOAD     "ping"
