@@ -460,8 +460,8 @@ class BDBStorage
 			{
 				BDBEnviroment.sync();
 				log.info("Try to remove db '{}'", dbName);
-				env.removeDatabase(null, dbName);
-				log.info("Removed db '{}'", dbName);
+				env.truncateDatabase(null, dbName, false);
+				env.removeDatabase(null, dbName);				
 				BDBEnviroment.sync();
 				log.info("Storage for queue '{}' was removed", queueProcessor.getDestinationName());
 
