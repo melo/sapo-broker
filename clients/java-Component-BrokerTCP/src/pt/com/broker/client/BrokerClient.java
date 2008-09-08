@@ -188,7 +188,6 @@ public class BrokerClient
 		{
 			throw new IllegalArgumentException("Mal-formed Enqueue request");
 		}
-
 	}
 
 	protected void feedStatusConsumer(Status status) throws Throwable
@@ -257,7 +256,6 @@ public class BrokerClient
 		if ((brkmsg != null) && (StringUtils.isNotBlank(brkmsg.destinationName)))
 		{
 			Publish pubreq = new Publish();
-			pubreq.actionId = UUID.randomUUID().toString();
 			pubreq.brokerMessage = brkmsg;
 			SoapEnvelope soap = buildSoapEnvelope("http://services.sapo.pt/broker/publish");
 			soap.body.publish = pubreq;
