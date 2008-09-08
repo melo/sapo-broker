@@ -47,6 +47,7 @@ public class BrokerServer
 			((SocketSessionConfig) acceptor.getSessionConfig()).setReuseAddress(true);
 			((SocketSessionConfig) acceptor.getSessionConfig()).setTcpNoDelay(false);
 			((SocketSessionConfig) acceptor.getSessionConfig()).setKeepAlive(true);
+			
 
 
 			DefaultIoFilterChainBuilder filterChainBuilder = acceptor.getFilterChain();
@@ -58,6 +59,27 @@ public class BrokerServer
 			// Bind
 			acceptor.bind(new InetSocketAddress(_portNumber));
 			log.info("SAPO-BROKER Listening on: '{}'.", acceptor.getLocalAddress());
+			
+			
+			Thread sync_hook = new Thread()
+			{
+				public void run()
+				{
+					try
+					{
+						log.info("Disconnect broker socket acceptor");
+						acceptor.unbind();
+						acceptor.dispose();
+						Gcs.destroy();
+					}
+					catch (Throwable te)
+					{
+						log.error(te.getMessage(), te);
+					}
+				}
+			};
+
+			Runtime.getRuntime().addShutdownHook(sync_hook);
 
 		}
 		catch (Throwable e)
