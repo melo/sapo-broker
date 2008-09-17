@@ -117,10 +117,12 @@ class SAPO_Broker {
         die ("SAPO_Broker needs at least PHP 4.3.0 to run properly.\nPlease upgrade...\n\n");
       }
       if (version_compare(phpversion(), '5.0.0', '>')) {
+        SAPO_Broker::dodebug("Using PHP5 timers");
         $this->timer =& new SAPO_Broker_Tools_Timer_PHP5;
       }
       else
       {
+        SAPO_Broker::dodebug("Using PHP4 timers");
         $this->timer =& new SAPO_Broker_Tools_Timer_PHP4;
       }
     }
@@ -513,7 +515,7 @@ class SAPO_Broker_Net {
         } // end this->debug
         while($i<$len) { // read just about enough. do i hate sockets...
             $start=$this->timer->utime();
-            $tmp=stream_get_contents($this->socket, -1); // block read with timeout
+            $tmp=fread($this->socket, 1024); // read socket with timeout from stream-set-timeout. safer with fread.
             ob_flush;
             flush(); 
             $end=$this->timer->utime(); // there's a problem with php's microtime function and the tcp timeout. This 0.1 offset fixes this.
