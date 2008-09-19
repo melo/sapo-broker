@@ -96,8 +96,7 @@ class LocalQueueConsumers
 		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
+		ioSession.write(m);
 	}
 
 	protected synchronized static void delete(String queueName)
@@ -119,13 +118,31 @@ class LocalQueueConsumers
 	{
 		if (listener != null)
 		{
-			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(listener.getDestinationName());
+			String queueName = listener.getDestinationName();
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
 			if (listeners != null)
 			{
 				listeners.remove(listener);
+
+				if (listeners.size() == 0)
+				{
+					instance.localQueueConsumers.remove(listeners);
+					instance.broadCastRemovedQueueConsumer(queueName);
+				}
 			}
-			instance.localQueueConsumers.remove(listeners);
-			instance.broadCastRemovedQueueConsumer(listener.getDestinationName());
+		}
+	}
+
+	protected synchronized static void removeAllListeners()
+	{
+		Set<String> queueNameSet = instance.localQueueConsumers.keySet();
+
+		for (String queueName : queueNameSet)
+		{
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
+			listeners.clear();
+			instance.localQueueConsumers.remove(queueName);
+			instance.broadCastRemovedQueueConsumer(queueName);
 		}
 	}
 

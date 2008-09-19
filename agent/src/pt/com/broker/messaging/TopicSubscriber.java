@@ -64,8 +64,6 @@ public class TopicSubscriber extends BrokerListener
 						{
 							final SoapEnvelope response = BrokerListener.buildNotification(amsg, _dname);
 							ios.write(response);
-							
-							
 						}
 					}
 					else

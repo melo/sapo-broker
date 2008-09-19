@@ -10,7 +10,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.regex.Pattern;
 
-import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
@@ -109,18 +108,32 @@ class LocalTopicConsumers
 	{
 		if (listener != null)
 		{
-			CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(listener.getDestinationName());
+			String topicName = listener.getDestinationName();
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localTopicConsumers.get(topicName);
 			if (listeners != null)
 			{
-				listeners.remove(listener);
-				instance.localTopicConsumers.remove(listeners);
+				listeners.remove(listener);				
 				if (listeners.size() == 0)
 				{
-					instance.broadCastableTopics.remove(listener.getDestinationName());
+					instance.localTopicConsumers.remove(listeners);
+					instance.broadCastableTopics.remove(topicName);
+					instance.broadCastRemovedTopicConsumer(topicName);
 				}
 			}
-
-			instance.broadCastRemovedTopicConsumer(listener.getDestinationName());
+		}
+	}
+	
+	protected synchronized static void removeAllListeners()
+	{
+		Set<String> topicNameSet = instance.localTopicConsumers.keySet();
+		
+		for (String topicName : topicNameSet)
+		{
+			CopyOnWriteArrayList<MessageListener> listeners  = instance.localTopicConsumers.get(topicName);
+			listeners.clear();
+			instance.localTopicConsumers.remove(topicName);
+			instance.broadCastableTopics.remove(topicName);
+			instance.broadCastRemovedTopicConsumer(topicName);
 		}
 	}
 
@@ -180,8 +193,7 @@ class LocalTopicConsumers
 		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ((InetSocketAddress) IoSessionHelper.getRemoteInetAddress(ioSession)).getHostName(), destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly();
+		ioSession.write(m);
 	}
 
 	private void broadCastNewTopicConsumer(String topicName)

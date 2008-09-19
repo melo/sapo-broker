@@ -265,10 +265,11 @@ public class Gcs
 	{
 		try
 		{
+			LocalQueueConsumers.removeAllListeners();
+			LocalTopicConsumers.removeAllListeners();
+			Sleep.time(250);
 			acceptor.unbind();
-			acceptor.dispose();
-			connector.dispose();
-			Sleep.time(500);
+			Sleep.time(250);
 			log.info("Flush buffers");
 			BDBEnviroment.sync();
 		}
