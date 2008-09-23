@@ -24,12 +24,12 @@ char g_sapo_broker_error[4096] = "";
 
 #define SB_CONNECTED(conn) (conn->connected)
 
-void _sb_set_error(char *str)
+static void _sb_set_error(char *str)
 {
     strncpy(g_sapo_broker_error, str, 4096);
 }
 
-void _sb_set_errorf(char *str, ...)
+static void _sb_set_errorf(char *str, ...)
 {
     va_list ap;
     char strLog[4096];
@@ -172,7 +172,7 @@ int sb_reconnect(SAPO_BROKER_T * conn)
   \param size - the size of the expected data
   \returns -1 in case of error otherwise returns the number of bytes read
 */
-int _sb_read(int socket, char *msg, int size)
+static int _sb_read(int socket, char *msg, int size)
 {
     int remain = size;
     int ret = 0;
@@ -180,7 +180,7 @@ int _sb_read(int socket, char *msg, int size)
         // wait all information 
         ret = recv(socket, msg, remain, MSG_WAITALL);
 
-        if (errno == EINTR)
+        if (ret <0 && errno == EINTR)
             continue;
         if (ret < 0) {          // got an error reading . Aborting
             _sb_set_errorf("[SB]Error reading (Unknown) :", strerror(errno));
@@ -207,18 +207,19 @@ int _sb_read(int socket, char *msg, int size)
   \returns -1 in case of error otherwise returns the number of bytes writen
 */
 
-int _sb_write(int socket, char *msg, int size)
+static int _sb_write(int socket, char *msg, int size)
 {
     int remain = size;
     int ret = 0;
     int err = 0;
+    int flags = MSG_NOSIGNAL;
     //printf ("socket[%d]",socket);
     do {
         // MSG_NOSIGNAL -> returns EPIPE ?
         // ENOTCONN
-        ret = send(socket, msg, remain, MSG_NOSIGNAL);
+        ret = send(socket, msg, remain, flags);
         err = errno;
-        if (err == EINTR) {
+        if (ret < 0 && err == EINTR) {
             continue;
         }
 
@@ -242,7 +243,7 @@ int _sb_write(int socket, char *msg, int size)
 // send size + message
 // size is in network mode
 
-int _sb_send(int socket, int type, char *body, int body_len)
+static int _sb_send(int socket, int type, char *body, int body_len)
 {
     uint32_t nbody_len;
     int err = 0;
@@ -250,15 +251,18 @@ int _sb_send(int socket, int type, char *body, int body_len)
     _sb_set_error("");
 
     if (type == SOCK_STREAM) {  /* tcp? */
+        /* send header with lenght first */
         nbody_len = htonl(body_len);
-        if ((err = _sb_write(socket, (char *) &nbody_len, 4)) < 0) {
+        err = _sb_write(socket, (char *) &nbody_len, 4);
+        if (err < 0) {
             _sb_set_errorf("[SB]Error writing message size:%s",
                            strerror(errno));
             return err;
         }
     }
-    //printf ("writing total body *%s*\n", body);
-    if ((err = _sb_write(socket, body, body_len)) < 0) {
+
+    err = _sb_write(socket, body, body_len);
+    if (err < 0) {
         _sb_set_errorf("[SB]Error writing message:%s", strerror(errno));
         return err;
     }
@@ -506,7 +510,7 @@ BrokerMessage *sb_receive(SAPO_BROKER_T * conn)
     }
 
     if (body_len > MAX_BUFFER) {
-        body = calloc(body_len + 1, sizeof(char));
+        body = malloc( (body_len + 1) * sizeof(char));
         allocated = 1;
     } else {
         body = static_body;
