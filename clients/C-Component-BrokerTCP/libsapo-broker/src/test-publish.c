@@ -24,25 +24,24 @@
 
 int main(int argc, char *argv[])
 {
-	SAPO_BROKER_T *sb;
+    SAPO_BROKER_T *sb;
 
-	sb = sb_new (HOST, PORT, TYPE);
- 
-	if (!sb) {
-		printf("%s",sb_error());
-		exit(-1);
-	}
-	
-	if (sb_connect(sb) != SB_OK) {
-		printf("%s",sb_error());
-		exit(-1);
-	}
+    sb = sb_new(HOST, PORT, TYPE);
 
-	if (sb_publish(sb, EQUEUE_PUBLISH, TOPIC, PAYLOAD) != SB_OK) {
-		printf("%s",sb_error());
-		exit(-1);
-	}
+    if (!sb) {
+        printf("%s", sb_error());
+        exit(-1);
+    }
 
-	exit(0);
+    if (sb_connect(sb) != SB_OK) {
+        printf("%s", sb_error());
+        exit(-1);
+    }
+
+    if (sb_publish(sb, EQUEUE_PUBLISH, TOPIC, PAYLOAD) != SB_OK) {
+        printf("%s", sb_error());
+        exit(-1);
+    }
+
+    exit(0);
 }
-
