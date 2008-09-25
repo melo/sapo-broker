@@ -152,7 +152,9 @@ sub poll {
     return undef      unless $self->_connected;
 
     my $msg_type = $args{msg_type};
-    my $destname = $self->_destname($args{topic}, $msg_type);
+    my $queue_group = $args{queue_group} || ''; # if not passed and msg_type is TOPIC_AS_QUEUE, this will fallback to the hostname
+    
+    my $destname = $self->_destname($args{topic}, $msg_type, $queue_group);
 
     my $msg =
         "<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
@@ -270,11 +272,11 @@ sub _bus_encode {
 }
 
 sub _destname {
-	my ($self, $topic, $msg_type) = @_;
+	my ($self, $topic, $msg_type, $queue_group) = @_;
 	my $destname;
 
 	if ($msg_type eq 'TOPIC_AS_QUEUE') {
-		$destname = ($self->{hostname} || hostname()) . '@'; 
+		$destname = ($queue_group || hostname()) . '@'; 
 	}
 	
 	$destname .= $topic;
@@ -288,8 +290,10 @@ sub _send_s {
     my %args = @_;
 
     my $msg_type = $args{msg_type};
-    my $destname = $self->_destname($args{topic}, $msg_type);
-		
+    my $queue_group = $args{queue_group} || ''; # if not passed and msg_type is TOPIC_AS_QUEUE, this will fallback to the hostname
+    
+    my $destname = $self->_destname($args{topic}, $msg_type, $queue_group);
+    		
     my $msg = q{<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'><soapenv:Body>};
     $msg .= q{<Notify xmlns='http://services.sapo.pt/broker'>};
     $msg .= qq{<DestinationName>$destname</DestinationName>};
