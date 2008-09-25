@@ -140,6 +140,7 @@ sub subscribe {
     # send subscribe notification
     if ( $self->_send_s(%args) ) {
         $self->{_CORE_}->{topics}{ $args{topic} }{msg_type} = $args{topic};
+        $self->{_CORE_}->{topics}{ $args{topic} }{queue_group} = $args{queue_group};
         return 1;
     }
 }
@@ -446,7 +447,11 @@ sub _reconnect {
 
             for my $topic ( keys %{ $self->{_CORE_}->{topics} } ) {
                 $self->_debug("... $topic");
-                $self->subscribe( topic => $topic );
+                $self->subscribe( 
+                    topic => $topic,
+                    queue_group => $self->{_CORE_}->{topics}{ $topic }{queue_group},
+                    msg_type => $self->{_CORE_}->{topics}{ $topic }{msg_type},
+                 );
             }
 
             return 1;
