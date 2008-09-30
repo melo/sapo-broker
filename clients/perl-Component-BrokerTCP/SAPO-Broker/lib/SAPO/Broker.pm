@@ -216,6 +216,8 @@ sub ack {
 	my $destname = $event->{DestinationName};
 	my $msgid = $event->{MessageId};
 	
+	# TODO: don't send if msg_type id TOPIC
+	
 	my $msg = 
 		"<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'>
 		<soapenv:Body>
