@@ -139,7 +139,8 @@ sub subscribe {
 
     # send subscribe notification
     if ( $self->_send_s(%args) ) {
-        $self->{_CORE_}->{topics}{ $args{topic} }{msg_type} = $args{topic};
+        # TODO: STUPID SHIFT, should pass the %args and not param by param
+        $self->{_CORE_}->{topics}{ $args{topic} }{msg_type} = $args{msg_type};
         $self->{_CORE_}->{topics}{ $args{topic} }{queue_group} = $args{queue_group};
         return 1;
     }
