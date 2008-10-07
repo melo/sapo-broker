@@ -1,11 +1,8 @@
 package pt.com.gcs.messaging;
 
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.mina.util.ConcurrentHashSet;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,15 +21,16 @@ public class QueueProcessor
 
 	protected final AtomicBoolean emptyQueueInfoDisplay = new AtomicBoolean(false);
 
-	private final Set<String> reservedMessages = new ConcurrentHashSet<String>();
-
 	private final BDBStorage storage;
 
 	protected QueueProcessor(String destinationName)
 	{
-		_destinationName = destinationName;
+		if (StringUtils.isBlank(destinationName))
+		{
+			throw new IllegalArgumentException(String.format("'%s' is not a valid Queue name", destinationName));
+		}
 
-		reservedMessages.add(UUID.randomUUID().toString());
+		_destinationName = destinationName;
 
 		storage = new BDBStorage(this);
 
@@ -44,7 +42,7 @@ public class QueueProcessor
 		{
 			_sequence = new AtomicLong(storage.getLastSequenceValue());
 		}
-		
+
 		if (StringUtils.contains(destinationName, "@"))
 		{
 			DispatcherList.create(destinationName);
@@ -60,8 +58,7 @@ public class QueueProcessor
 		{
 			log.debug("Ack message . MsgId: '{}'.", msgId);
 		}
-		
-		reservedMessages.remove(msgId);
+
 		storage.deleteMessage(msgId);
 	}
 
@@ -99,17 +96,15 @@ public class QueueProcessor
 				log.debug("Queue '{}' does not have asynchronous consumers", _destinationName);
 			}
 		}
-		isWorking.set(false);	
+		isWorking.set(false);
 	}
 
-	protected boolean forward(Message message, boolean localConsumersOnly) throws IllegalStateException
+	protected boolean forward(Message message, boolean preferLocalConsumer) throws IllegalStateException
 	{
 		message.setType((MessageType.COM_QUEUE));
 		int lqsize = LocalQueueConsumers.size(_destinationName);
 		int rqsize = RemoteQueueConsumers.size(_destinationName);
 		int size = lqsize + rqsize;
-		
-		//log.info("lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
 
 		boolean isDelivered = false;
 
@@ -119,8 +114,7 @@ public class QueueProcessor
 		}
 		else
 		{
-			//log.info("before: lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
-			if ((lqsize != 0) && localConsumersOnly)
+			if ((lqsize != 0) && preferLocalConsumer)
 			{
 				isDelivered = LocalQueueConsumers.notify(message);
 			}
@@ -140,7 +134,12 @@ public class QueueProcessor
 				else
 					isDelivered = RemoteQueueConsumers.notify(message);
 			}
-			//log.info("after: lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
+
+		}
+
+		if (log.isDebugEnabled())
+		{
+			log.debug("forward-> isDelivered: " + isDelivered + ", lqsize: " + lqsize + ", rqsize: " + rqsize + ", message.id: " + message.getMessageId());
 		}
 
 		return isDelivered;
@@ -170,21 +169,6 @@ public class QueueProcessor
 		{
 			throw new RuntimeException(t);
 		}
-	}
-	
-	protected boolean isMessageReserved(String messageId)
-	{
-		return reservedMessages.contains(messageId);
-	}
-	
-	protected boolean reserveMessage(String messageId)
-	{
-		return reservedMessages.add(messageId);
-	}
-
-	protected void removeFromReservedMessages(String messageId)
-	{
-		reservedMessages.remove(messageId);
 	}
 
 	public long getQueuedMessagesCount()

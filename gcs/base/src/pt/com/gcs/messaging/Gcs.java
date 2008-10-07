@@ -99,7 +99,7 @@ public class Gcs
 			if (!WorldMap.contains(inet))
 			{
 				log.info("Remove peer '{}'", inet.toString());
-				ioSession.close().awaitUninterruptibly();
+				ioSession.close();
 			}
 		}
 		List<Peer> peerList = WorldMap.getPeerList();
@@ -150,11 +150,6 @@ public class Gcs
 	public static void publish(Message message)
 	{
 		instance.ipublish(message);
-	}
-
-	public static void releaseMessage(String queueName, String messageId)
-	{
-		QueueProcessorList.get(queueName).removeFromReservedMessages(messageId);
 	}
 
 	public static void removeAsyncConsumer(MessageListener listener)

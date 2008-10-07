@@ -6,10 +6,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
@@ -34,8 +32,24 @@ class LocalQueueConsumers
 
 		Message m = new Message(msg.getMessageId(), msg.getDestination(), "ACK");
 		m.setType((MessageType.ACK));
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
+		
+		try
+		{
+			ioSession.write(m);
+		}
+		catch (Throwable ct)
+		{
+			log.error(ct.getMessage(), ct);
+			
+			try
+			{
+				ioSession.close();
+			}
+			catch (Throwable ict)
+			{
+				log.error(ict.getMessage(), ict);
+			}
+		}
 	}
 
 	protected synchronized static void add(String queueName, MessageListener listener)
@@ -258,7 +272,6 @@ class LocalQueueConsumers
 				{
 					return null;
 				}
-
 			}
 		}
 	}

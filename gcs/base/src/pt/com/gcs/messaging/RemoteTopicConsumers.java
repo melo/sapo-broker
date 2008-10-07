@@ -11,6 +11,8 @@ import org.caudexorigo.concurrent.Sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.com.gcs.net.IoSessionHelper;
+
 class RemoteTopicConsumers
 {
 	private static Logger log = LoggerFactory.getLogger(RemoteTopicConsumers.class);
@@ -35,10 +37,17 @@ class RemoteTopicConsumers
 			{
 				sessions = new CopyOnWriteArrayList<IoSession>();
 			}
+
 			if (!sessions.contains(iosession))
 			{
 				sessions.add(iosession);
+				log.info("Add remote topic consumer for '{}'", topicName);
 			}
+			else
+			{
+				log.info("Remote topic consumer for '{}' and session '{}' already exists", topicName, IoSessionHelper.getRemoteAddress(iosession));
+			}
+
 			instance.remoteTopicConsumers.put(topicName, sessions);
 		}
 		catch (Throwable t)
@@ -86,6 +95,7 @@ class RemoteTopicConsumers
 				if (sessions != null)
 				{
 					sessions.remove(iosession);
+					log.info("Remove remote topic consumer for '{}' and session '{}'", topicName, IoSessionHelper.getRemoteAddress(iosession));
 				}
 				instance.remoteTopicConsumers.put(topicName, sessions);
 			}

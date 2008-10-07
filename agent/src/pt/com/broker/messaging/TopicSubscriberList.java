@@ -1,7 +1,9 @@
 package pt.com.broker.messaging;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -98,31 +100,24 @@ public class TopicSubscriberList
 		return subscriber;
 	}
 
-	private void removeSubscriber(String destinationName)
+	private void i_removeSubscriber(String destinationName)
 	{
 		try
 		{
 			synchronized (topicSubscribersCache)
 			{
 				TopicSubscriber subscriber = topicSubscribersCache.remove(destinationName);
-				Gcs.removeAsyncConsumer(subscriber);
+				if (subscriber != null)
+				{
+					Gcs.removeAsyncConsumer(subscriber);
+				}
 			}
+
 		}
 		catch (Throwable t)
 		{
 			throw new RuntimeException(t);
 		}
-	}
-
-	public static void remove(String destinationName)
-	{
-		log.info("Delete subscription for: '{}'", destinationName);
-		instance.removeSubscriber(destinationName);
-	}
-
-	public static TopicSubscriber get(String destinationName)
-	{
-		return instance.getSubscriber(destinationName);
 	}
 
 	public static void removeSession(IoSession iosession)
@@ -132,15 +127,40 @@ public class TopicSubscriberList
 			try
 			{
 				Collection<TopicSubscriber> list = topicSubscribersCache.values();
+				List<TopicSubscriber> toDelete = new ArrayList<TopicSubscriber>();
+
 				for (TopicSubscriber subscriber : list)
 				{
-					subscriber.removeConsumer(iosession);
+					int scount = subscriber.removeSessionConsumer(iosession);
+					if (scount == 0)
+					{
+						toDelete.add(subscriber);
+					}
 				}
+
+				for (TopicSubscriber tsubs : toDelete)
+				{
+					topicSubscribersCache.remove(tsubs.getDestinationName());
+					Gcs.removeAsyncConsumer(tsubs);
+				}
+
+				toDelete.clear();
 			}
 			catch (Throwable t)
 			{
 				log.error(t.getMessage(), t);
 			}
 		}
+	}
+
+	public static void removeSubscriber(String destinationName)
+	{
+		log.info("Delete subscription for: '{}'", destinationName);
+		instance.i_removeSubscriber(destinationName);
+	}
+
+	public static TopicSubscriber get(String destinationName)
+	{
+		return instance.getSubscriber(destinationName);
 	}
 }

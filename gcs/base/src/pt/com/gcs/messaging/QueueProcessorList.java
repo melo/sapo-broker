@@ -52,10 +52,10 @@ public class QueueProcessorList
 		return instance.i_size();
 	}
 
-	protected static int size(String destinationName)
-	{
-		return get(destinationName).size();
-	}
+//	protected static int size(String destinationName)
+//	{
+//		return get(destinationName).size();
+//	}
 
 	protected static Collection<QueueProcessor> values()
 	{
@@ -104,7 +104,7 @@ public class QueueProcessorList
 
 			if (qp.hasRecipient())
 			{
-				String m = String.format("Queue %s has active consumers.", queueName);
+				String m = String.format("Queue '%s' has active consumers.", queueName);
 				throw new IllegalStateException(m);
 			}
 

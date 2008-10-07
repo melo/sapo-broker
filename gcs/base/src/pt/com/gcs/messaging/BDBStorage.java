@@ -55,8 +55,6 @@ class BDBStorage
 			if (isMarkedForDeletion.get())
 				return;
 			queueProcessor = qp;
-			// primaryDbName =
-			// MD5.getHashString(queueProcessor.getDestinationName());
 			primaryDbName = queueProcessor.getDestinationName();
 
 			env = BDBEnviroment.get();
@@ -315,56 +313,52 @@ class BDBStorage
 					long k = LongBinding.entryToLong(key);
 					msg.setMessageId(Message.getBaseMessageId() + k);
 					final int deliveryCount = bdbm.getDeliveryCount();
-					final boolean localConsumersOnly = bdbm.isLocalConsumersOnly();
+					final boolean preferLocalConsumer = bdbm.getPreferLocalConsumer();
 					final long reserved = bdbm.getReserve();
 					final boolean isReserved = reserved > 0 ? true : false;
 
 					if (!isReserved && ((deliveryCount < 1) || redelivery))
 					{
-						if (!queueProcessor.isMessageReserved(msg.getMessageId()))
+						bdbm.setDeliveryCount(deliveryCount + 1);
+						bdbm.setPreferLocalConsumer(false);
+						msg_cursor.put(key, buildDatabaseEntry(bdbm));
+
+						long mark = System.currentTimeMillis();
+
+						if (deliveryCount > MAX_DELIVERY_COUNT)
 						{
-
-							bdbm.setDeliveryCount(deliveryCount + 1);
-							msg_cursor.put(key, buildDatabaseEntry(bdbm));
-
-							long mark = System.currentTimeMillis();
-
-							if (deliveryCount > MAX_DELIVERY_COUNT)
+							j0++;
+							msg_cursor.delete();
+							log.warn("Overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+							dumpMessage(msg);
+						}
+						else if (mark > msg.getExpiration())
+						{
+							j0++;
+							msg_cursor.delete();
+							log.warn("Expired message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
+							dumpMessage(msg);
+						}
+						else
+						{
+							try
 							{
-								j0++;
-								msg_cursor.delete();
-								log.warn("Overdelivered message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
-								dumpMessage(msg);
-							}
-							else if (mark > msg.getExpiration())
-							{
-								j0++;
-								msg_cursor.delete();
-								log.warn("Expired message: '{}' id: '{}'", msg.getDestination(), msg.getMessageId());
-								dumpMessage(msg);
-							}
-							else
-							{
-								try
+								if (!queueProcessor.forward(msg, preferLocalConsumer))
 								{
-									if (!queueProcessor.forward(msg, localConsumersOnly))
-									{
-										j0++;
-										bdbm.setDeliveryCount(deliveryCount);
-										msg_cursor.put(key, buildDatabaseEntry(bdbm));
-										dumpMessage(msg);
-									}
-									else
-									{
-										i0++;
-									}
+									j0++;
+									bdbm.setDeliveryCount(deliveryCount);
+									msg_cursor.put(key, buildDatabaseEntry(bdbm));
+									dumpMessage(msg);
 								}
-								catch (Throwable t)
+								else
 								{
-									log.error(t.getMessage());
-									break;
+									i0++;
 								}
-
+							}
+							catch (Throwable t)
+							{
+								log.error(t.getMessage());
+								break;
 							}
 						}
 					}
@@ -461,7 +455,7 @@ class BDBStorage
 				BDBEnviroment.sync();
 				log.info("Try to remove db '{}'", dbName);
 				env.truncateDatabase(null, dbName, false);
-				env.removeDatabase(null, dbName);				
+				env.removeDatabase(null, dbName);
 				BDBEnviroment.sync();
 				log.info("Storage for queue '{}' was removed", queueProcessor.getDestinationName());
 
@@ -475,7 +469,6 @@ class BDBStorage
 				Sleep.time(2500);
 			}
 		}
-
 	}
 
 }

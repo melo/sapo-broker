@@ -48,10 +48,11 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 			log.debug("Message Received from: '{}', Type: '{}'", IoSessionHelper.getRemoteAddress(iosession), msg.getType());
 		}
 
+		msg.setFromRemotePeer(true);
+		
 		if (msg.getType() == (MessageType.COM_TOPIC))
 		{
 			LocalTopicConsumers.notify(msg);
-
 		}
 		else if (msg.getType() == (MessageType.COM_QUEUE))
 		{
@@ -121,8 +122,23 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 
 		log.info("Send agentId: '{}'", agentId);
 
-		// iosession.write(m).awaitUninterruptibly();
-		iosession.write(m);
+		try
+		{
+			iosession.write(m);
+		}
+		catch (Throwable t)
+		{
+			try
+			{
+				iosession.close();
+			}
+			catch (Throwable ict)
+			{
+				log.error(ict.getMessage(), ict);
+			}
+			return;
+		}		
+		
 
 		Set<String> topicNameSet = LocalTopicConsumers.getBroadcastableTopics();
 		for (String topicName : topicNameSet)
@@ -139,7 +155,14 @@ class GcsRemoteProtocolHandler extends IoHandlerAdapter
 			}
 			catch (Throwable t)
 			{
-				iosession.close();
+				try
+				{
+					iosession.close();
+				}
+				catch (Throwable ict)
+				{
+					log.error(ict.getMessage(), ict);
+				}
 			}			
 		}
 	}

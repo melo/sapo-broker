@@ -18,8 +18,11 @@ class TopicToQueueDispatcher implements MessageListener
 
 	public boolean onMessage(Message message)
 	{
-		message.setDestination(_queueName);
-		Gcs.enqueue(message);
+		if (!message.isFromRemotePeer())
+		{
+			message.setDestination(_queueName);
+			Gcs.enqueue(message);
+		}
 		return true;
 	}
 

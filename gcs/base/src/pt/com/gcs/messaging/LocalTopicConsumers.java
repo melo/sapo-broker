@@ -77,7 +77,6 @@ class LocalTopicConsumers
 
 			for (String subscriptionName : matches)
 			{
-				// message.setDestination(destination);
 				instance.doNotify(subscriptionName, message);
 			}
 		}

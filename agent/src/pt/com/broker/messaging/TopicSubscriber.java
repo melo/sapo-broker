@@ -66,14 +66,9 @@ public class TopicSubscriber extends BrokerListener
 							ios.write(response);
 						}
 					}
-					else
-					{
-						removeConsumer(ios);
-					}
 				}
 				catch (Throwable t)
 				{
-					removeConsumer(ios);
 					try
 					{
 						(ios.getHandler()).exceptionCaught(ios, t);
@@ -92,36 +87,33 @@ public class TopicSubscriber extends BrokerListener
 		return false;
 	}
 
-	public void removeConsumer(IoSession iosession)
+	public int removeSessionConsumer(IoSession iosession)
 	{
 		synchronized (slock)
 		{
 			if (_sessions.remove(iosession))
 			{
-				log.info("Remove 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
-
 				int subscriberCount = _sessions.size();
-
-				if (subscriberCount == 0)
-				{
-					TopicSubscriberList.remove(_dname);
-				}
-
+				log.info("Remove local 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 				log.info("Local subscriber count for '{}': {}", _dname, subscriberCount);
+				return subscriberCount;
 			}
+			return _sessions.size();
 		}
 	}
 
-	public void addConsumer(IoSession iosession)
+	public int addConsumer(IoSession iosession)
 	{
 		synchronized (slock)
 		{
 			if (_sessions.add(iosession))
 			{
 				int subscriberCount = _sessions.size();
-				log.info("Create 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
+				log.info("Create local 'Topic' consumer for subscription: '{}', address: '{}'", _dname, IoSessionHelper.getRemoteAddress(iosession));
 				log.info("Local subscriber count for '{}': {}", _dname, subscriberCount);
+				return subscriberCount;
 			}
+			return _sessions.size();
 		}
 	}
 
@@ -129,7 +121,7 @@ public class TopicSubscriber extends BrokerListener
 	{
 		return _dname;
 	}
-	
+
 	public int count()
 	{
 		return _sessions.size();

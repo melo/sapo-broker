@@ -51,7 +51,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			{
 				String paddr = String.valueOf(iosession.getAttribute("GcsAcceptorProtocolHandler.PEER_ADDRESS"));
 				log.warn("A peer from \"{}\" tried to connect but it does not appear in the world map.", paddr);
-				iosession.close().awaitUninterruptibly();
+				iosession.close();
 			}
 			else
 			{
@@ -66,7 +66,7 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 
 			final String action = extract(payload, "<action>", "</action>");
 			final String src_name = extract(payload, "<source-name>", "</source-name>");
-			final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
+			//final String src_ip = extract(payload, "<source-ip>", "</source-ip>");
 			final String destinationName = extract(payload, "<destination>", "</destination>");
 
 			if (log.isInfoEnabled())
@@ -91,12 +91,6 @@ class GcsAcceptorProtocolHandler extends IoHandlerAdapter
 			{
 				if (action.equals("CREATE"))
 				{
-
-//					if (StringUtils.contains(msg.getDestination(), "@"))
-//					{
-//						DispatcherList.create(msg.getDestination());
-//					}
-
 					RemoteQueueConsumers.add(msg.getDestination(), iosession);
 					QueueProcessorList.get(destinationName);
 				}

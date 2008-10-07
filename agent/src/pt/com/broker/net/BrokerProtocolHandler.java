@@ -270,7 +270,6 @@ public class BrokerProtocolHandler extends IoHandlerAdapter
 		{
 			exceptionCaught(session, t, actionId);
 		}
-
 	}
 
 	private void sendAccepted(final IoSession ios, final String actionId)
