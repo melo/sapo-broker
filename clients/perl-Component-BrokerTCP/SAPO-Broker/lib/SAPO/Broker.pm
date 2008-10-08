@@ -213,6 +213,11 @@ sub receive {
 sub ack {
 	my ($self, $event) = @_;
 
+    unless ($event) {
+        carp("Can't ACK a EMPTY event!");
+        return;
+    }
+
 	my $destname = $event->{DestinationName};
 	my $msgid = $event->{MessageId};
 	
