@@ -1,5 +1,6 @@
 
 all:
+	libtoolize --force --copy
 	aclocal -I config
 	autoheader
 	automake --foreign --add-missing
