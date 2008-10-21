@@ -2,7 +2,7 @@
 all:
 	aclocal -I config
 	autoheader
-	automake --foreign --add-missing --copy
+	automake --foreign --add-missing
 	autoconf
 
 clean:
