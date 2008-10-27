@@ -16,10 +16,10 @@
 		<pathelement location="${sapo-broker.location}/../common-libs/mina_http_filter.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/logback-classic-0.9.9.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/logback-core-0.9.9.jar"/>
-		<pathelement location="${sapo-broker.location}/../common-libs/slf4j-api-1.5.0.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/slf4j-api-1.5.5.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/org.caudexorigo.jar"/>
 		<pathelement location="${sapo-broker.location}/../common-libs/mina2-snapshot.jar"/>
-		<pathelement location="${sapo-broker.location}/../common-libs/je-3.3.69.jar"/>
+		<pathelement location="${sapo-broker.location}/../common-libs/je-3.3.74.jar"/>
 	</path>
 
 

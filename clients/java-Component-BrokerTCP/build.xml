@@ -10,7 +10,7 @@
 		<pathelement location="${java-Component-BrokerTCP.location}/clib/bcel.jar" />
 		<pathelement location="${java-Component-BrokerTCP.location}/clib/jibx-bind.jar" />
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/jibx-run.jar"/>
-		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/slf4j-api-1.5.0.jar"/>
+		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/slf4j-api-1.5.5.jar"/>
 		<pathelement location="${java-Component-BrokerTCP.location}/../../common-libs/org.caudexorigo.jar"/>
 	</path>
 
