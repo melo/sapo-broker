@@ -120,14 +120,14 @@ class BDBStorage
 		}
 	}
 
-	protected void insert(Message msg, long sequence, int deliveryCount, boolean localConsumersOnly)
+	protected void insert(Message msg, long sequence, int deliveryCount, boolean preferLocalConsumer)
 	{
 		if (isMarkedForDeletion.get())
 			return;
 
 		try
 		{
-			BDBMessage bdbm = new BDBMessage(msg, sequence, deliveryCount, localConsumersOnly);
+			BDBMessage bdbm = new BDBMessage(msg, sequence, deliveryCount, preferLocalConsumer);
 
 			DatabaseEntry key = new DatabaseEntry();
 			DatabaseEntry data = buildDatabaseEntry(bdbm);
@@ -346,9 +346,11 @@ class BDBStorage
 								if (!queueProcessor.forward(msg, preferLocalConsumer))
 								{
 									j0++;
-									bdbm.setDeliveryCount(deliveryCount);
-									msg_cursor.put(key, buildDatabaseEntry(bdbm));
+									bdbm.setDeliveryCount(deliveryCount); 
+									msg_cursor.put(key, buildDatabaseEntry(bdbm));									
+									log.warn("Could not deliver message. Id: '{}'", bdbm.getMessage().getMessageId());
 									dumpMessage(msg);
+									
 								}
 								else
 								{
@@ -358,7 +360,6 @@ class BDBStorage
 							catch (Throwable t)
 							{
 								log.error(t.getMessage());
-								break;
 							}
 						}
 					}
@@ -460,7 +461,6 @@ class BDBStorage
 				log.info("Storage for queue '{}' was removed", queueProcessor.getDestinationName());
 
 				break;
-
 			}
 			catch (Throwable t)
 			{

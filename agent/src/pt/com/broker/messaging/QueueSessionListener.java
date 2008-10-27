@@ -84,6 +84,12 @@ public class QueueSessionListener extends BrokerListener
 		}
 		catch (Throwable e)
 		{
+			if (e instanceof org.jibx.runtime.JiBXException)
+			{
+				Gcs.ackMessage(_dname, msg.getMessageId());
+				log.warn("Undeliverable message was deleted. Id: '{}'", msg.getMessageId());
+			}
+			
 			try
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);

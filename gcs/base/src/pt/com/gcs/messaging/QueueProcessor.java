@@ -134,7 +134,6 @@ public class QueueProcessor
 				else
 					isDelivered = RemoteQueueConsumers.notify(message);
 			}
-
 		}
 
 		if (log.isDebugEnabled())
