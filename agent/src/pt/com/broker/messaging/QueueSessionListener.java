@@ -84,6 +84,12 @@ public class QueueSessionListener extends BrokerListener
 		}
 		catch (Throwable e)
 		{
+			if (e instanceof org.jibx.runtime.JiBXException)
+			{
+				Gcs.ackMessage(_dname, msg.getMessageId());
+				log.warn("Undeliverable message was deleted. Id: '{}'", msg.getMessageId());
+			}
+			
 			try
 			{
 				(ioSession.getHandler()).exceptionCaught(ioSession, e);
@@ -133,7 +139,7 @@ public class QueueSessionListener extends BrokerListener
 		}
 	}
 
-	public void addConsumer(IoSession iosession)
+	public int addConsumer(IoSession iosession)
 	{
 		synchronized (mutex)
 		{
@@ -142,10 +148,11 @@ public class QueueSessionListener extends BrokerListener
 				_sessions.add(iosession);
 				log.info("Create message consumer for queue: " + _dname + ", address: " + IoSessionHelper.getRemoteAddress(iosession));
 			}
+			return _sessions.size();
 		}
 	}
 
-	public void removeConsumer(IoSession iosession)
+	public int removeSessionConsumer(IoSession iosession)
 	{
 		synchronized (mutex)
 		{
@@ -157,6 +164,8 @@ public class QueueSessionListener extends BrokerListener
 				QueueSessionListenerList.remove(_dname);
 				Gcs.removeAsyncConsumer(this);
 			}
+			
+			return _sessions.size();
 		}
 	}
 

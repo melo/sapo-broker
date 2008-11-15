@@ -306,7 +306,7 @@ int main (int argc, char *argv[]){
                 }
         }
 
-	conn = sb_new(hostname , port);
+	conn = sb_new(hostname , port, SB_TYPE_TCP);
 	
 	
 	switch(role){

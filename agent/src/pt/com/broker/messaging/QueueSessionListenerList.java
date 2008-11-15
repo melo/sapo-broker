@@ -115,7 +115,7 @@ public class QueueSessionListenerList
 			Collection<QueueSessionListener> list = queueSessionListener.values();
 			for (QueueSessionListener queueSessionListener : list)
 			{
-				queueSessionListener.removeConsumer(iosession);
+				queueSessionListener.removeSessionConsumer(iosession);
 			}
 
 		}

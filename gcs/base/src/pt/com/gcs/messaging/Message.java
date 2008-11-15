@@ -37,6 +37,8 @@ public class Message implements Externalizable
 	private long _expiration = System.currentTimeMillis() + DEFAULT_EXPIRY;
 
 	private MessageType _type = MessageType.UNDEF;
+	
+	private boolean _isFromRemotePeer = false;
 
 	private static final String SEPARATOR = "<#>";
 
@@ -230,5 +232,15 @@ public class Message implements Externalizable
 		buf.append(getType().getValue());
 
 		return buf.toString();
+	}
+	
+	public void setFromRemotePeer(boolean isFromRemotePeer)
+	{
+		_isFromRemotePeer = isFromRemotePeer;
+	}
+
+	public boolean isFromRemotePeer()
+	{
+		return _isFromRemotePeer;
 	}
 }

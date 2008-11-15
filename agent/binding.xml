@@ -61,7 +61,7 @@
 	</mapping>
 	
 	<mapping name="Poll" class="pt.com.broker.messaging.Poll" ns="http://services.sapo.pt/broker">
-		<value name="DestinationName" field="destinationName" usage="optional" ns="http://services.sapo.pt/broker" />
+		<value name="DestinationName" field="destinationName" usage="required" ns="http://services.sapo.pt/broker" />
 	</mapping>
 
 	<mapping name="Publish" class="pt.com.broker.messaging.Publish" ns="http://services.sapo.pt/broker">

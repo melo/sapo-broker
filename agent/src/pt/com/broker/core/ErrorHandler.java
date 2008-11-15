@@ -11,8 +11,13 @@ import org.jibx.runtime.JiBXException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.management.GcInfo;
+
+import pt.com.broker.xml.EndPointReference;
 import pt.com.broker.xml.SoapEnvelope;
 import pt.com.broker.xml.SoapFault;
+import pt.com.broker.xml.SoapHeader;
+import pt.com.gcs.conf.GcsInfo;
 
 public class ErrorHandler extends ExceptionMonitor
 {
@@ -78,10 +83,20 @@ public class ErrorHandler extends ExceptionMonitor
 		sfault.faultReason.text = reason;
 		sfault.detail = detail;
 		faultMessage.body.fault = sfault;
+		
+
+		SoapHeader soap_header = new SoapHeader();
+		EndPointReference epr = new EndPointReference();
+		epr.address = GcsInfo.getAgentName();
+		soap_header.wsaFrom = epr;
+		faultMessage.header = soap_header;
+		
 
 		WTF wtf = new WTF();
 		wtf.Cause = ex;
 		wtf.Message = faultMessage;
+		
+		
 
 		return wtf;
 	}

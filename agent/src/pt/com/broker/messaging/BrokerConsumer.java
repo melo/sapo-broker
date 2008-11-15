@@ -59,12 +59,12 @@ public class BrokerConsumer
 		if (dtype.equals("TOPIC"))
 		{
 			TopicSubscriber subscriber = TopicSubscriberList.get(dname);
-			subscriber.removeConsumer(session);
+			subscriber.removeSessionConsumer(session);
 		}
 		else if (dtype.equals("QUEUE"))
 		{
 			QueueSessionListener qsl = QueueSessionListenerList.get(dname);
-			qsl.removeConsumer(session);
+			qsl.removeSessionConsumer(session);
 		}
 	}
 }

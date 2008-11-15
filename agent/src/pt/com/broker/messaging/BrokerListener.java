@@ -50,7 +50,7 @@ public abstract class BrokerListener implements MessageListener
 		return soap_env;
 	}
 
-	public abstract void addConsumer(IoSession iosession);
+	public abstract int addConsumer(IoSession iosession);
 
-	public abstract void removeConsumer(IoSession iosession);
+	public abstract int removeSessionConsumer(IoSession iosession);
 }

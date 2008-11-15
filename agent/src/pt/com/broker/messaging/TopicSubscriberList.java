@@ -1,8 +1,10 @@
 package pt.com.broker.messaging;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.mina.core.session.IoSession;
@@ -17,7 +19,7 @@ import pt.com.gcs.messaging.Message;
 public class TopicSubscriberList
 {
 	// key: destinationName
-	private static final Map<String, TopicSubscriber> topicSubscribersCache = new ConcurrentHashMap<String, TopicSubscriber>();
+	private static final Map<String, TopicSubscriber> topicSubscribersCache = new HashMap<String, TopicSubscriber>();
 
 	private static final Logger log = LoggerFactory.getLogger(TopicSubscriberList.class);
 
@@ -29,18 +31,28 @@ public class TopicSubscriberList
 		{
 			public void run()
 			{
-				Collection<TopicSubscriber> subs = topicSubscribersCache.values();
-
-				for (TopicSubscriber topicSubscriber : subs)
+				synchronized (topicSubscribersCache)
 				{
-					int ssize = topicSubscriber.count();
+					try
+					{
+						Collection<TopicSubscriber> subs = topicSubscribersCache.values();
 
-					Message cnt_message = new Message();
-					String ctName = String.format("/system/stats/topic-consumer-count/#%s#", topicSubscriber.getDestinationName());
-					String content = GcsInfo.getAgentName() + "#" + topicSubscriber.getDestinationName() + "#" + ssize;
-					cnt_message.setDestination(ctName);
-					cnt_message.setContent(content);
-					Gcs.publish(cnt_message);
+						for (TopicSubscriber topicSubscriber : subs)
+						{
+							int ssize = topicSubscriber.count();
+
+							Message cnt_message = new Message();
+							String ctName = String.format("/system/stats/topic-consumer-count/#%s#", topicSubscriber.getDestinationName());
+							String content = GcsInfo.getAgentName() + "#" + topicSubscriber.getDestinationName() + "#" + ssize;
+							cnt_message.setDestination(ctName);
+							cnt_message.setContent(content);
+							Gcs.publish(cnt_message);
+						}
+					}
+					catch (Throwable e)
+					{
+						log.error(e.getMessage(), e);
+					}
 				}
 			}
 		};
@@ -88,31 +100,24 @@ public class TopicSubscriberList
 		return subscriber;
 	}
 
-	private void removeSubscriber(String destinationName)
+	private void i_removeSubscriber(String destinationName)
 	{
 		try
 		{
 			synchronized (topicSubscribersCache)
 			{
 				TopicSubscriber subscriber = topicSubscribersCache.remove(destinationName);
-				Gcs.removeAsyncConsumer(subscriber);
+				if (subscriber != null)
+				{
+					Gcs.removeAsyncConsumer(subscriber);
+				}
 			}
+
 		}
 		catch (Throwable t)
 		{
 			throw new RuntimeException(t);
 		}
-	}
-
-	public static void remove(String destinationName)
-	{
-		log.info("Delete subscription for: '{}'", destinationName);
-		instance.removeSubscriber(destinationName);
-	}
-
-	public static TopicSubscriber get(String destinationName)
-	{
-		return instance.getSubscriber(destinationName);
 	}
 
 	public static void removeSession(IoSession iosession)
@@ -122,15 +127,40 @@ public class TopicSubscriberList
 			try
 			{
 				Collection<TopicSubscriber> list = topicSubscribersCache.values();
+				List<TopicSubscriber> toDelete = new ArrayList<TopicSubscriber>();
+
 				for (TopicSubscriber subscriber : list)
 				{
-					subscriber.removeConsumer(iosession);
+					int scount = subscriber.removeSessionConsumer(iosession);
+					if (scount == 0)
+					{
+						toDelete.add(subscriber);
+					}
 				}
+
+				for (TopicSubscriber tsubs : toDelete)
+				{
+					topicSubscribersCache.remove(tsubs.getDestinationName());
+					Gcs.removeAsyncConsumer(tsubs);
+				}
+
+				toDelete.clear();
 			}
 			catch (Throwable t)
 			{
 				log.error(t.getMessage(), t);
 			}
 		}
+	}
+
+	public static void removeSubscriber(String destinationName)
+	{
+		log.info("Delete subscription for: '{}'", destinationName);
+		instance.i_removeSubscriber(destinationName);
+	}
+
+	public static TopicSubscriber get(String destinationName)
+	{
+		return instance.getSubscriber(destinationName);
 	}
 }

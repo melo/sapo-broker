@@ -99,7 +99,7 @@ public class Gcs
 			if (!WorldMap.contains(inet))
 			{
 				log.info("Remove peer '{}'", inet.toString());
-				ioSession.close().awaitUninterruptibly();
+				ioSession.close();
 			}
 		}
 		List<Peer> peerList = WorldMap.getPeerList();
@@ -132,6 +132,11 @@ public class Gcs
 		return WorldMap.getPeerList();
 	}
 
+	public static void destroy()
+	{
+		instance.idestroy();
+	}
+
 	public static void init()
 	{
 		instance.iinit();
@@ -145,11 +150,6 @@ public class Gcs
 	public static void publish(Message message)
 	{
 		instance.ipublish(message);
-	}
-
-	public static void releaseMessage(String queueName, String messageId)
-	{
-		QueueProcessorList.get(queueName).removeFromReservedMessages(messageId);
 	}
 
 	public static void removeAsyncConsumer(MessageListener listener)
@@ -185,23 +185,6 @@ public class Gcs
 			GcsExecutor.scheduleWithFixedDelay(new QueueCounter(), 20, 20, TimeUnit.SECONDS);
 			GcsExecutor.scheduleWithFixedDelay(new WorldMapMonitor(), 30, 30, TimeUnit.SECONDS);
 
-			Thread sync_hook = new Thread()
-			{
-				public void run()
-				{
-					try
-					{
-						log.info("Flush buffers");
-						BDBEnviroment.sync();
-					}
-					catch (Throwable te)
-					{
-						log.error(te.getMessage(), te);
-					}
-				}
-			};
-
-			Runtime.getRuntime().addShutdownHook(sync_hook);
 		}
 		catch (Throwable t)
 		{
@@ -273,6 +256,24 @@ public class Gcs
 		log.info("{} initialized.", SERVICE_NAME);
 	}
 
+	private void idestroy()
+	{
+		try
+		{
+			LocalQueueConsumers.removeAllListeners();
+			LocalTopicConsumers.removeAllListeners();
+			Sleep.time(250);
+			acceptor.unbind();
+			Sleep.time(250);
+			log.info("Flush buffers");
+			BDBEnviroment.sync();
+		}
+		catch (Throwable te)
+		{
+			log.error(te.getMessage(), te);
+		}
+	}
+
 	private Message ipoll(final String queueName)
 	{
 		LocalQueueConsumers.addSyncConsumer(queueName);
@@ -297,6 +298,7 @@ public class Gcs
 		((SocketSessionConfig) acceptor.getSessionConfig()).setTcpNoDelay(false);
 		((SocketSessionConfig) acceptor.getSessionConfig()).setKeepAlive(true);
 		((SocketSessionConfig) acceptor.getSessionConfig()).setWriteTimeout(120);
+		acceptor.setCloseOnDeactivation(true);
 
 		acceptor.setBacklog(100);
 

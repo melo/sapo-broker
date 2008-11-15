@@ -10,8 +10,9 @@ import org.caudexorigo.io.UnsynchByteArrayInputStream;
 
 public class BDBMessage implements Externalizable
 {
+
 	private long _sequence;
-	private boolean _localConsumersOnly;
+	private boolean _preferLocalConsumer;
 	private long _reserve;
 	private int _deliveryCount;
 	private Message _message;
@@ -21,23 +22,29 @@ public class BDBMessage implements Externalizable
 	{
 	}
 
-	public BDBMessage(Message msg, long sequence, int deliveryCount, boolean localConsumersOnly)
+	public BDBMessage(Message msg, long sequence, int deliveryCount, boolean preferLocalConsumer)
 	{
 		_deliveryCount = deliveryCount;
-		_localConsumersOnly = localConsumersOnly;
+		_preferLocalConsumer = preferLocalConsumer;
 		_message = msg;
 		_sequence = sequence;
 		_reserve = 0L;
+	}
+	
+	
+	public boolean getPreferLocalConsumer()
+	{
+		return _preferLocalConsumer;
+	}
+
+	public void setPreferLocalConsumer(boolean localConsumer)
+	{
+		_preferLocalConsumer = localConsumer;
 	}
 
 	public long getSequence()
 	{
 		return _sequence;
-	}
-
-	public boolean isLocalConsumersOnly()
-	{
-		return _localConsumersOnly;
 	}
 	
 	public long getReserve()
@@ -68,7 +75,7 @@ public class BDBMessage implements Externalizable
 	public void readExternal(ObjectInput oin) throws IOException, ClassNotFoundException
 	{
 		_sequence = oin.readLong();
-		_localConsumersOnly = oin.readBoolean();
+		_preferLocalConsumer = oin.readBoolean();
 		_deliveryCount = oin.readInt();
 		_reserve = oin.readLong();
 		Message m = new Message();
@@ -79,7 +86,7 @@ public class BDBMessage implements Externalizable
 	public void writeExternal(ObjectOutput oout) throws IOException
 	{
 		oout.writeLong(_sequence);
-		oout.writeBoolean(_localConsumersOnly);
+		oout.writeBoolean(_preferLocalConsumer);
 		oout.writeInt(_deliveryCount);
 		oout.writeLong(_reserve);
 		_message.writeExternal(oout);
@@ -93,7 +100,7 @@ public class BDBMessage implements Externalizable
 		buf.append(SEPARATOR);
 		buf.append(_sequence);
 		buf.append(SEPARATOR);
-		buf.append(_localConsumersOnly);
+		buf.append(_preferLocalConsumer);
 		buf.append(SEPARATOR);
 		buf.append(_reserve);		
 

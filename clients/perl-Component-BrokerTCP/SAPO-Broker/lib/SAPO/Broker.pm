@@ -139,7 +139,9 @@ sub subscribe {
 
     # send subscribe notification
     if ( $self->_send_s(%args) ) {
-        $self->{_CORE_}->{topics}{ $args{topic} }{msg_type} = $args{topic};
+        # TODO: STUPID SHIFT, should pass the %args and not param by param
+        $self->{_CORE_}->{topics}{ $args{topic} }{msg_type} = $args{msg_type};
+        $self->{_CORE_}->{topics}{ $args{topic} }{queue_group} = $args{queue_group};
         return 1;
     }
 }
@@ -152,7 +154,9 @@ sub poll {
     return undef      unless $self->_connected;
 
     my $msg_type = $args{msg_type};
-    my $destname = $self->_destname($args{topic}, $msg_type);
+    my $queue_group = $args{queue_group} || ''; # if not passed and msg_type is TOPIC_AS_QUEUE, this will fallback to the hostname
+    
+    my $destname = $self->_destname($args{topic}, $msg_type, $queue_group);
 
     my $msg =
         "<soap:Envelope xmlns:soap='http://www.w3.org/2003/05/soap-envelope' xmlns:mq='http://services.sapo.pt/broker'>
@@ -209,8 +213,15 @@ sub receive {
 sub ack {
 	my ($self, $event) = @_;
 
+    unless ($event) {
+        carp("Can't ACK a EMPTY event!");
+        return;
+    }
+
 	my $destname = $event->{DestinationName};
 	my $msgid = $event->{MessageId};
+	
+	# TODO: don't send if msg_type id TOPIC
 	
 	my $msg = 
 		"<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'>
@@ -270,11 +281,11 @@ sub _bus_encode {
 }
 
 sub _destname {
-	my ($self, $topic, $msg_type) = @_;
+	my ($self, $topic, $msg_type, $queue_group) = @_;
 	my $destname;
 
 	if ($msg_type eq 'TOPIC_AS_QUEUE') {
-		$destname = ($self->{hostname} || hostname()) . '@'; 
+		$destname = ($queue_group || hostname()) . '@'; 
 	}
 	
 	$destname .= $topic;
@@ -288,8 +299,10 @@ sub _send_s {
     my %args = @_;
 
     my $msg_type = $args{msg_type};
-    my $destname = $self->_destname($args{topic}, $msg_type);
-		
+    my $queue_group = $args{queue_group} || ''; # if not passed and msg_type is TOPIC_AS_QUEUE, this will fallback to the hostname
+    
+    my $destname = $self->_destname($args{topic}, $msg_type, $queue_group);
+    		
     my $msg = q{<soapenv:Envelope xmlns:soapenv='http://www.w3.org/2003/05/soap-envelope'><soapenv:Body>};
     $msg .= q{<Notify xmlns='http://services.sapo.pt/broker'>};
     $msg .= qq{<DestinationName>$destname</DestinationName>};
@@ -442,7 +455,11 @@ sub _reconnect {
 
             for my $topic ( keys %{ $self->{_CORE_}->{topics} } ) {
                 $self->_debug("... $topic");
-                $self->subscribe( topic => $topic );
+                $self->subscribe( 
+                    topic => $topic,
+                    queue_group => $self->{_CORE_}->{topics}{ $topic }{queue_group},
+                    msg_type => $self->{_CORE_}->{topics}{ $topic }{msg_type},
+                 );
             }
 
             return 1;

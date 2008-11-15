@@ -4,12 +4,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 
-import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.session.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import pt.com.gcs.net.IoSessionHelper;
 
 class RemoteQueueConsumers
 {
@@ -24,10 +24,17 @@ class RemoteQueueConsumers
 		{
 			sessions = new CopyOnWriteArrayList<IoSession>();
 		}
+
 		if (!sessions.contains(iosession))
 		{
 			sessions.add(iosession);
+			log.info("Add remote queue consumer for '{}'", queueName);
 		}
+		else
+		{
+			log.info("Remote topic consumer '{}' and session '{}' already exists", queueName, IoSessionHelper.getRemoteAddress(iosession));
+		}
+
 		instance.remoteQueueConsumers.put(queueName, sessions);
 	}
 
@@ -49,7 +56,10 @@ class RemoteQueueConsumers
 			CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(queueName);
 			if (sessions != null)
 			{
-				sessions.remove(iosession);
+				if(sessions.remove(iosession))
+				{
+					log.info("Remove remote queue consumer for '{}' and session '{}'", queueName, IoSessionHelper.getRemoteAddress(iosession));
+				}				
 			}
 			instance.remoteQueueConsumers.put(queueName, sessions);
 		}
@@ -60,7 +70,10 @@ class RemoteQueueConsumers
 		CopyOnWriteArrayList<IoSession> sessions = instance.remoteQueueConsumers.get(queueName);
 		if (sessions != null)
 		{
-			sessions.remove(iosession);
+			if(sessions.remove(iosession))
+			{
+				log.info("Remove remote queue consumer for '{}' and session '{}'", queueName, IoSessionHelper.getRemoteAddress(iosession));
+			}					
 		}
 		instance.remoteQueueConsumers.put(queueName, sessions);
 	}
@@ -97,14 +110,23 @@ class RemoteQueueConsumers
 				IoSession ioSession = pick(sessions);
 				if (ioSession != null)
 				{
-					WriteFuture wf = ioSession.write(message);
-					wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
-					boolean isWritten = wf.isWritten();
-					if (!isWritten)
+					try
 					{
-						ioSession.close();
+						ioSession.write(message);
+						return true;
 					}
-					return isWritten;
+					catch (Throwable ct)
+					{
+						log.error(ct.getMessage(), ct);
+						try
+						{
+							ioSession.close();
+						}
+						catch (Throwable ict)
+						{
+							log.error(ict.getMessage(), ict);
+						}
+					}
 				}
 			}
 		}

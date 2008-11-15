@@ -6,10 +6,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.session.IoSession;
 import org.caudexorigo.text.StringUtils;
 import org.slf4j.Logger;
@@ -34,8 +32,24 @@ class LocalQueueConsumers
 
 		Message m = new Message(msg.getMessageId(), msg.getDestination(), "ACK");
 		m.setType((MessageType.ACK));
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
+		
+		try
+		{
+			ioSession.write(m);
+		}
+		catch (Throwable ct)
+		{
+			log.error(ct.getMessage(), ct);
+			
+			try
+			{
+				ioSession.close();
+			}
+			catch (Throwable ict)
+			{
+				log.error(ict.getMessage(), ict);
+			}
+		}
 	}
 
 	protected synchronized static void add(String queueName, MessageListener listener)
@@ -96,8 +110,7 @@ class LocalQueueConsumers
 		String payload = String.format(ptemplate, action, GcsInfo.getAgentName(), ioSession.getLocalAddress().toString(), destinationName);
 		m.setDestination(destinationName);
 		m.setContent(payload);
-		WriteFuture wf = ioSession.write(m);
-		wf.awaitUninterruptibly(120, TimeUnit.SECONDS);
+		ioSession.write(m);
 	}
 
 	protected synchronized static void delete(String queueName)
@@ -119,13 +132,31 @@ class LocalQueueConsumers
 	{
 		if (listener != null)
 		{
-			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(listener.getDestinationName());
+			String queueName = listener.getDestinationName();
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
 			if (listeners != null)
 			{
 				listeners.remove(listener);
+
+				if (listeners.size() == 0)
+				{
+					instance.localQueueConsumers.remove(listeners);
+					instance.broadCastRemovedQueueConsumer(queueName);
+				}
 			}
-			instance.localQueueConsumers.remove(listeners);
-			instance.broadCastRemovedQueueConsumer(listener.getDestinationName());
+		}
+	}
+
+	protected synchronized static void removeAllListeners()
+	{
+		Set<String> queueNameSet = instance.localQueueConsumers.keySet();
+
+		for (String queueName : queueNameSet)
+		{
+			CopyOnWriteArrayList<MessageListener> listeners = instance.localQueueConsumers.get(queueName);
+			listeners.clear();
+			instance.localQueueConsumers.remove(queueName);
+			instance.broadCastRemovedQueueConsumer(queueName);
 		}
 	}
 
@@ -241,7 +272,6 @@ class LocalQueueConsumers
 				{
 					return null;
 				}
-
 			}
 		}
 	}

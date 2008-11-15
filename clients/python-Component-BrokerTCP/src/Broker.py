@@ -665,10 +665,7 @@ class Client:
         """
         "Destructor". Tries to do fallback cleanup.
         """
-        log.debug("Client.__del__")
-        if self.__closed:
-            log.info("Destruction on an already closed socket")
-        else:
+        if not self.__closed:
             self.close()
 
     def subscribe(self, destination, kind=DEFAULT_KIND, auto_acknowledge=True):

@@ -5,3 +5,7 @@ $ make -f Makefile.cvs
 $ ./configure 
 $ make
 # make install
+
+to make a debian package:
+$ dpkg-buildpackage -rfakeroot -b
+
