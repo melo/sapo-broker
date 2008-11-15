@@ -169,10 +169,7 @@ sub poll {
 
     $self->_debug("MSG SENT: $msg");
 
-    _bus_encode( \$msg );
-    return undef unless print { $self->{_CORE_}->{sock} } $msg;
-
-    return 1;
+    return $self->_send($msg);    
 }
 
 # recebe eventos
@@ -234,10 +231,7 @@ sub ack {
 	
 	$self->_debug("ack: $msg");
 
-	_bus_encode(\$msg);
-	return undef unless print { $self->{_CORE_}->{sock} } $msg;
-
-	return 1;
+  return $self->_send($msg);    
 }
 
 # DEPRECATED...
@@ -312,10 +306,7 @@ sub _send_s {
     
 	$self->_debug("MSG RECV: $msg");
 		
-	_bus_encode( \$msg );
-    return undef unless print { $self->{_CORE_}->{sock} } $msg;
-
-    return 1;
+  return $self->_send($msg);    
 }
 
 sub _build_send_p{
@@ -344,11 +335,17 @@ sub _send_p {
 
     my $msg = $self->_build_send_p(@_);
     $self->_debug("MSG SENT: $msg");
-    
-    _bus_encode( \$msg );
-    return undef unless print { $self->{_CORE_}->{sock} } $msg;
 
-    return 1;
+    return $self->_send($msg);    
+}
+
+# Envia stuff para o socket
+sub _send {
+  my ($self, $msg) = @_;
+
+  _bus_encode( \$msg );
+  return undef unless print {$self->{_CORE_}{sock}} $msg;
+  return 1;
 }
 
 # valida de ainda esta ligado
@@ -421,7 +418,8 @@ sub _connect {
 
     $self->_debug("CONNECTED!");
 
-    return 1;    #$sock->connected;
+    return 1;    #$sock->co
+    # nnected;
 }
 
 # desliga
