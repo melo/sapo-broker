@@ -4,4 +4,5 @@ META.yml # Will be created by "make dist"
 Makefile.PL
 README
 lib/SAPO/Broker.pm
+lib/SAPO/Broker/AnyEvent.pm
 t/00-load.t
