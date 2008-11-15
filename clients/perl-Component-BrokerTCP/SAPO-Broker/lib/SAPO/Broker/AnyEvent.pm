@@ -17,6 +17,15 @@ sub receive {
   $self->{_CORE_}{on_message_cb} = $cb;
 }
 
+sub on_connect {
+  my ($self, $cb) = @_;
+  
+  croak("FATAL: SAPO::Broker::AnyEvent::on_connect() requires a coderef for callback, ")
+    unless ref($cb) && ref($cb) eq 'CODE';
+  
+  $self->{_CORE_}{on_connect_cb} = $cb;
+}
+
 sub _connect {
     my $self = shift;
 
@@ -61,6 +70,9 @@ sub _connected {
   
   $self->{_CORE_}{sock} = $sock;
   $self->_debug("CONNECTED!");
+  
+  my $cb = $self->{_CORE_}{on_connect_cb};
+  $cb->($self) if $cb;
   
   return;
 }
