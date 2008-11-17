@@ -89,10 +89,13 @@ sub _on_reconnect {
   delete $self->{_CORE_}{sock};
   delete $self->{_CORE_}{handle};
   
-  AnyEvent->timer(
+  my $t; $t = AnyEvent->timer(
     after => 0.1,
     cb    => sub {
+      $self->_debug('RECONNECT!');
       $self->_connect;
+      
+      undef $t;
     },
   );
   
