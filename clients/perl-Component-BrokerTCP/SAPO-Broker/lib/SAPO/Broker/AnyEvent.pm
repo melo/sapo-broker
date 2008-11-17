@@ -76,6 +76,7 @@ sub _on_connected {
   return;
 }
 
+sub _reconnect {} # Disable parent class _reconnect() handling
 sub _on_reconnect {
   my $self = shift;
   
