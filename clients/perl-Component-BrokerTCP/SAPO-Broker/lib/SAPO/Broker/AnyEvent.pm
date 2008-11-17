@@ -64,6 +64,12 @@ sub _async_connect {
   return;
 }
 
+sub _connected {
+  my $self = shift;
+  
+  return $self->{_CORE_}{sock};
+}
+
 sub _on_connected {
   my ($self, $sock) = @_;
   
