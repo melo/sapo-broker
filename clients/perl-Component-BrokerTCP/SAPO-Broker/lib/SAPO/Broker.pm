@@ -304,7 +304,7 @@ sub _send_s {
     $msg .= q{</Notify>};
     $msg .= q{</soapenv:Body></soapenv:Envelope>};
     
-	$self->_debug("MSG RECV: $msg");
+	$self->_debug("MSG SEND: $msg");
 		
   return $self->_send($msg);    
 }
