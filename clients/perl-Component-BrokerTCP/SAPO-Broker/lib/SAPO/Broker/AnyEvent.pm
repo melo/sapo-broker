@@ -53,18 +53,18 @@ sub _async_connect {
 
     $self->{_CORE_}{handle} = AnyEvent::Handle->new(
       fh => $sock,
-      on_eof     => sub { $self->_reconnect },
-      on_error   => sub { $self->_reconnect },
+      on_eof     => sub { $self->_on_reconnect },
+      on_error   => sub { $self->_on_reconnect },
     );
     
-    $self->_connected($sock);
+    $self->_on_connected($sock);
     $self->_start_reading;
   };
   
   return;
 }
 
-sub _connected {
+sub _on_connected {
   my ($self, $sock) = @_;
   
   $self->{_CORE_}{sock} = $sock;
@@ -76,7 +76,7 @@ sub _connected {
   return;
 }
 
-sub _reconnect {
+sub _on_reconnect {
   my $self = shift;
   
   delete $self->{_CORE_}{sock};
