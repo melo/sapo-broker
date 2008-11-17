@@ -51,14 +51,13 @@ sub _async_connect {
        return $self->_async_connect(@_);
     }
 
-    $self->_connected($sock);
-    
     $self->{_CORE_}{handle} = AnyEvent::Handle->new(
       fh => $sock,
       on_eof     => sub { $self->_reconnect },
       on_error   => sub { $self->_reconnect },
     );
     
+    $self->_connected($sock);
     $self->_start_reading;
   };
   
