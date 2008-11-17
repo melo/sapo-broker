@@ -130,5 +130,15 @@ sub _start_reading {
   });
 }
 
+sub _send {
+   my ($self, $msg) = @_;
+   my $handle = $self->{_CORE_}{handle};
+
+  SAPO::Broker::_bus_encode( \$msg );
+  $handle->push_write($msg);
+
+  return 1;
+}
+
 
 1;
