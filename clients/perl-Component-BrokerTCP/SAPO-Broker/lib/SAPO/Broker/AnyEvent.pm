@@ -106,26 +106,28 @@ sub _start_reading {
   my ($self) = @_;
   my $handle = $self->{_CORE_}{handle};
   
-  $handle->push_read(
-    packstring => 'N',
-    sub {
-      my (undef, $data) = @_;
-      my $cb = $self->{_CORE_}{on_message_cb};
-      
-      return unless $cb;
-      
-      my $event = SAPO::Broker::_parse_soap_message(
-    		$data,'http://services.sapo.pt/broker',
-    		'BrokerMessage', qw(TextPayload MessageId DestinationName)
-    	);
+  $handle->on_read(sub {
+    $handle->push_read(
+      packstring => 'N',
+      sub {
+        my (undef, $data) = @_;
+        my $cb = $self->{_CORE_}{on_message_cb};
 
-      my $as_struct = $self->{retstruct} || ( $self->{msg_type} && $self->{msg_type} eq 'TOPIC_AS_QUEUE' );
-    	
-    	$cb->($as_struct? $event : $event->{TextPayload});
+        return unless $cb;
 
-    	return; # Keep reading
-    },
-  );
+        my $event = SAPO::Broker::_parse_soap_message(
+      		$data,'http://services.sapo.pt/broker',
+      		'BrokerMessage', qw(TextPayload MessageId DestinationName)
+      	);
+
+        my $as_struct = $self->{retstruct} || ( $self->{msg_type} && $self->{msg_type} eq 'TOPIC_AS_QUEUE' );
+
+      	$cb->($as_struct? $event : $event->{TextPayload});
+
+      	return; # Keep reading
+      },
+    );
+  });
 }
 
 
